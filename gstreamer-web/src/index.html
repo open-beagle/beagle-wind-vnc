@@ -11,10 +11,11 @@
         crossorigin="use-credentials">
   <meta name="theme-color"
         content="black" />
+  <meta charset="UTF-8">
 
   <style>
     html {
-      font-family: Roboto, Arial, sans;
+      font-family: Roboto, sans-serif;
     }
 
     body {
@@ -172,7 +173,7 @@
                         {{ connectionStat.connectionVideoBitrate }}
                       </v-progress-circular>
                     </template>
-                    <span>Current video bitrate in mbps vs selected bitrate {{ (videoBitRate / 1000).toFixed(0) }}
+                    <span>码率 mbps vs 最大 {{ (videoBitRate / 1000).toFixed(0) }}
                       mbps</span>
                   </v-tooltip>
 
@@ -189,7 +190,7 @@
                         {{ connectionStat.connectionFrameRate }}
                       </v-progress-circular>
                     </template>
-                    <span>Current FPS vs 60 FPS</span>
+                    <span>帧率 FPS</span>
                   </v-tooltip>
 
                   <v-tooltip bottom>
@@ -205,7 +206,7 @@
                         {{ connectionStat.connectionLatency }}
                       </v-progress-circular>
                     </template>
-                    <span>Current maximum connection latency in milliseconds</span>
+                    <span>延迟 ms</span>
                   </v-tooltip>
 
                   <v-divider class="mr-1"
@@ -236,8 +237,8 @@
                         {{ cpuStat.serverCPUUsage }}
                       </v-progress-circular>
                     </template>
-                    <span v-if="encoderName.startsWith('hardware')">Current GPU load</span>
-                    <span v-else>Server CPU Usage</span>
+                    <span v-if="encoderName.startsWith('hardware')">GPU 负载</span>
+                    <span v-else>CPU 负载</span>
                   </v-tooltip>
 
                   <v-tooltip bottom>
@@ -265,10 +266,10 @@
                         {{ (cpuStat.serverMemoryUsed / 1024 / 1024 / 1024).toFixed(2) }}
                       </v-progress-circular>
                     </template>
-                    <span v-if="encoderName.startsWith('hardware')">Current GPU memory GB used of the {{
-                      (gpuStat.gpuMemoryTotal / 1024).toFixed(0) }}GB available</span>
-                    <span v-else>Server Memory GB used of the {{ (cpuStat.serverMemoryTotal / 1024 / 1024 /
-                      1024).toFixed(0) }}GB available</span>
+                    <span v-if="encoderName.startsWith('hardware')">GPU显存 {{
+                      (gpuStat.gpuMemoryTotal / 1024).toFixed(0) }}GB</span>
+                    <span v-else>CPU内存 {{ (cpuStat.serverMemoryTotal / 1024 / 1024 /
+                      1024).toFixed(0) }}GB</span>
                   </v-tooltip>
 
                   <v-divider class="mr-1"
@@ -282,7 +283,7 @@
                                 v-on="on">fullscreen</v-icon>
                       </v-btn>
                     </template>
-                    <span>Enter fullscreen mode (Ctrl+Shift+F)</span>
+                    <span>开启-全屏 (Ctrl+Shift+F)</span>
                   </v-tooltip>
 
                   <v-tooltip bottom
@@ -294,7 +295,7 @@
                                 v-on="on">file_copy</v-icon>
                       </v-btn>
                     </template>
-                    <span>Clipboard status: {{ clipboardStatus }}</span>
+                    <span>剪切板-状态: {{ clipboardStatus }}</span>
                   </v-tooltip>
 
                   <v-tooltip bottom
@@ -307,7 +308,7 @@
                                 v-on="on">file_copy</v-icon>
                       </v-btn>
                     </template>
-                    <span>Enable clipboard access</span>
+                    <span>开启-剪切板</span>
                   </v-tooltip>
 
                   <v-tooltip bottom>
@@ -318,7 +319,7 @@
                                 v-on="on">home</v-icon>
                       </v-btn>
                     </template>
-                    <span>Return to launcher</span>
+                    <span>回到主页</span>
                   </v-tooltip>
 
                   <v-tooltip bottom
@@ -327,7 +328,7 @@
                       <v-icon color="black"
                               v-on="on">videogame_asset</v-icon>
                     </template>
-                    <span>Gamepad connected: {{ gamepad.gamepadName }}</span>
+                    <span>手柄-状态: {{ gamepad.gamepadName }}</span>
                   </v-tooltip>
 
                   <v-tooltip bottom
@@ -336,7 +337,7 @@
                       <v-icon color="grey"
                               v-on="on">videogame_asset</v-icon>
                     </template>
-                    <span>Gamepad disconnected</span>
+                    <span>手柄 已断开</span>
                   </v-tooltip>
 
                   <v-tooltip bottom>
@@ -345,101 +346,100 @@
                               color="black"
                               v-on="on">account_circle</v-icon>
                     </template>
-                    <span>Logged in as {{ getUsername() }} </span>
+                    <span>已登录： {{ getUsername() }} </span>
                   </v-tooltip>
                 </v-toolbar>
               </p>
               <p>
                 <v-select :items="videoBitRateOptions"
-                          label="Video bitrate"
+                          label="视频 码率"
                           menu-props="left"
                           v-model="videoBitRate"
-                          hint="Dynamic bitrate selection for host video encoder"
+                          hint="视频设置：最大码率."
                           persistent-hint></v-select>
               </p>
               <p>
                 <v-select :items="videoFramerateOptions"
-                          label="Video framerate"
+                          label="视频 帧率"
                           menu-props="left"
                           v-model="videoFramerate"
-                          hint="Framerate selection for host video encoder"
+                          hint="视频设置：最大帧率."
                           persistent-hint>
                 </v-select>
               </p>
               <p>
                 <v-select :items="audioBitRateOptions"
-                          label="Audio bitrate"
+                          label="音频 码率"
                           menu-props="left"
                           v-model="audioBitRate"
-                          hint="Streaming bitrate selection for host audio encoder"
+                          hint="音频设置：最大码率."
                           persistent-hint>
                 </v-select>
               </p>
               <p>
               <ul>
-                <li>Peer connection state: <b>{{ status }}</b></li>
-                <li>Peer connection type: <b>{{ connectionStat.connectionStatType }}</b></li>
-                <li>Packets received: <b>{{ connectionStat.connectionPacketsReceived }}</b></li>
-                <li>Packets lost: <b>{{ connectionStat.connectionPacketsLost }}</b></li>
-                <li>Bytes received: <b>{{ connectionStat.connectionBytesReceived }}</b></li>
-                <li>Bytes sent: <b>{{ connectionStat.connectionBytesSent }}</b></li>
+                <li>Peer 连接状态: <b>{{ status }}</b></li>
+                <li>Peer 连接类型: <b>{{ connectionStat.connectionStatType }}</b></li>
+                <li>Packets 接收: <b>{{ connectionStat.connectionPacketsReceived }}</b></li>
+                <li>Packets 丢失: <b>{{ connectionStat.connectionPacketsLost }}</b></li>
+                <li>Bytes 接收: <b>{{ connectionStat.connectionBytesReceived }}</b></li>
+                <li>Bytes 发送: <b>{{ connectionStat.connectionBytesSent }}</b></li>
               </ul>
-              Video Stats
+              视频流-实时状态
               <ul>
-                <li>Latency: <b>{{ connectionStat.connectionVideoLatency }} ms</b></li>
-                <li>Video: <b>{{ connectionStat.connectionCodec }} {{ connectionStat.connectionResolution }}</b></li>
-                <li>Video encoder: <b>{{ encoderName }}</b></li>
-                <li>Window size: <b>{{ windowResolution[0] }}x{{ windowResolution[1] }}</b></li>
+                <li>延迟: <b>{{ connectionStat.connectionVideoLatency }} ms</b></li>
+                <li>视频: <b>{{ connectionStat.connectionCodec }} {{ connectionStat.connectionResolution }}</b></li>
+                <li>编码: <b>{{ encoderName }}</b></li>
+                <li>分辨率: <b>{{ windowResolution[0] }}x{{ windowResolution[1] }}</b></li>
                 <!--<li>Video decoder: <b>{{ connectionStat.connectionVideoDecoder }}</b></li>-->
-                <li>Framerate: <b>{{ connectionStat.connectionFrameRate }} fps</b></li>
-                <li>Bitrate: <b>{{ connectionStat.connectionVideoBitrate }} mbps</b></li>
-                <li>Available receive bandwidth: <b>{{ connectionStat.connectionAvailableBandwidth }}</b></li>
+                <li>帧率: <b>{{ connectionStat.connectionFrameRate }} fps</b></li>
+                <li>码率: <b>{{ connectionStat.connectionVideoBitrate }} mbps</b></li>
+                <li>带宽: <b>{{ connectionStat.connectionAvailableBandwidth }}</b></li>
               </ul>
-              Audio Stats
+              音频流-实时状态
               <ul>
-                <li>Latency: <b>{{ connectionStat.connectionAudioLatency }} ms</b></li>
-                <li>Codec: <b>{{ connectionStat.connectionAudioCodecName }}</b></li>
-                <li>Bitrate: <b>{{ connectionStat.connectionAudioBitrate }} kbps</b></li>
+                <li>延迟: <b>{{ connectionStat.connectionAudioLatency }} ms</b></li>
+                <li>编码: <b>{{ connectionStat.connectionAudioCodecName }}</b></li>
+                <li>码率: <b>{{ connectionStat.connectionAudioBitrate }} kbps</b></li>
               </ul>
               <small style="color:gray">
-                Shortcuts
+                快捷键
                 <ul>
-                  <li>Fullscreen: Ctrl + Shift + F or Fullscreen Button</li>
-                  <li>Remote (Game) Cursor Lock: Ctrl + Shift + LeftClick</li>
-                  <li>Open Side Menu: Ctrl + Shift + M or Side Button</li>
+                  <li>全屏幕: Ctrl + Shift + F or Fullscreen Button</li>
+                  <li>远程游戏鼠标锁: Ctrl + Shift + LeftClick</li>
+                  <li>打开侧边栏: Ctrl + Shift + M or Side Button</li>
                   <li><a style="color:inherit;text-decoration:none"
                        target="_blank"
                        rel="noopener noreferrer"
-                       href="https://github.com/selkies-project/selkies-gstreamer/blob/main/README.md#citations-in-academic-publications"><b>Please
-                        cite within your publication for academic usage</b></a></li>
+                       href="https://github.com/selkies-project/selkies-gstreamer/blob/main/README.md#citations-in-academic-publications"><b>Copyright © 2024 北京比格大数据技术有限公司. BDWind Team. All rights reserved.</b></a></li>
                 </ul>
               </small>
               </p>
               <hr />
               <v-textarea bottom
                           class="scrolly"
-                          label="Status Logs"
+                          label="状态日志"
                           readonly
                           :value="logEntries.join('\n\n')">
               </v-textarea>
               <v-textarea bottom
                           class="scrolly"
-                          label="Debug Logs"
+                          label="调试日志"
                           readonly
                           :value="debugEntries.join('\n\n')">
               </v-textarea>
               <p>
                 <v-switch v-model="resizeRemote"
-                          :label="`Resize remote to fit window: ${resizeRemote.toString()}`"></v-switch>
+                          :label="`自动调整分辨率: ${resizeRemote.toString()}`"></v-switch>
                 <v-switch v-model="scaleLocal"
-                          :label="`Scale to fit window: ${scaleLocal.toString()}`"></v-switch>
+                          :label="`自动缩放视频流: ${scaleLocal.toString()}`"></v-switch>
               </p>
               <p>
-                Debugging
+                调试
                 <v-switch v-model="debug"
-                          :label="`Debug logs: ${debug.toString()}`"></v-switch>
+                          :label="`调试日志: ${debug.toString()}`"></v-switch>
                 <v-switch v-model="turnSwitch"
-                          :label="`Force relay connection: ${turnSwitch.toString()}`"></v-switch>
+                          :label="`强制延迟连接: ${turnSwitch.toString()}`"></v-switch>
               </p>
 
               <p v-if="publishingAllowed">
@@ -493,7 +493,7 @@
                class="audio"
                preload="none"
                playsinline>
-          Your browser doesn't support audio
+          当前浏览器不支持音频流
         </audio>
       </div>
 
@@ -504,7 +504,7 @@
                preload="none"
                disablePictureInPicture="true"
                playsinline>
-          Your browser doesn't support video
+          当前浏览器不支持视频流
         </video>
       </div>
 
@@ -523,8 +523,8 @@
         <div v-if="status === 'failed'">
           <v-btn v-on:click="location.reload()"
                  color="#E0E0E0">
-            reload</v-btn>
-          <div class="loading-text">Connection failed.</div>
+            重新加载</v-btn>
+          <div class="loading-text">连接失败.</div>
         </div>
         <div v-else>
           <scale-loader size="200px"
@@ -535,7 +535,7 @@
           <v-btn v-if="(status === 'connected' && showStart)"
                  v-on:click="playStream()"
                  color="#E0E0E0">
-            start</v-btn>
+            开启</v-btn>
         </div>
       </div>
     </v-app>

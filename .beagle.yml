@@ -1,0 +1,88 @@
+kind: pipeline
+name: gstreamer-web
+
+trigger:
+  branch:
+    - gstreamer-web
+
+workspace:
+  path: /go/src/github.com/open-beagle/kasm-images
+
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+clone:
+  disable: true
+
+steps:
+  - name: s3-cache
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-s3-cache:1.0
+    settings:
+      restore: true
+      mount:
+        - ./.git
+      endpoint: https://cache.ali.wodcloud.com
+      access_key:
+        from_secret: S3_ACCESS_KEY_ALIYUN
+      secret_key:
+        from_secret: S3_SECRET_KEY_ALIYUN
+
+  - name: fetch
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-git:1.0
+    settings:
+      proxy:
+        from_secret: SOCKS5_PROXY
+
+  - name: docker
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    settings:
+      dockerfile: .beagle/beagle-wind-vnc.dockerfile
+      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:ubuntu-22.04-desktop-nvidia-glx
+      repo: wod/beagle-wind-vnc
+      version: ubuntu-22.04-nvidia
+      args: "TARGETOS=linux,TARGETARCH=amd64"
+      registry: registry-vpc.cn-qingdao.aliyuncs.com
+      registry_user:
+        from_secret: REGISTRY_USER_ALIYUN
+      registry_password:
+        from_secret: REGISTRY_PASSWORD_ALIYUN
+
+---
+kind: secret
+name: SOCKS5_PROXY
+get:
+  name: SOCKS5_PROXY
+  path: devops-secrets
+
+---
+kind: secret
+name: REGISTRY_USER_ALIYUN
+get:
+  name: REGISTRY_USER_ALIYUN
+  path: devops-secrets
+
+---
+kind: secret
+name: REGISTRY_PASSWORD_ALIYUN
+get:
+  name: REGISTRY_PASSWORD_ALIYUN
+  path: devops-secrets
+
+---
+kind: secret
+name: S3_ACCESS_KEY_ALIYUN
+get:
+  name: S3_ACCESS_KEY_ALIYUN
+  path: devops-secrets
+
+---
+kind: secret
+name: S3_SECRET_KEY_ALIYUN
+get:
+  name: S3_SECRET_KEY_ALIYUN
+  path: devops-secrets

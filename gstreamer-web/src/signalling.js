@@ -159,7 +159,7 @@ class WebRTCDemoSignalling {
         };
         this.state = 'connected';
         this._ws_conn.send(`HELLO ${this.peer_id} ${btoa(JSON.stringify(meta))}`);
-        this._setStatus("Registering with server, peer ID: " + this.peer_id);
+        this._setStatus("服务器注册中, peer ID: " + this.peer_id);
         this.retry_count = 0;
     }
 
@@ -171,7 +171,7 @@ class WebRTCDemoSignalling {
      * @event
      */
     _onServerError() {
-        this._setStatus("Connection error, retry in 3 seconds.");
+        this._setStatus("连接错误, 3秒后重试.");
         this.retry_count++;
         if (this._ws_conn.readyState === this._ws_conn.CLOSED) {
             setTimeout(() => {
@@ -200,13 +200,13 @@ class WebRTCDemoSignalling {
         this._setDebug("server message: " + event.data);
 
         if (event.data === "HELLO") {
-            this._setStatus("Registered with server.");
-            this._setStatus("Waiting for stream.");
+            this._setStatus("服务器已注册.");
+            this._setStatus("等待推流.");
             return;
         }
 
         if (event.data.startsWith("ERROR")) {
-            this._setStatus("Error from server: " + event.data);
+            this._setStatus("服务器错误: " + event.data);
             // TODO: reset the connection.
             return;
         }
@@ -256,7 +256,7 @@ class WebRTCDemoSignalling {
      */
     connect() {
         this.state = 'connecting';
-        this._setStatus("Connecting to server.");
+        this._setStatus("正在连接服务器.");
 
         this._ws_conn = new WebSocket(this._server);
 

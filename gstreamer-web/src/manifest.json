@@ -1,0 +1,16 @@
+{
+  "name": "BDWind VNC",
+  "short_name": "BDWind",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "display": "minimal-ui",
+  "background_color": "black",
+  "theme_color": "black",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

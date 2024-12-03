@@ -8,7 +8,7 @@ LABEL maintainer=${AUTHOR} version=${VERSION}
 
 COPY ./gstreamer-web/src/. /opt/gst-web/
 
-COPY entrypoint.sh /etc/entrypoint.sh
+COPY --chown=1000:1000 ./entrypoint.sh /etc/entrypoint.sh
 
 RUN sudo chown -R root:root /opt/gst-web && \
   sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \

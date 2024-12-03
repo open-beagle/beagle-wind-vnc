@@ -4,7 +4,7 @@
 SELKIES_PORT=${SELKIES_PORT:-8081}
 
 # 循环检查端口是否开放
-until nc -z localhost ${SELKIES_PORT}; do
+while ! nc -z localhost 8081; do
   sleep 0.5
 done
 

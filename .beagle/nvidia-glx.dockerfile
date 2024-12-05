@@ -6,7 +6,7 @@ ARG AUTHOR=mengkzhaoyun@gmail.com
 ARG VERSION=ubuntu-24.04
 LABEL maintainer=${AUTHOR} version=${VERSION}
 
-COPY ./gstreamer-web/src/. /opt/gst-web/
+COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 COPY --chown=1000:1000 ./nvidia/glx/entrypoint.sh /etc/entrypoint.sh
 

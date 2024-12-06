@@ -166,21 +166,20 @@ class WebRTCInput:
                 data, self.uinput_mouse_socket_path)
 
     def __js_connect(self, js_num, name, num_btns, num_axes):
-        """Connect virtual joystick using Selkies Joystick Interposer
-        """
-        assert self.loop is not None
-
-        logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (js_num, name, num_btns, num_axes))
-
+        logger.info("Connecting gamepad js%d: name='%s', buttons=%d, axes=%d" % (js_num, name, num_btns, num_axes))
+        
         socket_path = self.js_socket_path_map.get(js_num, None)
         if socket_path is None:
             logger.error("failed to connect js%d because socket_path was not found" % js_num)
             return
 
+        logger.info("Using socket path: %s" % socket_path)
+
         # Create the gamepad and button config.
         js = SelkiesGamepad(socket_path, self.loop)
         js.set_config(name, num_btns, num_axes)
 
+        logger.info("Starting gamepad server for js%d" % js_num)
         asyncio.ensure_future(js.run_server(), loop=self.loop)
 
         self.js_map[js_num] = js

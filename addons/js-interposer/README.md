@@ -57,4 +57,16 @@ This creates a new unix domain socket at `/tmp/selkies_js0.sock` and simulates j
 
 ```bash
 LD_PRELOAD='/usr/$LIB/selkies_joystick_interposer.so' jstest /dev/input/js0
+
+go build -o joystick-server joystick-server.go
+
+go run joystick-server.go
+
+./joystick-server
+
+rm -rf /tmp/selkies_js_go.log && \
+touch /tmp/selkies_js_go.log && \
+tail -f /tmp/selkies_js_go.log
+
+
 ```

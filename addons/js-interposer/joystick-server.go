@@ -804,7 +804,7 @@ func (h *JoystickHandler) initializeJoystick(deviceID int) error {
 	defer h.mu.Unlock()
 
 	// 设置SDL使用uinput
-	os.Setenv("SDL_JOYSTICK_DEVICE", "/dev/uinput")
+	os.Setenv("SDL_JOYSTICK_DEVICE", "/dev/input/uinput")
 	os.Setenv("SDL_GAMECONTROLLERCONFIG_FILE", "")
 
 	// 初始化SDL

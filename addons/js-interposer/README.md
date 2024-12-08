@@ -64,6 +64,11 @@ sudo apt-get install -y \
     libsdl2-2.0-0 \
     libsdl2-dev
 
+sudo apt-get update
+sudo apt-get install -y \
+    libsdl2-2.0-0 \
+    libsdl2-dev
+
 
 cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \
 sudo go run joystick-server.go

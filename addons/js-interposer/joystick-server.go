@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,6 +53,8 @@ const (
 	WRITE_TIMEOUT             = 100 * time.Millisecond
 	STATUS_CHECK_INTERVAL     = 5 * time.Second
 	CONNECTION_STATS_INTERVAL = 30 * time.Second
+	JS_EVENT_INIT             = 0x80
+	JS_EVENT_SYNC             = 0xCD
 )
 
 var SOCKET_PATHS = []string{
@@ -58,11 +64,17 @@ var SOCKET_PATHS = []string{
 	"/tmp/selkies_js3.sock",
 }
 
+// JoystickEvent 结构体定义
+// 匹配Python的struct.pack('IhBB')格式:
+// I: uint32 - 时间戳
+// h: int16  - 值
+// B: uint8  - 类型
+// B: uint8  - 编号
 type JoystickEvent struct {
-	Time   uint32
-	Value  int16
-	Type   uint8
-	Number uint8
+	Time   uint32 // 4字节, unsigned int
+	Value  int16  // 2字节, signed short
+	Type   uint8  // 1字节, unsigned char
+	Number uint8  // 1字节, unsigned char
 }
 
 type ConnectionStats struct {
@@ -197,40 +209,50 @@ func NewEventQueue(size int) *EventQueue {
 }
 
 type JoystickHandler struct {
-	mu        sync.RWMutex
-	joysticks map[int]*sdl.Joystick
-	config    Config
-	events    *EventQueue
-	stats     *ConnectionStats
+	mu         sync.RWMutex
+	devices    map[int]*os.File
+	sdlDevices map[int]*sdl.Joystick
+	events     *EventQueue
+	config     Config
+	stats      map[int]*ConnectionStats
 }
 
 func NewJoystickHandler(config Config) *JoystickHandler {
-	return &JoystickHandler{
-		joysticks: make(map[int]*sdl.Joystick),
-		config:    config,
-		events:    NewEventQueue(config.EventQueueSize),
-		stats:     &ConnectionStats{lastActive: time.Now()},
+	h := &JoystickHandler{
+		devices:    make(map[int]*os.File),
+		sdlDevices: make(map[int]*sdl.Joystick),
+		events:     NewEventQueue(128),
+		config:     config,
+		stats:      make(map[int]*ConnectionStats),
 	}
+
+	// 启动���件处理goroutine
+	go h.processEvents()
+	log.Printf("事件处理循环已启动")
+
+	return h
 }
 
 func (h *JoystickHandler) processEvents() {
+	log.Printf("开始处理事件...")
 	for event := range h.events.events {
 		h.mu.RLock()
-		joystick := h.joysticks[h.config.DeviceID]
+		device := h.devices[h.config.DeviceID]
 		h.mu.RUnlock()
 
-		if joystick == nil {
+		if device == nil {
+			log.Printf("警告: 设备未初始化，跳过事件处理")
 			continue
 		}
 
-		switch event.Type {
-		case JS_EVENT_BUTTON:
-			h.handleButtonEvent(joystick, event)
-		case JS_EVENT_AXIS:
-			h.handleAxisEvent(joystick, event)
+		// 写入事件到设备文件
+		if err := binary.Write(device, binary.LittleEndian, event); err != nil {
+			log.Printf("写入事件失败: %v", err)
+			continue
 		}
 
-		h.stats.update("processed")
+		log.Printf("事件已写入: 类型=%d, 编号=%d, 值=%d",
+			event.Type, event.Number, event.Value)
 	}
 }
 
@@ -261,7 +283,7 @@ func (h *JoystickHandler) handleAxisEvent(joystick *sdl.Joystick, event Joystick
 			value := int16((float64(event.Value-ABS_MIN) / float64(ABS_MAX-ABS_MIN)) * 32767)
 			log.Printf("触发器事件: axis=%d -> button=%d, value=%d", event.Number, btns[0], value)
 
-			// 发送触发器按钮事件
+			// 发送触发按钮事件
 			buttonEvent := sdl.JoyButtonEvent{
 				Type:   sdl.JOYBUTTONDOWN,
 				Which:  sdl.JoystickID(joystick.InstanceID()),
@@ -311,56 +333,58 @@ func (h *JoystickHandler) handleAxisEvent(joystick *sdl.Joystick, event Joystick
 	}
 }
 
-// 添加手柄设备管理
 func (h *JoystickHandler) addJoystick(deviceID int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if _, exists := h.joysticks[deviceID]; !exists {
-		// 尝试多种方式创建设备
-		gameController := sdl.GameControllerOpen(deviceID)
-		if gameController == nil {
-			joystick := sdl.JoystickOpen(deviceID)
-			if joystick == nil {
-				log.Printf("无法打开SDL设备 ID=%d: %s", deviceID, sdl.GetError())
-
-				// 创建虚拟设备
-				sdl.JoystickEventState(sdl.ENABLE)
-				h.joysticks[deviceID] = nil
-				log.Printf("添加虚拟手柄设备: ID=%d\n"+
-					"  类型: 虚拟Xbox控制器\n"+
-					"  设备路径: /dev/input/js%d\n"+
-					"  按钮数量: %d\n"+
-					"  轴数量: %d",
-					deviceID, deviceID,
-					h.config.NumButtons,
-					h.config.NumAxes)
-
-				// 初始化所有按钮和轴的状态
-				h.initializeDeviceState(deviceID)
-			} else {
-				h.joysticks[deviceID] = joystick
-				log.Printf("添加SDL设备: ID=%d\n"+
-					"  名称: %s\n"+
-					"  按钮数量: %d\n"+
-					"  轴数量: %d",
-					deviceID,
-					joystick.Name(),
-					joystick.NumButtons(),
-					joystick.NumAxes())
-			}
+	if _, exists := h.devices[deviceID]; !exists {
+		// 打印SDL相关环境变量
+		log.Printf("\nSDL环境变量:")
+		if device := os.Getenv("SDL_JOYSTICK_DEVICE"); device != "" {
+			log.Printf("SDL_JOYSTICK_DEVICE: %s", device)
 		} else {
-			h.joysticks[deviceID] = gameController.Joystick()
-			log.Printf("添加SDL游戏控制器: ID=%d\n"+
-				"  名称: %s",
-				deviceID,
-				gameController.Name())
+			log.Printf("SDL_JOYSTICK_DEVICE: 未设置")
 		}
+
+		if config := os.Getenv("SDL_GAMECONTROLLERCONFIG"); config != "" {
+			log.Printf("SDL_GAMECONTROLLERCONFIG: %s", config)
+		} else {
+			log.Printf("SDL_GAMECONTROLLERCONFIG: 未设置")
+		}
+
+		// 创建拟设备
+		sdl.JoystickEventState(sdl.ENABLE)
+
+		// 使用 SDL_GameController 初始化
+		if gameController := sdl.GameControllerOpen(deviceID); gameController != nil {
+			h.sdlDevices[deviceID] = gameController.Joystick()
+			log.Printf("添加SDL游戏控制器: ID=%d, 名称: %s",
+				deviceID, gameController.Name())
+		} else {
+			// 如果无法创建游戏控制器，创建基本的手柄设备
+			if joystick := sdl.JoystickOpen(deviceID); joystick != nil {
+				h.sdlDevices[deviceID] = joystick
+				log.Printf("添加SDL手柄: ID=%d, 名称: %s",
+					deviceID, joystick.Name())
+			} else {
+				// 创建基本的虚拟手柄
+				h.devices[deviceID] = nil
+				log.Printf("创建虚拟手柄设备: ID=%d", deviceID)
+			}
+		}
+
+		// 初始化设备状态
+		h.initializeDeviceState(deviceID)
 	}
 }
 
 func (h *JoystickHandler) initializeDeviceState(deviceID int) {
-	// 初始化所有按钮为未按下状态
+	joystick := h.devices[deviceID]
+	if joystick == nil {
+		return
+	}
+
+	// 初始化按钮状态
 	for i := 0; i < h.config.NumButtons; i++ {
 		event := JoystickEvent{
 			Time:   uint32(time.Now().UnixNano() / 1000000),
@@ -368,10 +392,10 @@ func (h *JoystickHandler) initializeDeviceState(deviceID int) {
 			Type:   JS_EVENT_BUTTON,
 			Number: uint8(i),
 		}
-		h.handleButtonEvent(h.joysticks[deviceID], event)
+		h.handleEvent(deviceID, event)
 	}
 
-	// 初始化所有轴为中立位置
+	// 初始化轴状态
 	for i := 0; i < h.config.NumAxes; i++ {
 		event := JoystickEvent{
 			Time:   uint32(time.Now().UnixNano() / 1000000),
@@ -379,17 +403,19 @@ func (h *JoystickHandler) initializeDeviceState(deviceID int) {
 			Type:   JS_EVENT_AXIS,
 			Number: uint8(i),
 		}
-		h.handleAxisEvent(h.joysticks[deviceID], event)
+		h.handleEvent(deviceID, event)
 	}
+
+	log.Printf("设备状态初始化完成: ID=%d", deviceID)
 }
 
 func (h *JoystickHandler) removeJoystick(deviceID int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if joystick, exists := h.joysticks[deviceID]; exists {
+	if joystick, exists := h.devices[deviceID]; exists {
 		joystick.Close()
-		delete(h.joysticks, deviceID)
+		delete(h.devices, deviceID)
 		log.Printf("移除手柄: ID=%d", deviceID)
 	}
 }
@@ -413,7 +439,7 @@ func connectToServer(socketPath string) (*JoystickClient, error) {
 	maxRetries := 5
 	for i := 0; i < maxRetries; i++ {
 		if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-			log.Printf("socket 文件不存在，等待创建: %s (尝试 %d/%d)",
+			log.Printf("socket 不存在等待创建: %s (尝试 %d/%d)",
 				socketPath, i+1, maxRetries)
 			time.Sleep(1 * time.Second)
 			continue
@@ -429,7 +455,7 @@ func connectToServer(socketPath string) (*JoystickClient, error) {
 		log.Printf("成功连接到 socket: %s", socketPath)
 		return &JoystickClient{
 			conn:     conn,
-			deviceID: -1,
+			deviceID: 0,
 			stats:    &ConnectionStats{lastActive: time.Now()},
 		}, nil
 	}
@@ -459,31 +485,180 @@ func handleEvent(event JoystickEvent, client *JoystickClient) error {
 	return nil
 }
 
-func monitorSockets(clients map[int]*JoystickClient, clientsMu *sync.Mutex, handler *JoystickHandler) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+var buttonNames = map[uint8]string{
+	0x30: "A按钮",     // BTN_A & 0xFF
+	0x31: "B按钮",     // BTN_B & 0xFF
+	0x33: "X按钮",     // BTN_X & 0xFF
+	0x34: "Y按钮",     // BTN_Y & 0xFF
+	0x36: "LB按钮",    // BTN_TL & 0xFF
+	0x37: "RB按钮",    // BTN_TR & 0xFF
+	0x3a: "Back按钮",  // BTN_SELECT & 0xFF
+	0x3b: "Start按钮", // BTN_START & 0xFF
+	0x3c: "Xbox按钮",  // BTN_MODE & 0xFF
+	0x3d: "左摇杆按钮",   // BTN_THUMBL & 0xFF
+	0x3e: "右摇杆按钮",   // BTN_THUMBR & 0xFF
+}
 
-	for range ticker.C {
-		for i, socketPath := range SOCKET_PATHS {
-			// 检查 socket 文件是否存在
+var axisNames = map[uint8]string{
+	0: "左摇杆X轴",    // ABS_X
+	1: "左摇杆Y轴",    // ABS_Y
+	2: "左扳机",      // ABS_Z
+	3: "右摇杆X轴",    // ABS_RX
+	4: "右摇杆Y轴",    // ABS_RY
+	5: "右扳机",      // ABS_RZ
+	6: "D-Pad X轴", // ABS_HAT0X
+	7: "D-Pad Y轴", // ABS_HAT0Y
+}
+
+func normalizeAxisValue(value int16) float64 {
+	// 将原始值(-32767 到 32767)映射到-1.0到1.0
+	return float64(value) / float64(ABS_MAX)
+}
+
+func handleClientEvents(deviceID int, conn net.Conn, handler *JoystickHandler,
+	clients map[int]*JoystickClient, clientsMu *sync.Mutex) {
+
+	// log.Printf("开始处理客户端 %d 的事件", deviceID)
+	buffer := make([]byte, 8) // IhBB = 4+2+1+1 = 8字节
+
+	for {
+		// 读取完整的8字节数据
+		n, err := io.ReadFull(conn, buffer)
+		if err != nil {
+			if err != io.EOF && !strings.Contains(err.Error(), "i/o timeout") {
+				log.Printf("读取事件失败: %v", err)
+			}
+			return
+		}
+
+		if n != 8 {
+			log.Printf("读取数据不完整: 期望8字节, 实际%d字节", n)
+			continue
+		}
+
+		// 按Python的IhBB格式解析
+		event := JoystickEvent{
+			Time:   binary.LittleEndian.Uint32(buffer[0:4]),        // I: uint32
+			Value:  int16(binary.LittleEndian.Uint16(buffer[4:6])), // h: int16
+			Type:   buffer[6],                                      // B: uint8
+			Number: buffer[7],                                      // B: uint8
+		}
+
+		// 调试输出
+		// log.Printf("原始字节[IhBB]: % x", buffer)
+		log.Printf("解析事件: time=%d value=%d type=%d number=%d",
+			event.Time, event.Value, event.Type, event.Number)
+
+		if event.Type == JS_EVENT_BUTTON {
+			log.Printf("按钮事件: button=%d %s",
+				event.Number, map[int16]string{0: "释放", 1: "按下"}[event.Value])
+			// 发送事件到uinput
+			if err := handler.handleEvent(deviceID, event); err != nil {
+				log.Printf("处理按钮事件失败: %v", err)
+			}
+		} else if event.Type == JS_EVENT_AXIS {
+			log.Printf("轴事件: axis=%d value=%d",
+				event.Number, event.Value)
+			if err := handler.handleEvent(deviceID, event); err != nil {
+				log.Printf("处理按钮事件失败: %v", err)
+			}
+		}
+	}
+}
+
+// 从socket路径中提取设备ID
+func extractDeviceID(socketPath string) int {
+	// 从路径中提取数字
+	re := regexp.MustCompile(`js(\d+)\.sock$`)
+	matches := re.FindStringSubmatch(socketPath)
+	if len(matches) > 1 {
+		if id, err := strconv.Atoi(matches[1]); err == nil {
+			return id
+		}
+	}
+	return -1
+}
+
+func monitorSockets(clients map[int]*JoystickClient, clientsMu *sync.Mutex, handler *JoystickHandler) {
+	// 记录上一次连接状态
+	connectionAttempts := make(map[string]bool)
+
+	for {
+		for _, socketPath := range SOCKET_PATHS {
+			// 检查socket文件是否存在
 			if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-				log.Printf("等待 socket 文件创建: %s", socketPath)
 				continue
 			}
 
-			clientsMu.Lock()
-			if _, exists := clients[i]; !exists {
-				// socket 文件存在但未连接，尝试连接
-				if client, err := connectToServer(socketPath); err == nil {
-					clients[i] = client
-					log.Printf("成功连接到手柄服务器: %s", socketPath)
+			deviceID := extractDeviceID(socketPath)
+			if deviceID == -1 {
+				continue
+			}
 
-					// 开始处理事件
-					go handleEvents(client, handler)
-				}
+			// 检查是否已连接
+			clientsMu.Lock()
+			_, exists := clients[deviceID]
+			clientsMu.Unlock()
+
+			if exists {
+				continue
+			}
+
+			// 检查是否是首次尝试连接
+			if !connectionAttempts[socketPath] {
+				log.Printf("开始尝试连接到 socket: %s (设备ID: %d)", socketPath, deviceID)
+				connectionAttempts[socketPath] = true
+			}
+
+			// 尝试连接
+			conn, err := net.Dial("unix", socketPath)
+			if err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
+
+			// 连接成功，重置状态
+			connectionAttempts[socketPath] = false
+			log.Printf("成功连接到 socket: %s (设备ID: %d)", socketPath, deviceID)
+
+			// 读取配置数据
+			// 255sHH512H64B
+			configBuffer := make([]byte, 1349)
+			n, err := conn.Read(configBuffer)
+			if err != nil {
+				log.Printf("读取配置数据失败: %v", err)
+				conn.Close()
+				continue
+			}
+
+			// 解析配置数据
+			nameBytes := configBuffer[:255]
+			name := string(bytes.TrimRight(nameBytes, "\x00"))
+
+			// 初始化SDL设备
+			if err := handler.initializeJoystick(deviceID); err != nil {
+				log.Printf("SDL设备初始化失败 (ID: %d): %v", deviceID, err)
+				conn.Close()
+				continue
+			}
+
+			log.Printf("接收到手柄配置: 名称=%s, 数据大小=%d字节, SDL设备ID=%d",
+				name, n, deviceID)
+
+			clientsMu.Lock()
+			clients[deviceID] = &JoystickClient{
+				conn:     conn,
+				deviceID: deviceID,
+				stats:    &ConnectionStats{lastActive: time.Now()},
 			}
 			clientsMu.Unlock()
+
+			log.Printf("成功初始化��柄客户: ID=%d", deviceID)
+
+			// 启动事件处理
+			go handleClientEvents(deviceID, conn, handler, clients, clientsMu)
 		}
+		time.Sleep(time.Second)
 	}
 }
 
@@ -523,44 +698,233 @@ func handleJoystickEvent(event JoystickEvent) {
 
 	case JS_EVENT_AXIS:
 		// 处理轴事件
-		log.Printf("轴事件: number=%d, value=%d", event.Number, event.Value)
-		// 这需要处理特殊的轴到按钮的映射
+		log.Printf("事件: number=%d, value=%d", event.Number, event.Value)
+		// 这里要处理特的到按的映射
 		// 比如 D-pad 和触发器的映射
 	}
 }
 
-func (h *JoystickHandler) handleEvent(deviceID int, event JoystickEvent) {
-	h.mu.RLock()
-	joystick := h.joysticks[deviceID]
-	h.mu.RUnlock()
-
-	if joystick == nil {
-		return
+type LogState struct {
+	deviceStatus map[int]bool
+	errorState   struct {
+		lastErrorTime    time.Time
+		lastRecoveryTime time.Time
+		errorCount       int
+		isInErrorState   bool
+		deviceErrors     map[int]bool
+		connectionErrors map[string]bool
 	}
+	mu sync.Mutex
+}
 
-	switch event.Type {
-	case JS_EVENT_BUTTON:
-		h.handleButtonEvent(joystick, event)
-	case JS_EVENT_AXIS:
-		h.handleAxisEvent(joystick, event)
-	}
+var logState = LogState{
+	deviceStatus: make(map[int]bool),
+	errorState: struct {
+		lastErrorTime    time.Time
+		lastRecoveryTime time.Time
+		errorCount       int
+		isInErrorState   bool
+		deviceErrors     map[int]bool
+		connectionErrors map[string]bool
+	}{
+		deviceErrors:     make(map[int]bool),
+		connectionErrors: make(map[string]bool),
+	},
 }
 
 func handleEvents(client *JoystickClient, handler *JoystickHandler) {
+	// 确保设备初始化并等待初始化完成
+	if err := handler.initializeJoystick(client.deviceID); err != nil {
+		log.Printf("设备初始化失败: %v", err)
+		return
+	}
+
+	log.Printf("开始处理设备 %d 的事件", client.deviceID)
+
+	// 读取并解析配置数据
+	configBuffer := make([]byte, 1024)
+	n, err := client.conn.Read(configBuffer)
+	if err != nil {
+		log.Printf("读取配置数据失败: %v", err)
+		return
+	}
+
+	// 解析配置数据
+	// 根据 js-interposer-test.py 中的格式：
+	// struct_fmt = "255sHH%dH%dB" % (MAX_BTNS, MAX_AXES)
+	nameBytes := configBuffer[:255]
+	name := string(bytes.TrimRight(nameBytes, "\x00"))
+
+	log.Printf("接收到手柄配置:")
+	log.Printf("  名称: %s", name)
+	log.Printf("  配置数据大小: %d 字节", n)
+
+	// 事件处理循环
+	buffer := make([]byte, 8)
 	for {
-		event := JoystickEvent{}
-		if err := binary.Read(client.conn, binary.LittleEndian, &event); err != nil {
-			if err == io.EOF {
-				log.Printf("连接已关闭")
-				break
+		var totalRead int
+		for totalRead < 8 {
+			n, err := client.conn.Read(buffer[totalRead:])
+			if err != nil {
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					continue
+				}
+				log.Printf("读取错误: %v", err)
+				return
 			}
-			log.Printf("读取事件失败: %v", err)
-			client.stats.update("error")
+			totalRead += n
+		}
+
+		event := JoystickEvent{}
+		if err := binary.Read(bytes.NewReader(buffer), binary.LittleEndian, &event); err != nil {
+			log.Printf("解析事件失败: %v", err)
 			continue
 		}
 
 		client.stats.update("received")
 		handler.handleEvent(client.deviceID, event)
+	}
+}
+
+func generateJoystickGUID(deviceID int) string {
+	// 生成唯一的GUID
+	// SDL GUID格式: 4字节(bus类型+厂商ID) + 4字节(产品ID) + 4字节(版本) + 4字节(CRC)
+	// 例如: 03000000 + 5e040000 + 8e020000 + 14010000
+	timestamp := time.Now().UnixNano()
+	return fmt.Sprintf("%08x%08x%08x%08x",
+		0x03000000,                 // USB bus type
+		0x5e040000|(deviceID&0xFF), // 厂商ID (Microsoft) + deviceID
+		timestamp&0xFFFFFFFF,       // 使用时间戳作为唯一标识
+		0x14010000,                 // 固定版本号
+	)
+}
+
+func (h *JoystickHandler) initializeJoystick(deviceID int) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// 设置SDL使用uinput
+	os.Setenv("SDL_JOYSTICK_DEVICE", "/dev/uinput")
+	os.Setenv("SDL_GAMECONTROLLERCONFIG_FILE", "")
+
+	// 初始化SDL
+	if sdl.WasInit(sdl.INIT_GAMECONTROLLER|sdl.INIT_JOYSTICK) == 0 {
+		if err := sdl.Init(sdl.INIT_GAMECONTROLLER | sdl.INIT_JOYSTICK); err != nil {
+			return fmt.Errorf("SDL初始化失败: %v", err)
+		}
+	}
+
+	// 添加控制器映射
+	guid := generateJoystickGUID(deviceID)
+	controllerConfig := fmt.Sprintf("%s,Xbox 360 Controller,platform:Linux,...", guid)
+	if result := sdl.GameControllerAddMapping(controllerConfig); result < 0 {
+		log.Printf("控制器映射添加失败: %s", sdl.GetError())
+	}
+
+	// 创建虚拟设备
+	if sdl.JoystickEventState(sdl.ENABLE) < 0 {
+		log.Printf("事件状态设置失败: %s", sdl.GetError())
+	}
+
+	log.Printf("尝试创建虚拟设备...")
+	return nil
+}
+
+func (h *JoystickHandler) handleEvent(deviceID int, event JoystickEvent) error {
+	h.mu.RLock()
+	device, exists := h.sdlDevices[deviceID]
+	h.mu.RUnlock()
+
+	if !exists || device == nil {
+		// 尝试重新初始化设备
+		if err := h.initializeJoystick(deviceID); err != nil {
+			return fmt.Errorf("设备初始化失败: %v", err)
+		}
+		h.mu.RLock()
+		device, exists = h.sdlDevices[deviceID]
+		h.mu.RUnlock()
+
+		if !exists || device == nil {
+			return fmt.Errorf("设备初始化后仍然无效: ID=%d", deviceID)
+		}
+	}
+
+	// 将远程事件转换为SDL事件
+	switch event.Type {
+	case JS_EVENT_BUTTON:
+		buttonName := buttonNames[event.Number]
+		if buttonName == "" {
+			buttonName = fmt.Sprintf("按钮%d", event.Number)
+		}
+
+		sdlEvent := sdl.JoyButtonEvent{
+			Type:      sdl.JOYBUTTONDOWN,
+			Which:     sdl.JoystickID(device.InstanceID()), // 使用device获取实例ID
+			Button:    uint8(event.Number),
+			State:     uint8(event.Value),
+			Timestamp: uint32(event.Time),
+		}
+
+		if event.Value == 0 {
+			sdlEvent.Type = sdl.JOYBUTTONUP
+			log.Printf("发送SDL按钮事件: %s 释放", buttonName)
+		} else {
+			log.Printf("发送SDL按钮事件: %s 按下", buttonName)
+		}
+
+		success, err := sdl.PushEvent(&sdlEvent)
+		if !success {
+			return fmt.Errorf("发送按钮事件失败: %v", err)
+		}
+
+	case JS_EVENT_AXIS:
+		sdlEvent := sdl.JoyAxisEvent{
+			Type:      sdl.JOYAXISMOTION,
+			Which:     sdl.JoystickID(device.InstanceID()), // 使用device获取实例ID
+			Axis:      uint8(event.Number),
+			Value:     int16(event.Value),
+			Timestamp: uint32(event.Time),
+		}
+
+		log.Printf("发送SDL轴事件: axis=%d value=%d", event.Number, event.Value)
+
+		success, err := sdl.PushEvent(&sdlEvent)
+		if !success {
+			return fmt.Errorf("发送按钮事件失败: %v", err)
+		}
+
+	default:
+		return fmt.Errorf("未知事件类型: 0x%x", event.Type)
+	}
+
+	return nil
+}
+
+// 辅助函数：计算绝对值
+func abs(x int16) int16 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func logOnStateChange(category string, id int, status bool, message string) {
+	static := struct {
+		states map[string]bool
+		mu     sync.Mutex
+	}{
+		states: make(map[string]bool),
+	}
+
+	static.mu.Lock()
+	defer static.mu.Unlock()
+
+	key := fmt.Sprintf("%s_%d", category, id)
+	lastStatus, exists := static.states[key]
+
+	if !exists || lastStatus != status {
+		log.Printf(message)
+		static.states[key] = status
 	}
 }
 
@@ -572,7 +936,7 @@ func main() {
 	for _, socketPath := range SOCKET_PATHS {
 		_, err := os.Stat(socketPath)
 		if os.IsNotExist(err) {
-			log.Printf("等待 socket 文件创建: %s", socketPath)
+			// log.Printf("等待 socket 文件创建: %s", socketPath)
 		} else {
 			log.Printf("发现 socket 文件: %s", socketPath)
 		}
@@ -585,7 +949,7 @@ func main() {
 
 	config := Config{
 		DeviceID:       0,
-		Name:           "Selkies Virtual Gamepad",
+		Name:           "Beagle Virtual Gamepad",
 		NumButtons:     11,
 		NumAxes:        8,
 		EventQueueSize: 64,
@@ -605,18 +969,31 @@ func main() {
 	go monitorSockets(clients, &clientsMu, handler)
 	go monitorConnectionStats(clients, &clientsMu)
 
-	// 添加定期检查
+	// 添加个变量来跟踪上一次的连接数
+	var lastConnectionCount int
+
+	// 修改定期检查的逻辑
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for range ticker.C {
 			clientsMu.Lock()
-			log.Printf("当前连接数: %d", len(clients))
-			for id, client := range clients {
-				log.Printf("客户端 ID: %d, 最后活动时间: %v",
-					id,
-					time.Since(client.stats.lastActive))
+			currentCount := len(clients)
+
+			// 只在连接数发生变化时输出日志
+			if currentCount != lastConnectionCount {
+				log.Printf("连接数变化: %d -> %d", lastConnectionCount, currentCount)
+				lastConnectionCount = currentCount
+
+				// 当有连接时，输出一次详细信息
+				if currentCount > 0 {
+					for id, client := range clients {
+						log.Printf("活动客户端: ID=%d, 最后活动时间: %v",
+							id,
+							time.Since(client.stats.lastActive))
+					}
+				}
 			}
 			clientsMu.Unlock()
 		}
@@ -647,7 +1024,7 @@ func main() {
 				}
 
 				client.stats.update("error")
-				handler.removeJoystick(i) // 移除SDL设
+				handler.removeJoystick(i) // 移除SDL设备
 				client.conn.Close()
 				delete(clients, i)
 				continue
@@ -660,7 +1037,7 @@ func main() {
 		sdl.Delay(16)
 	}
 
-	// 清资源
+	// 清理资源
 	clientsMu.Lock()
 	for _, client := range clients {
 		client.conn.Close()
@@ -668,7 +1045,7 @@ func main() {
 	clientsMu.Unlock()
 
 	handler.mu.Lock()
-	for _, joystick := range handler.joysticks {
+	for _, joystick := range handler.devices {
 		joystick.Close()
 	}
 	handler.mu.Unlock()

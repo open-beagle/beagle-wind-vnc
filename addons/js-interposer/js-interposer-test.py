@@ -195,6 +195,10 @@ def make_config():
                        *btn_map,
                        *axes_map
                        )
+    
+    # debug
+    # print(struct_fmt)
+    # print(struct.unpack(struct_fmt, data))
     return data
 
 
@@ -211,30 +215,14 @@ async def send_events():
         for fd in clients:
             try:
                 client = clients[fd]
-                # 添加心跳检测
-                try:
-                    await asyncio.wait_for(
-                        loop.sock_sendall(client, get_btn_event(btn_num, btn_val)),
-                        timeout=1.0
-                    )
-                except asyncio.TimeoutError:
-                    print(f"客户端 {fd} 发送超时")
-                    closed_clients.append(fd)
-                    continue
-                
-            except (BrokenPipeError, ConnectionResetError) as e:
-                print(f"客户端 {fd} 断开连接: {str(e)}")
+                # print("Sending event to client: %d" % fd)
+                await loop.sock_sendall(client, get_btn_event(btn_num, btn_val))
+            except BrokenPipeError:
+                print("Client %d disconnected" % fd)
                 closed_clients.append(fd)
-            except Exception as e:
-                print(f"发送事件时出现未知错误 (客户端 {fd}): {str(e)}")
-                closed_clients.append(fd)
+                client.close()
 
-        # 清理断开的连接
         for fd in closed_clients:
-            try:
-                clients[fd].close()
-            except:
-                pass
             del clients[fd]
 
         await asyncio.sleep(0.5)
@@ -245,15 +233,7 @@ async def send_events():
 
 
 async def run_server():
-    print('Removing old socket if exists...')
-    try:
-        os.unlink(SOCKET_PATH)
-    except OSError:
-        if os.path.exists(SOCKET_PATH):
-            raise
-
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    print('Binding to socket:', SOCKET_PATH)
     server.bind(SOCKET_PATH)
     server.listen(1)
     server.setblocking(False)
@@ -267,55 +247,25 @@ async def run_server():
 
     try:
         while True:
-            try:
-                client, _ = await loop.sock_accept(server)
-                fd = client.fileno()
-                print(f"客户端连接，文件描述符: {fd}")
+            client, _ = await loop.sock_accept(server)
+            fd = client.fileno()
+            print("Client connected with fd: %d" % fd)
 
-                # 设置 socket 超时
-                client.settimeout(5.0)
-                
-                try:
-                    # 发送配置信息
-                    config = make_config()
-                    print(f"发送配置数据，大小: {len(config)} 字节")
-                    await asyncio.wait_for(
-                        loop.sock_sendall(client, config),
-                        timeout=2.0
-                    )
-                    
-                    # 添加客户端到字典
-                    clients[fd] = client
-                except (asyncio.TimeoutError, ConnectionError) as e:
-                    print(f"发送配置失败: {str(e)}")
-                    client.close()
-                    continue
-                    
-            except Exception as e:
-                print(f"接受连接时出错: {str(e)}")
-                await asyncio.sleep(1)
-                continue
-                
-    except Exception as e:
-        print(f"服务器运行时出错: {str(e)}")
+            # Send client the joystick configuration
+            await loop.sock_sendall(client, make_config())
+
+            # Add client to dictionary to receive events.
+            clients[fd] = client
     finally:
-        # 清理资源
-        for client in clients.values():
-            try:
-                client.close()
-            except:
-                pass
-        try:
-            server.shutdown(socket.SHUT_RDWR)
-            server.close()
-            os.unlink(SOCKET_PATH)
-        except:
-            pass
+        server.shutdown(1)
+        server.close()
 
 if __name__ == "__main__":
+    # remove the socket file if it already exists
     try:
-        asyncio.run(run_server())
-    except KeyboardInterrupt:
-        print("\n正在关闭服务器...")
-    except Exception as e:
-        print(f"程序异常退出: {str(e)}")
+        os.unlink(SOCKET_PATH)
+    except OSError:
+        if os.path.exists(SOCKET_PATH):
+            raise
+
+    asyncio.run(run_server())

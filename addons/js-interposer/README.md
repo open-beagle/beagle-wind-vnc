@@ -56,17 +56,27 @@ This creates a new unix domain socket at `/tmp/selkies_js0.sock` and simulates j
 2. Run `jstest` with the interposer library (`LD_PRELOAD` environment variable path can be set as adequate):
 
 ```bash
-LD_PRELOAD='/usr/$LIB/selkies_joystick_interposer.so' jstest /dev/input/js0
-
 go build -o joystick-server joystick-server.go
 
-go run joystick-server.go
+sudo apt-get update
+sudo apt-get install -y \
+    golang \
+    libsdl2-2.0-0 \
+    libsdl2-dev
+
+
+cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \
+sudo go run joystick-server.go
+
+cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \
+python3 js-interposer-test.py
 
 ./joystick-server
 
+clear && \
 rm -rf /tmp/selkies_js_go.log && \
 touch /tmp/selkies_js_go.log && \
 tail -f /tmp/selkies_js_go.log
 
-
+sudo usermod -a -G input $USER
 ```

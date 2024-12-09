@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -196,11 +195,12 @@ func (h *JoystickHandler) processEvents() error {
 
 	for {
 		// 读取事件数据
-		_, err := io.ReadFull(h.socketConn, buffer)
+		bLen, err := io.ReadFull(h.socketConn, buffer)
 		if err != nil {
 			logrus.Errorf("读取事件失败: %v", err)
 			return fmt.Errorf("读取事件失败: %v", err) // 返回错误以便在 boot 方法中处理
 		}
+		logrus.Debugf("读取事件: %d bytes", bLen)
 
 		// 解析事件 (4字节时间戳 + 2字节值 + 1字节类型 + 1字节编号)
 		event := JoystickEvent{
@@ -215,6 +215,8 @@ func (h *JoystickHandler) processEvents() error {
 			logrus.Errorf("转发事件失败: %v", err)
 			continue
 		}
+
+		logrus.Debugf("等待下一个事件循环")
 	}
 }
 
@@ -233,15 +235,21 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		}
 		btnCode := h.config.BtnMap[event.Number]
 
-		logrus.Infof("按钮触发: 原始编号=%d, 映射代码=0x%x", event.Number, btnCode)
-
+		logrus.Debugf("转换为uinput按键事件.")
 		// 转换为uinput按键事件
 		err := h.writeUinputEvent(EV_KEY, btnCode, event.Value)
 		if err != nil {
 			return fmt.Errorf("按键事件-写入失败: %v", err)
 		}
+		logrus.Infof("按钮触发: 原始编号=%d, 映射代码=0x%x", event.Number, btnCode)
+
 		// 发送同步事件
-		return h.writeUinputEvent(EV_SYN, 0, 0)
+		err = h.writeUinputEvent(EV_SYN, 0, 0)
+		if err != nil {
+			return fmt.Errorf("同步事件-写入失败: %v", err)
+		}
+		logrus.Debugf("同步事件：写入成功.")
+		return nil
 
 	case JS_EVENT_AXIS:
 		// 获取映射的轴代码
@@ -260,7 +268,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		// 发送同步事件
 		return h.writeUinputEvent(EV_SYN, 0, 0)
 
-	case 0: // 同���事件
+	case 0: // 同步事件
 		return h.writeUinputEvent(EV_SYN, 0, 0)
 
 	default:
@@ -297,9 +305,6 @@ func (h *JoystickHandler) readConfig() (*JoystickConfig, error) {
 }
 
 func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value int16) error {
-	h.mu.Lock()         // 锁定以确保线程安全
-	defer h.mu.Unlock() // 解锁
-
 	// 检查 uinputFd 是否有效
 	if h.uinputFd == nil {
 		return fmt.Errorf("uinput 设备未初始化或已关闭")
@@ -344,78 +349,64 @@ func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value 
 
 // 设备初始化
 func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
-	// 从 socketPath 中提取数字
-	socketFileName := filepath.Base(h.socketPath) // 获取 socket 文件名
-	var controllerNumber int
-	fmt.Sscanf(socketFileName, "selkies_js%d.sock", &controllerNumber) // 从文件名中提取数字
+	// 从 socketPath 中提取数字编号
+	var deviceNumber int
+	fmt.Sscanf(h.socketPath, "/tmp/selkies_js%d.sock", &deviceNumber)
 
-	// 设置设备名称
-	deviceName := fmt.Sprintf("beagle controller %d", controllerNumber)
-
-	// 写入设备信息
-	logrus.Infof("正在写入设备信息...")
-	var usetup struct {
-		Name [80]byte
-		ID   struct {
-			BusType uint16
-			Vendor  uint16
-			Product uint16
-			Version uint16
-		}
-		FF_EFFECTS_MAX uint32
-		Absmax         [64]int32
-		Absmin         [64]int32
-		Absfuzz        [64]int32
-		Absflat        [64]int32
+	// 设置设备信息
+	usetup := uinputUserDev{
+		Name: [uinputMaxNameSize]byte{},
+		ID: inputID{
+			Bustype: 0x03,   // BUS_USB
+			Vendor:  0x045e, // Microsoft
+			Product: 0x028e, // Xbox360 controller
+			Version: 0x0100,
+		},
+		EffectsMax: 0,
 	}
+
+	// 使用设备编号设置设备名称
+	deviceName := fmt.Sprintf("Xbox 360 Controller %d", deviceNumber)
 	copy(usetup.Name[:], deviceName)
-	usetup.ID.BusType = 0x03
-	usetup.ID.Vendor = 0x026d
-	usetup.ID.Product = 0x0001
-	usetup.ID.Version = 0x0001
 
-	// 写入设备信息
-	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
-		logrus.Errorf("设置设备信息失败: %v", err)
-		_ = h.uinputFd.Close()
-		return fmt.Errorf("设置设备信息失败: %v", err)
+	// 1. 设置事件类型
+	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_KEY)); err != nil {
+		return fmt.Errorf("设置按键事件类型失败: %v", err)
+	}
+	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_ABS)); err != nil {
+		return fmt.Errorf("设置轴事件类型失败: %v", err)
+	}
+	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_SYN)); err != nil {
+		return fmt.Errorf("设置同步事件类型失败: %v", err)
 	}
 
-	// 初始化按钮
-	err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_KEY))
-	if err != nil {
-		_ = h.uinputFd.Close()
-		logrus.Errorf("设置按钮失败 : %v", err)
-	}
+	// 2. 配置按钮 - 使用config中的按钮映射
+	logrus.Infof("正在配置 %d 个按钮...", config.NumBtns)
 	for i := 0; i < int(config.NumBtns); i++ {
-		if err := ioctl(h.uinputFd, UI_SET_KEYBIT, uintptr(config.BtnMap[i])); err != nil {
-			logrus.Errorf("设置按钮失败 (按钮代码: 0x%x): %v", config.BtnMap[i], err)
-			_ = h.uinputFd.Close()
-			return fmt.Errorf("设置按钮失败 (按钮代码: 0x%x): %v", config.BtnMap[i], err)
+		btnCode := config.BtnMap[i]
+		if err := ioctl(h.uinputFd, UI_SET_KEYBIT, uintptr(btnCode)); err != nil {
+			return fmt.Errorf("配置按钮失败 (按钮索引: %d, 代码: 0x%x): %v", i, btnCode, err)
 		}
-		logrus.Infof("设置按钮-成功：按钮代码: 0x%x ", config.BtnMap[i])
+		logrus.Infof("配置按钮: 索引=%d, 代码=0x%x", i, btnCode)
 	}
 
-	// 初始化轴
-	err = ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_ABS))
-	if err != nil {
-		_ = h.uinputFd.Close()
-		logrus.Errorf("设置轴失败 : %v", err)
-	}
+	// 3. 配置轴 - 使用config中的轴映射
+	logrus.Infof("正在配置 %d 个轴...", config.NumAxes)
 	for i := 0; i < int(config.NumAxes); i++ {
-		if err := ioctl(h.uinputFd, UI_SET_ABSBIT, uintptr(config.AxesMap[i])); err != nil {
-			logrus.Errorf("设置轴失败 (轴ID: 0x%x): %v", config.AxesMap[i], err)
-			_ = h.uinputFd.Close()
-			return fmt.Errorf("设置轴失败 (轴ID: 0x%x): %v", config.AxesMap[i], err)
+		axisCode := config.AxesMap[i]
+		if err := ioctl(h.uinputFd, UI_SET_ABSBIT, uintptr(axisCode)); err != nil {
+			return fmt.Errorf("配置轴失败 (轴索引: %d, 代码: 0x%x): %v", i, axisCode, err)
 		}
-		logrus.Infof("设置轴-成功：轴代码: 0x%x ", config.AxesMap[i])
+		logrus.Infof("配置轴: 索引=%d, 代码=0x%x", i, axisCode)
 	}
 
-	// 创建设备
-	logrus.Infof("正在激活设备...")
-	if err := ioctl(h.uinputFd, UI_DEV_CREATE, uintptr(0)); err != nil {
-		logrus.Errorf("创建设备失败: %v", err)
-		_ = h.uinputFd.Close()
+	// 4. 写入设备信息
+	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
+		return fmt.Errorf("写入设备信息失败: %v", err)
+	}
+
+	// 5. 创建设备
+	if err := ioctl(h.uinputFd, UI_DEV_CREATE, 0); err != nil {
 		return fmt.Errorf("创建设备失败: %v", err)
 	}
 
@@ -463,9 +454,9 @@ func main() {
 	// 创建处理器，传入 socketPath
 	socketPaths := []string{
 		"/tmp/selkies_js0.sock",
-		"/tmp/selkies_js1.sock",
-		"/tmp/selkies_js2.sock",
-		"/tmp/selkies_js3.sock",
+		// "/tmp/selkies_js1.sock",
+		// "/tmp/selkies_js2.sock",
+		// "/tmp/selkies_js3.sock",
 	}
 
 	handlers := make([]*JoystickHandler, len(socketPaths))

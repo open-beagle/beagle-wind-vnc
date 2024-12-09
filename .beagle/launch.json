@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Go Program",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/addons/js-interposer", // 替换为你的 Go 程序路径
+      "env": {},
+      "args": [],
+      "showLog": true,
+      "trace": "verbose"
+    }
+  ]
+}

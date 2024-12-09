@@ -71,6 +71,7 @@ sudo apt-get install -y \
 
 
 cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \
+export LOG_LEVEL=INFO && \
 sudo go run joystick-server.go
 
 cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \

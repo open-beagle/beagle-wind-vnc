@@ -230,7 +230,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		}
 		btnCode := h.config.BtnMap[event.Number]
 
-		logrus.Infof("按钮映射: 原始编号=%d, 映射代码=0x%x", event.Number, btnCode)
+		logrus.Infof("按钮触发: 原始编号=%d, 映射代码=0x%x", event.Number, btnCode)
 
 		// 转换为uinput按键事件
 		err := h.writeUinputEvent(EV_KEY, btnCode, event.Value)
@@ -247,7 +247,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		}
 		axeCode := h.config.AxesMap[event.Number]
 
-		logrus.Infof("轴映射: 原始编号=%d, 映射代码=0x%x", event.Number, axeCode)
+		logrus.Infof("轴触发: 原始编号=%d, 映射代码=0x%x", event.Number, axeCode)
 
 		// 转换为uinput轴事件
 		err := h.writeUinputEvent(EV_ABS, uint16(axeCode), event.Value)

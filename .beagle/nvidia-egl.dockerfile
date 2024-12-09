@@ -9,9 +9,9 @@ LABEL maintainer=${AUTHOR} version=${VERSION}
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/entrypoint.sh
-# COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
+COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
 
-COPY --chown=1000:1000 ./src/selkies_gstreamer/webrtc_input.py /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/webrtc_input.py
+# COPY --chown=1000:1000 ./src/selkies_gstreamer/webrtc_input.py /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/webrtc_input.py
 
 RUN sudo chown -R root:root /opt/gst-web && \
   sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \

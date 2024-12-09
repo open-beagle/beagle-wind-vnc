@@ -83,7 +83,7 @@ type JoystickConfig struct {
 
 // JoystickHandler 处理手柄事件
 type JoystickHandler struct {
-	mu         sync.RWMutex
+	mu         sync.Mutex      // 互斥锁，确保对 uinputFd 的安全访问
 	uinputFd   *os.File        // uinput设备文件
 	deviceID   int             // 设备ID
 	socketConn net.Conn        // socket连接
@@ -147,7 +147,7 @@ func (h *JoystickHandler) connectToSocket() error {
 		h.socketConn, err = net.Dial("unix", h.socketPath)
 		if err == nil {
 			logrus.Printf("成功连接到socket: %s", h.socketPath)
-			break // 成功��接后退出循环
+			break // 成功接后退出循环
 		}
 		logrus.Debugf("连接socket失败: %v，等待重试...", err)
 		time.Sleep(2 * time.Second) // 等待2秒后重试
@@ -173,6 +173,9 @@ func (h *JoystickHandler) connectToSocket() error {
 
 // 2. 创建Uinput设备
 func (h *JoystickHandler) initUinputDevice(config *JoystickConfig) error {
+	h.mu.Lock()         // 锁定以确保线程安全
+	defer h.mu.Unlock() // 解锁
+
 	// 打开uinput设备
 	fd, err := os.OpenFile("/dev/uinput", os.O_WRONLY|syscall.O_NONBLOCK, 0660)
 	if err != nil {
@@ -217,8 +220,8 @@ func (h *JoystickHandler) processEvents() error {
 
 // 转发事件到uinput设备
 func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	eventType := event.Type & ^uint8(JS_EVENT_INIT)
 
@@ -257,7 +260,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		// 发送同步事件
 		return h.writeUinputEvent(EV_SYN, 0, 0)
 
-	case 0: // 同步事件
+	case 0: // 同���事件
 		return h.writeUinputEvent(EV_SYN, 0, 0)
 
 	default:
@@ -294,6 +297,9 @@ func (h *JoystickHandler) readConfig() (*JoystickConfig, error) {
 }
 
 func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value int16) error {
+	h.mu.Lock()         // 锁定以确保线程安全
+	defer h.mu.Unlock() // 解锁
+
 	// 检查 uinputFd 是否有效
 	if h.uinputFd == nil {
 		return fmt.Errorf("uinput 设备未初始化或已关闭")
@@ -455,9 +461,21 @@ func main() {
 	logrus.Infof("启动手柄事件转发服务")
 
 	// 创建处理器，传入 socketPath
-	socketPath := "/tmp/selkies_js0.sock"
-	handler := NewJoystickHandler(socketPath)
+	socketPaths := []string{
+		"/tmp/selkies_js0.sock",
+		"/tmp/selkies_js1.sock",
+		"/tmp/selkies_js2.sock",
+		"/tmp/selkies_js3.sock",
+	}
 
-	// 启动处理器
-	handler.boot()
+	handlers := make([]*JoystickHandler, len(socketPaths))
+
+	for i, socketPath := range socketPaths {
+		handler := NewJoystickHandler(socketPath)
+		handlers[i] = handler
+		go handler.boot() // 启动每个处理器
+	}
+
+	// 阻塞主线程，直到所有处理器完成
+	select {}
 }

@@ -1,62 +1,44 @@
-# Copyright 2019 Google LLC
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file incorporates work covered by the following copyright and
+# permission notice:
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#   Copyright 2019 Google LLC
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
+import Xlib
 from Xlib import display
-from Xlib.ext import xfixes
+from Xlib.ext import xfixes, xtest
+import asyncio
 import base64
 import pynput
 import io
-import uinput
 import msgpack
 import re
 import os
 import subprocess
-from subprocess import Popen, PIPE, STDOUT
 import socket
-import time
-import stat
 import struct
+import time
 from PIL import Image
+from gamepad import SelkiesGamepad
 
 import logging
 logger = logging.getLogger("webrtc_input")
 logger.setLevel(logging.INFO)
-
-JS_BTNS = (
-    uinput.BTN_GAMEPAD,
-    uinput.BTN_EAST,
-    uinput.BTN_NORTH,
-    uinput.BTN_WEST,
-    uinput.BTN_TL,
-    uinput.BTN_TR,
-    uinput.BTN_SELECT,
-    uinput.BTN_START,
-    uinput.BTN_THUMBL,
-    uinput.BTN_THUMBR,
-    uinput.BTN_MODE,
-)
-
-JS_AXES = (
-    uinput.ABS_X + (-32768, 32767, 0, 0),
-    uinput.ABS_Y + (-32768, 32767, 0, 0),
-    uinput.ABS_RX + (-32768, 32767, 0, 0),
-    uinput.ABS_RY + (-32768, 32767, 0, 0),
-    uinput.ABS_Z + (-32768, 32767, 0, 0),
-    uinput.ABS_RZ + (-32768, 32767, 0, 0),
-    uinput.ABS_HAT0X + (-1, 1, 0, 0),
-    uinput.ABS_HAT0Y + (-1, 1, 0, 0),
-)
 
 # Local enumerations for mouse actions.
 MOUSE_POSITION = 10
@@ -70,99 +52,28 @@ MOUSE_BUTTON_LEFT = 41
 MOUSE_BUTTON_MIDDLE = 42
 MOUSE_BUTTON_RIGHT = 43
 
+UINPUT_BTN_LEFT = (0x01, 0x110)
+UINPUT_BTN_MIDDLE = (0x01, 0x112)
+UINPUT_BTN_RIGHT = (0x01, 0x111)
+UINPUT_REL_X = (0x02, 0x00)
+UINPUT_REL_Y = (0x02, 0x01)
+UINPUT_REL_WHEEL = (0x02, 0x08)
+
 # Local map for uinput and pynput buttons
 MOUSE_BUTTON_MAP = {
     MOUSE_BUTTON_LEFT: {
-        "uinput": uinput.BTN_LEFT,
+        "uinput": UINPUT_BTN_LEFT,
         "pynput": pynput.mouse.Button.left,
     },
     MOUSE_BUTTON_MIDDLE: {
-        "uinput": uinput.BTN_MIDDLE,
+        "uinput": UINPUT_BTN_MIDDLE,
         "pynput": pynput.mouse.Button.middle,
     },
     MOUSE_BUTTON_RIGHT: {
-        "uinput": uinput.BTN_RIGHT,
+        "uinput": UINPUT_BTN_RIGHT,
         "pynput": pynput.mouse.Button.right,
     },
 }
-
-# ---------------------------------------
-# Vpad defines
-# ---------------------------------------
-
-FIFO_PATH = "/tmp/vpad"
-
-# Vpad buttons masks
-VPAD_BUTTON_UP               = 0x0001
-VPAD_BUTTON_DOWN             = 0x0002
-VPAD_BUTTON_LEFT             = 0x0004
-VPAD_BUTTON_RIGHT            = 0x0008
-VPAD_BUTTON_START            = 0x0010
-VPAD_BUTTON_BACK             = 0x0020
-VPAD_BUTTON_LEFT_THUMB       = 0x0040
-VPAD_BUTTON_RIGHT_THUMB      = 0x0080
-VPAD_BUTTON_LEFT_SHOULDER    = 0x0100
-VPAD_BUTTON_RIGHT_SHOULDER   = 0x0200
-VPAD_BUTTON_GUIDE            = 0x0400
-VPAD_BUTTON_A                = 0x1000
-VPAD_BUTTON_B                = 0x2000
-VPAD_BUTTON_Y                = 0x8000
-VPAD_BUTTON_X                = 0x4000
-
-# Vpad events
-VPAD_DUMMY_EVENT = 0
-VPAD_BUTTONS_PRESS = 1
-VPAD_BUTTONS_RELEASE = 2
-VPAD_LEFT_TRIGGER_MOVE = 3
-VPAD_RIGHT_TRIGGER_MOVE = 4
-VPAD_STICK_LX_MOVE = 5
-VPAD_STICK_LY_MOVE = 6
-VPAD_STICK_RX_MOVE = 7
-VPAD_STICK_RY_MOVE = 8
-
-# Vpad mapping
-
-js2vpad_buttons = {
-    304: VPAD_BUTTON_A,
-    305: VPAD_BUTTON_B,
-    308: VPAD_BUTTON_Y,
-    307: VPAD_BUTTON_X,
-    310: VPAD_BUTTON_LEFT_SHOULDER,
-    311: VPAD_BUTTON_RIGHT_SHOULDER,
-    314: VPAD_BUTTON_BACK,
-    315: VPAD_BUTTON_START,
-    316: VPAD_BUTTON_GUIDE,
-    317: VPAD_BUTTON_LEFT_THUMB,
-    318: VPAD_BUTTON_RIGHT_THUMB
-}
-
-js2vpad_axis_st = {
-    0: VPAD_STICK_LX_MOVE,
-    3: VPAD_STICK_RX_MOVE
-}
-
-js2vpad_axis_bw = {
-    1: VPAD_STICK_LY_MOVE,
-    4: VPAD_STICK_RY_MOVE
-}
-
-js2vpad_triggers = {
-    2: VPAD_LEFT_TRIGGER_MOVE,
-    5: VPAD_RIGHT_TRIGGER_MOVE,
-}
-
-ds2vpad_hat = [
-    {
-        -1: VPAD_BUTTON_LEFT,
-        1: VPAD_BUTTON_RIGHT
-    },
-    {
-        -1: VPAD_BUTTON_UP,
-        1: VPAD_BUTTON_DOWN
-    }
-]
-
-# ---------------------------------------
 
 
 class WebRTCInputError(Exception):
@@ -170,44 +81,35 @@ class WebRTCInputError(Exception):
 
 
 class WebRTCInput:
-    # Translates [0; 32767] to [0; 255]
-    @staticmethod
-    def vpad_translate_trigger(value):
-        return int(value / 32767 * 255)
-
-    # Translates [-32768; 32767] to [32767; -32768]
-    @staticmethod
-    def vpad_flip_axis(value):
-        return int(-1 - value)
-
-    def __init__(self, uinput_mouse_socket_path="", uinput_js_socket_path="", enable_clipboard="", enable_cursors=True):
+    def __init__(self, uinput_mouse_socket_path="", js_socket_path="", enable_clipboard="", enable_cursors=True, cursor_size=16, cursor_scale=1.0, cursor_debug=False):
         """Initializes WebRTC input instance
         """
+        self.loop = None
+
         self.clipboard_running = False
         self.uinput_mouse_socket_path = uinput_mouse_socket_path
         self.uinput_mouse_socket = None
 
-        self.uinput_js_socket_path = uinput_js_socket_path
-        self.uinput_js_socket = None
+        # Map of gamepad numbers to socket paths
+        self.js_socket_path_map = {i: os.path.join(js_socket_path, "selkies_js%d.sock" % i) for i in range(4)}
 
+        # Map of gamepad number to SelkiesGamepad objects
+        self.js_map = {}
 
         self.enable_clipboard = enable_clipboard
 
         self.enable_cursors = enable_cursors
         self.cursors_running = False
         self.cursor_cache = {}
-        self.cursor_resize_width = 24
-        self.cursor_resize_height = 24
-        self.cursor_debug = os.environ.get("DEBUG_CURSORS", "false").lower() == "true"
+        self.cursor_scale = cursor_scale
+        self.cursor_size = cursor_size
+        self.cursor_debug = cursor_debug
 
         self.keyboard = None
         self.mouse = None
         self.joystick = None
         self.xdisplay = None
         self.button_mask = 0
-
-        self.vpad_pipe_file = None
-        self.vpad_dpad_last_state = [0, 0]
 
         self.ping_start = None
 
@@ -221,8 +123,6 @@ class WebRTCInput:
             'unhandled on_clipboard_read')
         self.on_set_fps = lambda fps: logger.warn(
             'unhandled on_set_fps')
-        self.on_set_enable_audio = lambda enable_audio: logger.warn(
-            'unhandled on_set_enable_audio')
         self.on_set_enable_resize = lambda enable_resize, res: logger.warn(
             'unhandled on_set_enable_resize')
         self.on_client_fps = lambda fps: logger.warn(
@@ -231,10 +131,14 @@ class WebRTCInput:
             'unhandled on_client_latency')
         self.on_resize = lambda res: logger.warn(
             'unhandled on_resize')
+        self.on_scaling_ratio = lambda res: logger.warn(
+            'unhandled on_scaling_ratio')
         self.on_ping_response = lambda latency: logger.warn(
             'unhandled on_ping_response')
         self.on_cursor_change = lambda msg: logger.warn(
             'unhandled on_cursor_change')
+        self.on_client_webrtc_stats = lambda webrtc_stat_type, webrtc_stats: logger.warn(
+            'unhandled on_client_webrtc_stats')
 
     def __keyboard_connect(self):
         self.keyboard = pynput.keyboard.Controller()
@@ -242,8 +146,10 @@ class WebRTCInput:
     def __mouse_connect(self):
         if self.uinput_mouse_socket_path:
             # Proxy uinput mouse commands through unix domain socket.
-            logger.info("Connecting to uinput mouse socket: %s" % self.uinput_mouse_socket_path)
-            self.uinput_mouse_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            logger.info("Connecting to uinput mouse socket: %s" %
+                        self.uinput_mouse_socket_path)
+            self.uinput_mouse_socket = socket.socket(
+                socket.AF_UNIX, socket.SOCK_DGRAM)
 
         self.mouse = pynput.mouse.Controller()
 
@@ -256,78 +162,65 @@ class WebRTCInput:
         if self.uinput_mouse_socket_path:
             cmd = {"args": args, "kwargs": kwargs}
             data = msgpack.packb(cmd, use_bin_type=True)
-            self.uinput_mouse_socket.sendto(data, self.uinput_mouse_socket_path)
+            self.uinput_mouse_socket.sendto(
+                data, self.uinput_mouse_socket_path)
 
-    def __js_connect(self, num_axes, num_buttons):
-        """Connect virtual joystick
-
-        Arguments:
-            num_axes {integer} -- number of joystick axes
-            num_buttons {integer} -- number of joystick buttons\
+    def __js_connect(self, js_num, name, num_btns, num_axes):
+        """Connect virtual joystick using Selkies Joystick Interposer
         """
+        assert self.loop is not None
 
-        if not os.path.exists(FIFO_PATH):
-            logger.error(f"{FIFO_PATH} is not exist!")
-            logger.error("Seems that Vpad DLL side is not running yet")
-            logger.error("Start target application in Wine and try again")
-            raise WebRTCInputError("Unable to initialize Vpad client")
-        
-        if not stat.S_ISFIFO(os.stat(FIFO_PATH).st_mode):
-            logger.error(f"{FIFO_PATH} is not a pipe! Make sure that there is no file with that path")
-            raise WebRTCInputError("Unable to initialize Vpad client")
+        logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (js_num, name, num_btns, num_axes))
 
-        self.vpad_pipe_file = open(FIFO_PATH, "wb")
-        logger.info(f"Opened Vpad pipe {FIFO_PATH}")
-
-    def __js_disconnect(self):
-        if self.joystick:
-            del self.joystick
-
-        if self.vpad_pipe_file:
-            self.vpad_pipe_file.close()
-
-    def __js_vpad_send(self, bytes):
-        self.vpad_pipe_file.write(bytes)
-        self.vpad_pipe_file.flush()
-
-    def __js_emit(self, **kwargs):
-        if not self.vpad_pipe_file:
+        socket_path = self.js_socket_path_map.get(js_num, None)
+        if socket_path is None:
+            logger.error("failed to connect js%d because socket_path was not found" % js_num)
             return
 
-        if "btn_num" in kwargs and "btn_on" in kwargs:
-            btn_num = kwargs["btn_num"]
-            btn_on = kwargs["btn_on"]
-            if btn_on:
-                self.__js_vpad_send(struct.pack("iHH", VPAD_BUTTONS_PRESS, js2vpad_buttons[btn_num], 0))
-            else:
-                self.__js_vpad_send(struct.pack("iHH", VPAD_BUTTONS_RELEASE, js2vpad_buttons[btn_num], 0))
+        # Create the gamepad and button config.
+        js = SelkiesGamepad(socket_path, self.loop)
+        js.set_config(name, num_btns, num_axes)
 
-        if "axis_num" in kwargs and "axis_val" in kwargs:
-            axis_num = kwargs["axis_num"]
-            axis_val = kwargs["axis_val"]
+        asyncio.ensure_future(js.run_server(), loop=self.loop)
 
-            if axis_num in js2vpad_axis_st:
-                self.__js_vpad_send(struct.pack("ihH", js2vpad_axis_st[axis_num], axis_val, 0))
-            elif axis_num in js2vpad_axis_bw:
-                self.__js_vpad_send(struct.pack("ihH", js2vpad_axis_bw[axis_num], self.vpad_flip_axis(axis_val), 0))
-            elif axis_num in js2vpad_triggers:
-                self.__js_vpad_send(struct.pack("iBBH", js2vpad_triggers[axis_num], self.vpad_translate_trigger(axis_val), 0, 0))
-            elif axis_num in [16, 17]:
-                # dpad axes   ^^^^^^
-                axis_idx = axis_num - 16
-                if self.vpad_dpad_last_state[axis_idx] != axis_val:
-                    if self.vpad_dpad_last_state[axis_idx] != 0:
-                        self.__js_vpad_send(struct.pack("iHH", VPAD_BUTTONS_RELEASE, ds2vpad_hat[axis_idx][self.vpad_dpad_last_state[axis_idx]], 0))
-                    if axis_val != 0:
-                        self.__js_vpad_send(struct.pack("iHH", VPAD_BUTTONS_PRESS, ds2vpad_hat[axis_idx][axis_val], 0))
-                self.vpad_dpad_last_state[axis_idx] = axis_val
+        self.js_map[js_num] = js
+
+    def __js_disconnect(self, js_num=None):
+        if js_num is None:
+            # stop all gamepads.
+            for js in self.js_map.values():
+                js.stop_server()
+            self.js_map = {}
+            return
+        
+        js = self.js_map.get(js_num, None)
+        if js is not None:
+            logger.info("stopping gamepad %d" % js_num)
+            js.stop_server()
+            del self.js_map[js_num]
+
+    def __js_emit_btn(self, js_num, btn_num, btn_val):
+        js = self.js_map.get(js_num, None)
+        if js is None:
+            logger.error("cannot send button because js%d is not connected" % js_num)
+            return
+
+        logger.debug("sending js%d button num %d with val %d" % (js_num, btn_num, btn_val))
+
+        js.send_btn(btn_num, btn_val)
+
+    def __js_emit_axis(self, js_num, axis_num, axis_val):
+        js = self.js_map.get(js_num, None)
+        if js is None:
+            logger.error("cannot send axis because js%d is not connected" % js_num)
+            return
+
+        logger.debug("sending js%d axis num %d with val %d" % (js_num, axis_num, axis_val))
+
+        js.send_axis(axis_num, axis_val)
 
     async def connect(self):
-        """Connects to X server
-
-        The target X server is determined by the DISPLAY environment variable.
-        """
-
+        # Create connection to the X11 server provided by the DISPLAY env var.
         self.xdisplay = display.Display()
 
         self.__keyboard_connect()
@@ -381,20 +274,24 @@ class WebRTCInput:
             if self.uinput_mouse_socket_path:
                 # Send relative motion to uinput device.
                 # syn=False delays the sync until the second command.
-                self.__mouse_emit(uinput.REL_X, x, syn=False)
-                self.__mouse_emit(uinput.REL_Y, y)
+                self.__mouse_emit(UINPUT_REL_X, x, syn=False)
+                self.__mouse_emit(UINPUT_REL_Y, y)
             else:
-                self.mouse.move(x, y)
+                # NOTE: the pynput mouse.move method moves the mouse relative to the current position using its internal tracked position.
+                #       this does not work for relative motion where the input should just be a delta value.
+                #       instead, send the X fake input directly.
+                xtest.fake_input(self.xdisplay, Xlib.X.MotionNotify, detail=True, root=Xlib.X.NONE, x=x, y=y)
+                self.xdisplay.sync()
         elif action == MOUSE_SCROLL_UP:
             # Scroll up
             if self.uinput_mouse_socket_path:
-                self.__mouse_emit(uinput.REL_WHEEL, 1)
+                self.__mouse_emit(UINPUT_REL_WHEEL, 1)
             else:
                 self.mouse.scroll(0, -1)
         elif action == MOUSE_SCROLL_DOWN:
             # Scroll down
             if self.uinput_mouse_socket_path:
-                self.__mouse_emit(uinput.REL_WHEEL, -1)
+                self.__mouse_emit(UINPUT_REL_WHEEL, -1)
             else:
                 self.mouse.scroll(0, 1)
         elif action == MOUSE_BUTTON:
@@ -427,18 +324,21 @@ class WebRTCInput:
             down {bool} -- toggle key down or up (default: {True})
         """
 
-        # With the Generic 105-key PC layout (default in Linux without a real keyboard), the key '<' is redirected to keycode 94
-        # Because keycode 94 with Shift pressed is instead the key '>', the keysym for '<' should instead be redirected to ','
-        # Although prevented in most cases, this fix may present issues in some keyboard layouts
-        if keysym == 60 and self.keyboard._display.keysym_to_keycode(keysym) == 94:
-            keysym = 44
-        keycode = pynput.keyboard.KeyCode(keysym)
-        if down:
-            self.keyboard.press(keycode)
-        else:
-            self.keyboard.release(keycode)
+        try:
+            # With the Generic 105-key PC layout (default in Linux without a real keyboard), the key '<' is redirected to keycode 94
+            # Because keycode 94 with Shift pressed is instead the key '>', the keysym for '<' should instead be redirected to ','
+            # Although prevented in most cases, this fix may present issues in some keyboard layouts
+            if keysym == 60 and self.keyboard._display.keysym_to_keycode(keysym) == 94:
+                keysym = 44
+            keycode = pynput.keyboard.KeyCode(keysym)
+            if down:
+                self.keyboard.press(keycode)
+            else:
+                self.keyboard.release(keycode)
+        except Exception as e:
+            logger.error('failed to send keypress: {}'.format(e))
 
-    def send_x11_mouse(self, x, y, button_mask, relative=False):
+    def send_x11_mouse(self, x, y, button_mask, scroll_magnitude, relative=False):
         """Sends mouse events to the X server.
 
         The mouse button mask is stored locally to keep track of press/release state.
@@ -448,6 +348,7 @@ class WebRTCInput:
         Arguments:
             x {integer} -- mouse position X
             y {integer} -- mouse position Y
+            scroll_magnitude {integer} -- 
             button_mask {integer} -- mask of 5 mouse buttons, button 1 is at the LSB.
         """
 
@@ -477,14 +378,21 @@ class WebRTCInput:
                         btn_num = MOUSE_BUTTON_MIDDLE
                     elif i == 2:
                         btn_num = MOUSE_BUTTON_RIGHT
-                    elif i == 3:
+                    elif i == 3 and button_mask != 0:
                         # Wheel up
                         action = MOUSE_SCROLL_UP
-                    elif i == 4:
+                    elif i == 4 and button_mask != 0:
                         # Wheel down
                         action = MOUSE_SCROLL_DOWN
 
                     data = (btn_action, btn_num)
+
+                    # if event is scroll up/down then send the event multiple times
+                    # based on the received scroll magnitue for smoother scroll experience
+                    if i == 3 or i == 4:
+                        for i in range(1, scroll_magnitude):
+                            self.send_mouse(action, data)
+
                     self.send_mouse(action, data)
 
             # Update the button mask to remember positions.
@@ -494,13 +402,19 @@ class WebRTCInput:
             self.xdisplay.sync()
 
     def read_clipboard(self):
-        return subprocess.getoutput("xclip -out")
+        try:
+            result = subprocess.run(('xsel', '--clipboard', '--output'), check=True, text=True, capture_output=True, timeout=3)
+            return result.stdout
+        except subprocess.SubprocessError as e:
+            logger.warning(f"Error while capturing clipboard: {e}")
 
     def write_clipboard(self, data):
-        cmd = ['xclip', '-selection', 'clipboard', '-in']
-        p = Popen(cmd, stdin=PIPE)
-        p.communicate(input=data.encode())
-        p.wait()
+        try:
+            subprocess.run(('xsel', '--clipboard', '--input'), input=data.encode(), check=True, timeout=3)
+            return True
+        except subprocess.SubprocessError as e:
+            logger.warning(f"Error while writing to clipboard: {e}")
+            return False
 
     def start_clipboard(self):
         if self.enable_clipboard in ["true", "out"]:
@@ -510,10 +424,12 @@ class WebRTCInput:
             while self.clipboard_running:
                 curr_data = self.read_clipboard()
                 if curr_data and curr_data != last_data:
-                    logger.info("sending clipboard content, length: %d" % len(curr_data))
+                    logger.info(
+                        "sending clipboard content, length: %d" % len(curr_data))
                     self.on_clipboard_read(curr_data)
                     last_data = curr_data
                 time.sleep(0.5)
+            logger.info("clipboard monitor stopped")
         else:
             logger.info("skipping outbound clipboard service.")
 
@@ -524,16 +440,9 @@ class WebRTCInput:
     def start_cursor_monitor(self):
         if not self.xdisplay.has_extension('XFIXES'):
             if self.xdisplay.query_extension('XFIXES') is None:
-                logger.error('XFIXES extension not supported, cannot watch cursor changes')
+                logger.error(
+                    'XFIXES extension not supported, cannot watch cursor changes')
                 return
-        # Ensure patched python-xlib with xfixes support is installed.
-        # Remove after this PR is merged:
-        #   https://github.com/python-xlib/python-xlib/pull/218
-        try:
-            assert self.xdisplay.xfixes_select_cursor_input
-        except Exception as e:
-            logger.warning("missing patched python-xlib, remote cursors not available.")
-            return
 
         xfixes_version = self.xdisplay.xfixes_query_version()
         logger.info('Found XFIXES version %s.%s' % (
@@ -545,43 +454,69 @@ class WebRTCInput:
         self.cursor_cache = {}
         self.cursors_running = True
         screen = self.xdisplay.screen()
-        self.xdisplay.xfixes_select_cursor_input(screen.root, xfixes.XFixesDisplayCursorNotifyMask)
+        self.xdisplay.xfixes_select_cursor_input(
+            screen.root, xfixes.XFixesDisplayCursorNotifyMask)
         logger.info("watching for cursor changes")
 
         # Fetch initial cursor
-        image = self.xdisplay.xfixes_get_cursor_image(screen.root)
-        self.cursor_cache[image.cursor_serial] = self.cursor_to_msg(image, self.cursor_resize_width, self.cursor_resize_height)
-        self.on_cursor_change(self.cursor_cache[image.cursor_serial])
+        try:
+            image = self.xdisplay.xfixes_get_cursor_image(screen.root)
+            self.cursor_cache[image.cursor_serial] = self.cursor_to_msg(
+                image, self.cursor_scale, self.cursor_size)
+            self.on_cursor_change(self.cursor_cache[image.cursor_serial])
+        except Exception as e:
+            logger.warning("exception from fetching cursor image: %s" % e)
 
         while self.cursors_running:
-            e = self.xdisplay.next_event()
-            if (e.type, 0) == self.xdisplay.extension_event.DisplayCursorNotify:
-                cache_key = e.cursor_serial
+            if self.xdisplay.pending_events() == 0:
+                time.sleep(0.1)
+                continue
+            event = self.xdisplay.next_event()
+            if (event.type, 0) == self.xdisplay.extension_event.DisplayCursorNotify:
+                cache_key = event.cursor_serial
                 if cache_key in self.cursor_cache:
                     if self.cursor_debug:
-                        logger.warning("cursor changed to cached serial: {}".format(cache_key))
+                        logger.warning(
+                            "cursor changed to cached serial: {}".format(cache_key))
                 else:
-                    # Request the cursor image.
-                    cursor = self.xdisplay.xfixes_get_cursor_image(screen.root)
+                    try:
+                        # Request the cursor image.
+                        cursor = self.xdisplay.xfixes_get_cursor_image(
+                            screen.root)
 
-                    # Convert cursor image and cache.
-                    self.cursor_cache[cache_key] = self.cursor_to_msg(cursor, self.cursor_resize_width, self.cursor_resize_height)
+                        # Convert cursor image and cache.
+                        self.cursor_cache[cache_key] = self.cursor_to_msg(
+                            cursor, self.cursor_scale, self.cursor_size)
 
-                    if self.cursor_debug:
-                        logger.warning("New cursor: position={},{}, size={}x{}, length={}, xyhot={},{}, cursor_serial={}".format(cursor.x, cursor.y, cursor.width,cursor.height, len(cursor.cursor_image), cursor.xhot, cursor.yhot, cursor.cursor_serial))
+                        if self.cursor_debug:
+                            logger.warning("New cursor: position={},{}, size={}x{}, length={}, xyhot={},{}, cursor_serial={}".format(
+                                cursor.x, cursor.y, cursor.width, cursor.height, len(cursor.cursor_image), cursor.xhot, cursor.yhot, cursor.cursor_serial))
+                    except Exception as e:
+                        logger.warning(
+                            "exception from fetching cursor image: %s" % e)
 
                 self.on_cursor_change(self.cursor_cache.get(cache_key))
 
-        logger.info("exiting cursor monitor")
+        logger.info("cursor monitor stopped")
 
     def stop_cursor_monitor(self):
         logger.info("stopping cursor monitor")
         self.cursors_running = False
 
-    def cursor_to_msg(self, cursor, target_width, target_height):
-        png_data_b64 = base64.b64encode(self.cursor_to_png(cursor, target_width, target_height))
-        xhot_scaled = int(target_width/cursor.width * cursor.xhot)
-        yhot_scaled = int(target_height/cursor.height * cursor.yhot)
+    def cursor_to_msg(self, cursor, scale=1.0, cursor_size=-1):
+        if cursor_size > -1:
+            target_width = cursor_size
+            target_height = cursor_size
+            xhot_scaled = int(cursor_size/cursor.width * cursor.xhot)
+            yhot_scaled = int(cursor_size/cursor.height * cursor.yhot)
+        else:
+            target_width = int(cursor.width * scale)
+            target_height = int(cursor.height * scale)
+            xhot_scaled = int(cursor.xhot * scale)
+            yhot_scaled = int(cursor.yhot * scale)
+
+        png_data_b64 = base64.b64encode(
+            self.cursor_to_png(cursor, target_width, target_height))
 
         override = None
         if sum(cursor.cursor_image) == 0:
@@ -600,13 +535,15 @@ class WebRTCInput:
     def cursor_to_png(self, cursor, resize_width, resize_height):
         with io.BytesIO() as f:
             # Extract each component to RGBA bytes.
-            s = [((i >> b) & 0xFF) for i in cursor.cursor_image for b in [16,8,0,24]]
+            s = [((i >> b) & 0xFF)
+                 for i in cursor.cursor_image for b in [16, 8, 0, 24]]
 
             # Create raw image from pixel bytes
-            im = Image.frombytes('RGBA', (cursor.width,cursor.height), bytes(s), 'raw')
+            im = Image.frombytes(
+                'RGBA', (cursor.width, cursor.height), bytes(s), 'raw')
 
             if cursor.width != resize_width or cursor.height != resize_height:
-                # Resize cursor to target size.
+                # Resize cursor to target size
                 im = im.resize((resize_width, resize_height))
 
             # Save image as PNG
@@ -617,6 +554,9 @@ class WebRTCInput:
                 with open("/tmp/cursor_%d.png" % cursor.cursor_serial, 'wb') as debugf:
                     debugf.write(data)
             return data
+
+    def stop_js_server(self):
+        self.__js_disconnect()
 
     def on_message(self, msg):
         """Handles incoming input messages
@@ -662,11 +602,14 @@ class WebRTCInput:
             if toks[0] == "m2":
                 relative = True
             try:
-                x, y, button_mask = [int(i) for i in toks[1:]]
+                x, y, button_mask, scroll_magnitude = [int(i) for i in toks[1:]]
             except:
-                x, y, button_mask = 0, 0, self.button_mask
+                x, y, button_mask, scroll_magnitude = 0, 0, self.button_mask, 0
                 relative = False
-            self.send_x11_mouse(x, y, button_mask, relative)
+            try:
+                self.send_x11_mouse(x, y, button_mask, scroll_magnitude, relative)
+            except Exception as e:
+                logger.warning('failed to set mouse cursor: {}'.format(e))
         elif toks[0] == "p":
             # toggle mouse pointer visibility
             visible = bool(int(toks[1]))
@@ -684,26 +627,27 @@ class WebRTCInput:
             self.on_audio_encoder_bit_rate(bitrate)
         elif toks[0] == "js":
             # Joystick
-            # init: i,<type>,<num axes>,<num buttons>
             # button: b,<btn_num>,<value>
             # axis: a,<axis_num>,<value>
             if toks[1] == 'c':
-                num_axes = int(toks[2])
-                num_btns = int(toks[3])
-                try:
-                    self.__js_connect(num_axes, num_btns)
-                except Exception as e:
-                    logger.error("Failed to initialize joystick: %s", e)
+                js_num = int(toks[2])
+                name = base64.b64decode(toks[3]).decode()[:255]
+                num_axes = int(toks[4])
+                num_btns = int(toks[5])
+                self.__js_connect(js_num, name, num_btns, num_axes)
             elif toks[1] == 'd':
-                self.__js_disconnect()
+                js_num = int(toks[2])
+                self.__js_disconnect(js_num)
             elif toks[1] == 'b':
-                btn_num = int(toks[2])
-                btn_on = toks[3] == '1'
-                self.__js_emit(btn_num=btn_num, btn_on=btn_on)
+                js_num = int(toks[2])
+                btn_num = int(toks[3])
+                btn_val = float(toks[4])
+                self.__js_emit_btn(js_num, btn_num, btn_val)
             elif toks[1] == 'a':
-                axis_num = int(toks[2])
-                axis_val = int(toks[3])
-                self.__js_emit(axis_num=axis_num, axis_val=axis_val)
+                js_num = int(toks[2])
+                axis_num = int(toks[3])
+                axis_val = float(toks[4])
+                self.__js_emit_axis(js_num, axis_num, axis_val)
             else:
                 logger.warning('unhandled joystick command: %s' % toks[1])
         elif toks[0] == "cr":
@@ -711,41 +655,49 @@ class WebRTCInput:
             if self.enable_clipboard in ["true", "out"]:
                 data = self.read_clipboard()
                 if data:
-                    logger.info("read clipboard content, length: %d" % len(data))
+                    logger.info("read clipboard content, length: %d" %
+                                len(data))
                     self.on_clipboard_read(data)
                 else:
                     logger.warning("no clipboard content to send")
             else:
-                logger.warning("rejecting clipboard read because outbound clipboard is disabled.")
+                logger.warning(
+                    "rejecting clipboard read because outbound clipboard is disabled.")
         elif toks[0] == "cw":
             # Clipboard write
             if self.enable_clipboard in ["true", "in"]:
-                data = base64.b64decode(toks[1]).decode()
+                data = base64.b64decode(toks[1]).decode("utf-8")
                 self.write_clipboard(data)
                 logger.info("set clipboard content, length: %d" % len(data))
             else:
-                logger.warning("rejecting clipboard write because inbound clipboard is disabled.")
+                logger.warning(
+                    "rejecting clipboard write because inbound clipboard is disabled.")
         elif toks[0] == "r":
             # resize event
             res = toks[1]
-            if not re.match(re.compile(r'^\d+x\d+$'), res):
-                logger.warning("rejecting resolution change, invalid WxH resolution: %s" % res)
-            # Make sure resolution is divisible by 2
-            w, h = [int(i) + int(i)%2 for i in res.split("x")]
-            self.on_resize("%dx%d" % (w, h))
+            if re.match(re.compile(r'^\d+x\d+$'), res):
+                # Make sure resolution is divisible by 2
+                w, h = [int(i) + int(i) % 2 for i in res.split("x")]
+                self.on_resize("%dx%d" % (w, h))
+            else:
+                logger.warning(
+                    "rejecting resolution change, invalid WxH resolution: %s" % res)
+        elif toks[0] == "s":
+            # scaling info
+            scale = toks[1]
+            if re.match(re.compile(r'^\d+(\.\d+)?$'), scale):
+                self.on_scaling_ratio(float(scale))
+            else:
+                logger.warning(
+                    "rejecting scaling change, invalid scale ratio: %s" % scale)
         elif toks[0] == "_arg_fps":
             # Set framerate
             fps = int(toks[1])
             logger.info("Setting framerate to: %d" % fps)
             self.on_set_fps(fps)
-        elif toks[0] == "_arg_audio":
-            # Set audio enabled
-            enabled = toks[1].lower() == "true"
-            logger.info("Setting enable_audio to: %s" % str(enabled))
-            self.on_set_enable_audio(enabled)
         elif toks[0] == "_arg_resize":
             if len(toks) != 3:
-                logger.error("invalid _arg_resize commnad, expected 2 arguments <enabled>,<resolution>")
+                logger.error("invalid _arg_resize command, expected 2 arguments <enabled>,<resolution>")
             else:
                 # Set resizing enabled
                 enabled = toks[1].lower() == "true"
@@ -754,10 +706,11 @@ class WebRTCInput:
                 res = toks[2]
                 if re.match(re.compile(r'^\d+x\d+$'), res):
                     # Make sure resolution is divisible by 2
-                    w, h = [int(i) + int(i)%2 for i in res.split("x")]
+                    w, h = [int(i) + int(i) % 2 for i in res.split("x")]
                     enable_res = "%dx%d" % (w, h)
                 else:
-                    logger.warning("rejecting enable resize with resolution change to invalid resolution: %s" % res)
+                    logger.warning(
+                        "rejecting enable resize with resolution change to invalid resolution: %s" % res)
                     enable_res = None
 
                 self.on_set_enable_resize(enabled, enable_res)
@@ -771,9 +724,16 @@ class WebRTCInput:
         elif toks[0] == "_l":
             # Reported latency from client.
             try:
-                latencty_ms = int(toks[1])
-                self.on_client_latency(latencty_ms)
+                latency_ms = int(toks[1])
+                self.on_client_latency(latency_ms)
             except:
-                logger.error("failed to parse latency report from client" + str(toks))
+                logger.error(
+                    "failed to parse latency report from client" + str(toks))
+        elif toks[0] == "_stats_video" or toks[0] == "_stats_audio":
+            # WebRTC Statistics API data from client
+            try:
+                self.on_client_webrtc_stats(toks[0], ",".join(toks[1:]))
+            except:
+                logger.error("failed to parse WebRTC Statistics JSON object")
         else:
             logger.info('unknown data channel message: %s' % msg)

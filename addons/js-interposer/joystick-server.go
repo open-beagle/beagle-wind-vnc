@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -30,11 +31,13 @@ const (
 	EV_SYN         = 0x00 // 同步事件
 	EV_KEY         = 0x01 // 按键事件
 	EV_ABS         = 0x03 // 轴事件
+	EV_FF          = 0x15 // 力反馈事件
 	UI_SET_EVBIT   = 0x40045564
 	UI_SET_KEYBIT  = 0x40045565
 	UI_SET_ABSBIT  = 0x40045567
 	UI_DEV_CREATE  = 0x5501
 	UI_DEV_DESTROY = 0x5502
+	UI_SET_JSBIT   = 0x40045571
 
 	// Xbox 360手柄按钮映射
 	BTN_A      = 0x130
@@ -64,7 +67,7 @@ const (
 type JoystickEvent struct {
 	Time   uint32 // 4字节
 	Value  int16  // 2字节
-	Type   uint8  // 1字节
+	Type   uint8  // 1节
 	Number uint8  // 1节
 }
 
@@ -134,7 +137,7 @@ func NewJoystickHandler(socketPath string) *JoystickHandler {
 func (h *JoystickHandler) connectToSocket() error {
 	var err error
 	for {
-		// 检查 socket 是否存在
+		// ��查 socket 是否存在
 		if _, err := os.Stat(h.socketPath); os.IsNotExist(err) {
 			logrus.Debugf("socket 文件不存在: %s，等待创建...", h.socketPath)
 			time.Sleep(2 * time.Second) // 等待2秒后重试
@@ -198,7 +201,7 @@ func (h *JoystickHandler) processEvents() error {
 		bLen, err := io.ReadFull(h.socketConn, buffer)
 		if err != nil {
 			logrus.Errorf("读取事件失败: %v", err)
-			return fmt.Errorf("读取事件失败: %v", err) // 返回错误以便在 boot 方法中处理
+			return fmt.Errorf("读取事件失败: %v", err) // 返回错以便在 boot 方法中处理
 		}
 		logrus.Debugf("读取事件: %d bytes", bLen)
 
@@ -231,7 +234,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 	case JS_EVENT_BUTTON:
 		// 获取映射的按钮代码
 		if int(event.Number) >= int(h.config.NumBtns) {
-			return fmt.Errorf("按钮编号-超出范围: %d", event.Number)
+			return fmt.Errorf("���钮编号-超出范围: %d", event.Number)
 		}
 		btnCode := h.config.BtnMap[event.Number]
 
@@ -349,11 +352,11 @@ func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value 
 
 // 设备初始化
 func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
-	// 从 socketPath 中提取数字编号
-	var deviceNumber int
-	fmt.Sscanf(h.socketPath, "/tmp/selkies_js%d.sock", &deviceNumber)
+	// 创建设备前获取设备列表
+	eventsBefore, _ := filepath.Glob("/dev/input/event*")
+	joydevsBefore, _ := filepath.Glob("/dev/input/js*")
 
-	// 设置设备信息
+	// 1. 首先写入设备信息
 	usetup := uinputUserDev{
 		Name: [uinputMaxNameSize]byte{},
 		ID: inputID{
@@ -365,11 +368,26 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		EffectsMax: 0,
 	}
 
-	// 使用设备编号设置设备名称
-	deviceName := fmt.Sprintf("Xbox 360 Controller %d", deviceNumber)
+	// 设置设备名称
+	var deviceNumber int
+	fmt.Sscanf(h.socketPath, "/tmp/selkies_js%d.sock", &deviceNumber)
+	deviceName := fmt.Sprintf("Microsoft X-Box 360 pad %d", deviceNumber)
 	copy(usetup.Name[:], deviceName)
 
-	// 1. 设置事件类型
+	// 设置轴的范围
+	for i := 0; i < absSize; i++ {
+		usetup.Absmax[i] = 32767
+		usetup.Absmin[i] = -32767
+		usetup.Absfuzz[i] = 16
+		usetup.Absflat[i] = 128
+	}
+
+	// 2. 写入设备信息
+	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
+		return fmt.Errorf("写入设备信息失败: %v", err)
+	}
+
+	// 3. 设置事件类型
 	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_KEY)); err != nil {
 		return fmt.Errorf("设置按键事件类型失败: %v", err)
 	}
@@ -380,7 +398,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		return fmt.Errorf("设置同步事件类型失败: %v", err)
 	}
 
-	// 2. 配置按钮 - 使用config中的按钮映射
+	// 4. 配置按钮
 	logrus.Infof("正在配置 %d 个按钮...", config.NumBtns)
 	for i := 0; i < int(config.NumBtns); i++ {
 		btnCode := config.BtnMap[i]
@@ -390,7 +408,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		logrus.Infof("配置按钮: 索引=%d, 代码=0x%x", i, btnCode)
 	}
 
-	// 3. 配置轴 - 使用config中的轴映射
+	// 5. 配置轴
 	logrus.Infof("正在配置 %d 个轴...", config.NumAxes)
 	for i := 0; i < int(config.NumAxes); i++ {
 		axisCode := config.AxesMap[i]
@@ -400,18 +418,43 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		logrus.Infof("配置轴: 索引=%d, 代码=0x%x", i, axisCode)
 	}
 
-	// 4. 写入设备信息
-	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
-		return fmt.Errorf("写入设备信息失败: %v", err)
-	}
-
-	// 5. 创建设备
+	// 6. 最后创建设备
 	if err := ioctl(h.uinputFd, UI_DEV_CREATE, 0); err != nil {
 		return fmt.Errorf("创建设备失败: %v", err)
 	}
 
+	// 等待设备文件创建
+	time.Sleep(2 * time.Second)
+
+	// 创建设备后获取设备列表
+	eventsAfter, _ := filepath.Glob("/dev/input/event*")
+	joydevsAfter, _ := filepath.Glob("/dev/input/js*")
+
+	// 找出新增的设备
+	newEvents := findNewDevices(eventsBefore, eventsAfter)
+	newJoys := findNewDevices(joydevsBefore, joydevsAfter)
+
+	logrus.Infof("新创建的事件设备: %v", newEvents)
+	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
+
 	logrus.Infof("成功设置uinput设备: %s", deviceName)
 	return nil
+}
+
+// 辅助函数：找出新增的设备
+func findNewDevices(before, after []string) []string {
+	existing := make(map[string]bool)
+	for _, dev := range before {
+		existing[dev] = true
+	}
+
+	var newDevices []string
+	for _, dev := range after {
+		if !existing[dev] {
+			newDevices = append(newDevices, dev)
+		}
+	}
+	return newDevices
 }
 
 func ioctl(fd *os.File, request, arg uintptr) error {
@@ -454,9 +497,9 @@ func main() {
 	// 创建处理器，传入 socketPath
 	socketPaths := []string{
 		"/tmp/selkies_js0.sock",
-		// "/tmp/selkies_js1.sock",
-		// "/tmp/selkies_js2.sock",
-		// "/tmp/selkies_js3.sock",
+		"/tmp/selkies_js1.sock",
+		"/tmp/selkies_js2.sock",
+		"/tmp/selkies_js3.sock",
 	}
 
 	handlers := make([]*JoystickHandler, len(socketPaths))

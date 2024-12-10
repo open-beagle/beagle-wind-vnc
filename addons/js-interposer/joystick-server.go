@@ -7,6 +7,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -69,7 +72,7 @@ type JoystickEvent struct {
 	Number uint8  // 1节
 }
 
-// JoystickConfig 结构体��义 (匹配Python的255sHH512H64B格式)
+// JoystickConfig 结构体定义 (匹配Python的255sHH512H64B格式)
 type JoystickConfig struct {
 	Name         [255]byte   // 设备名称
 	NumBtns      uint16      // 按钮数量
@@ -109,6 +112,29 @@ type uinputUserDev struct {
 	Absflat    [absSize]int32
 }
 
+type ControllerInfo struct {
+	Name    string
+	Vendor  string
+	Product string
+}
+
+func extractControllerInfo(input string) ControllerInfo {
+	// 正则表达式提取手柄名称、Vendor和Product编号
+	re := regexp.MustCompile(`^(.*?)\s*(?:\((?:.*?Vendor:\s*(\w+)\s*Product:\s*(\w+))\))?$`)
+	matches := re.FindStringSubmatch(input)
+
+	var name, vendor, product string
+	if len(matches) > 1 {
+		name = strings.TrimSpace(matches[1]) // 提取手柄名称并去掉多余空格
+	}
+	if len(matches) > 3 {
+		vendor = matches[2]  // 提取Vendor编号
+		product = matches[3] // 提取Product编号
+	}
+
+	return ControllerInfo{Name: name, Vendor: vendor, Product: product}
+}
+
 // 新增 boot 方法
 func (h *JoystickHandler) boot() {
 	for {
@@ -135,7 +161,7 @@ func NewJoystickHandler(socketPath string) *JoystickHandler {
 func (h *JoystickHandler) connectToSocket() error {
 	var err error
 	for {
-		// ��查 socket 是否存在
+		// 检查 socket 是否存在
 		if _, err := os.Stat(h.socketPath); os.IsNotExist(err) {
 			logrus.Debugf("socket 文件不存在: %s，等待创建...", h.socketPath)
 			time.Sleep(2 * time.Second) // 等待2秒后重试
@@ -156,7 +182,7 @@ func (h *JoystickHandler) connectToSocket() error {
 	// 读取配置数据
 	config, err := h.readConfig()
 	if err != nil {
-		logrus.Errorf("读取���置失败: %v", err)
+		logrus.Errorf("读取配置失败: %v", err)
 		return fmt.Errorf("读取配置失败: %v", err)
 	}
 
@@ -232,7 +258,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 	case JS_EVENT_BUTTON:
 		// 获取映射的按钮代码
 		if int(event.Number) >= int(h.config.NumBtns) {
-			return fmt.Errorf("���钮编号-超出范围: %d", event.Number)
+			return fmt.Errorf("按钮编号-超出范围: %d", event.Number)
 		}
 		btnCode := h.config.BtnMap[event.Number]
 
@@ -259,7 +285,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		}
 		axeCode := h.config.AxesMap[event.Number]
 
-		logrus.Infof("轴触发: 原始编号=%d, 映射代码=0x%x", event.Number, axeCode)
+		logrus.Infof("轴触发: 原始编码=%d, 映射代码=0x%x", event.Number, axeCode)
 
 		// 转换为uinput轴事件
 		err := h.writeUinputEvent(EV_ABS, uint16(axeCode), event.Value)
@@ -284,7 +310,7 @@ func (h *JoystickHandler) readConfig() (*JoystickConfig, error) {
 	// 读取完整配置数据
 	if _, err := io.ReadFull(h.socketConn, buffer); err != nil {
 		logrus.Errorf("读取配置数据失败: %v", err)
-		return nil, fmt.Errorf("读取配���数据失败: %v", err)
+		return nil, fmt.Errorf("读取配置数据失败: %v", err)
 	}
 
 	// 解析配置
@@ -367,10 +393,18 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 	}
 
 	// 设置设备名称
+	controllerInfo := extractControllerInfo(string(config.Name[:]))
 	var deviceNumber int
 	fmt.Sscanf(h.socketPath, "/tmp/selkies_js%d.sock", &deviceNumber)
-	deviceName := fmt.Sprintf("Microsoft X-Box 360 pad %d", deviceNumber)
-	copy(usetup.Name[:], deviceName)
+	copy(usetup.Name[:], fmt.Sprintf("%s %d", controllerInfo.Name, deviceNumber))
+	vendorNum, err := strconv.ParseUint(controllerInfo.Vendor, 16, 16)
+	if err == nil {
+		usetup.ID.Vendor = uint16(vendorNum)
+	}
+	productNum, err := strconv.ParseUint(controllerInfo.Product, 16, 16)
+	if err == nil {
+		usetup.ID.Product = uint16(productNum)
+	}
 
 	// 设置轴的范围
 	for i := 0; i < absSize; i++ {
@@ -435,7 +469,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 	logrus.Infof("新创建的事件设备: %v", newEvents)
 	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
 
-	logrus.Infof("成功设置uinput设备: %s", deviceName)
+	logrus.Infof("成功设置uinput设备: %s", config.Name)
 	return nil
 }
 

@@ -119,9 +119,12 @@ type ControllerInfo struct {
 }
 
 func extractControllerInfo(input string) ControllerInfo {
+	// 先去除所有 null 字符
+	cleanName := strings.TrimRight(input, "\x00")
+
 	// 正则表达式提取手柄名称、Vendor和Product编号
 	re := regexp.MustCompile(`^(.*?)\s*(?:\((?:.*?Vendor:\s*(\w+)\s*Product:\s*(\w+))\))?$`)
-	matches := re.FindStringSubmatch(input)
+	matches := re.FindStringSubmatch(cleanName)
 
 	var name, vendor, product string
 	if len(matches) > 1 {

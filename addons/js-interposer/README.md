@@ -74,13 +74,21 @@ cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer
 export LOG_LEVEL=DEBUG && \
 sudo go run joystick-server.go
 
+sudo addons/js-interposer/.tmp/joystick-server
+
 cd /home/code/go/src/github.com/open-beagle/beagle-wind-vnc/addons/js-interposer && \
 python3 js-interposer-test.py
 
-clear && \
-rm -rf /tmp/selkies_js_go.log && \
-touch /tmp/selkies_js_go.log && \
-tail -f /tmp/selkies_js_go.log
-
 sudo usermod -a -G input $USER
+```
+
+## build
+
+```bash
+# golang build
+docker run -it --rm \
+  -v $PWD/:/go/src/github.com/open-beagle/beagle-wind-vnc \
+  -w /go/src/github.com/open-beagle/beagle-wind-vnc \
+  registry.cn-qingdao.aliyuncs.com/wod/golang:1.23 \
+  bash .beagle/build.sh
 ```

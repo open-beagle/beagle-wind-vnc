@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 )
 
 const (
-	LOG_FILE = "/tmp/selkies_js_go.log"
 	// config事件类型: 255sHH512H64B
 	CONFIG_SIZE       = 1348 // 255 + 2 + 2 + 1024 + 64 字节
 	uinputMaxNameSize = 80
@@ -71,7 +69,7 @@ type JoystickEvent struct {
 	Number uint8  // 1节
 }
 
-// JoystickConfig 结构体定义 (匹配Python的255sHH512H64B格式)
+// JoystickConfig 结构体��义 (匹配Python的255sHH512H64B格式)
 type JoystickConfig struct {
 	Name         [255]byte   // 设备名称
 	NumBtns      uint16      // 按钮数量
@@ -158,7 +156,7 @@ func (h *JoystickHandler) connectToSocket() error {
 	// 读取配置数据
 	config, err := h.readConfig()
 	if err != nil {
-		logrus.Errorf("读取配置失败: %v", err)
+		logrus.Errorf("读取���置失败: %v", err)
 		return fmt.Errorf("读取配置失败: %v", err)
 	}
 
@@ -286,7 +284,7 @@ func (h *JoystickHandler) readConfig() (*JoystickConfig, error) {
 	// 读取完整配置数据
 	if _, err := io.ReadFull(h.socketConn, buffer); err != nil {
 		logrus.Errorf("读取配置数据失败: %v", err)
-		return nil, fmt.Errorf("读取配置数据失败: %v", err)
+		return nil, fmt.Errorf("读取配���数据失败: %v", err)
 	}
 
 	// 解析配置
@@ -467,13 +465,8 @@ func ioctl(fd *os.File, request, arg uintptr) error {
 
 // 初始化日志
 func initLogger() {
-	logFile, err := os.OpenFile(LOG_FILE, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatalf("无法打开日志文件: %v", err)
-	}
-
-	// 使用 logrus 设置日志输出
-	logrus.SetOutput(logFile)
+	// 使用 logrus 设置日志输出至控制台
+	logrus.SetOutput(os.Stdout)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})

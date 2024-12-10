@@ -19,7 +19,7 @@ fi
 
 PKG_SIZE="$(du -s "${PKG_DIR}/usr" | awk '{print $1}' | xargs)"
 
-cat - > ${PKG_DIR}/DEBIAN/control <<EOF
+cat - >${PKG_DIR}/DEBIAN/control <<EOF
 Package: ${PKG_NAME?missing env}
 Version: ${PKG_VERSION}
 Section: custom

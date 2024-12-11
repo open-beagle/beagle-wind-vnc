@@ -426,7 +426,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		usetup.Absfuzz[i] = 16
 		usetup.Absflat[i] = 128
 		// 修复十字键轴取值范围
-		if i == 6 || i == 7 {
+		if config.AxesMap[i] == ABS_HAT0X || config.AxesMap[i] == ABS_HAT0Y {
 			usetup.Absmax[i] = 1
 			usetup.Absmin[i] = -1
 			usetup.Absfuzz[i] = 0

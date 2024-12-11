@@ -148,6 +148,7 @@ func (h *JoystickHandler) boot() {
 			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
 			h.socketConn.Close()        // 关闭当前连接
 			time.Sleep(2 * time.Second) // 等待2秒后重试
+
 		}
 	}
 }
@@ -287,6 +288,15 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 			return fmt.Errorf("轴编号-超出范围: %d", event.Number)
 		}
 		axeCode := h.config.AxesMap[event.Number]
+
+		// 修复 event.Value 的范围为 -1 到 1
+		if event.Number == 6 || event.Number == 7 {
+			if event.Value < -1 {
+				event.Value = -1
+			} else if event.Value > 1 {
+				event.Value = 1
+			}
+		}
 
 		logrus.Infof("轴触发: 原始编码=%d, 映射代码=0x%x, 值=%d", event.Number, axeCode, event.Value)
 

@@ -75,7 +75,7 @@ STANDARD_XPAD_CONFIG = {
         "axes_to_btn": {
             2: (6,),     # ABS_Z to L2
             5: (7,),     # ABS_RZ to R2
-            6: (15, 14), # ABS_HAT0X to DPad Left and DPad Right
+            6: (14, 15), # ABS_HAT0X to DPad Left and DPad Right
             7: (13, 12)  # ABS_HAT0Y to DPad Down and DPad Up
         },
         # Remap axis, done in conjunction with axes_to_btn_map
@@ -293,45 +293,28 @@ class SelkiesGamepad:
             logger.info("Client disconnected")
 
     async def run_server(self):
-        logger.info("Starting gamepad server for socket path: %s" % self.socket_path)
-        
         try:
-            logger.info("Attempting to remove existing socket file if exists")
             os.unlink(self.socket_path)
-        except OSError as e:
+        except OSError:
             if os.path.exists(self.socket_path):
-                logger.error("Failed to remove existing socket file: %s, error: %s" % (self.socket_path, str(e)))
                 raise
-            logger.info("No existing socket file found")
 
-        try:
-            logger.info("Creating new Unix Domain Socket")
-            self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            logger.info("Binding socket to path: %s" % self.socket_path)
-            self.server.bind(self.socket_path)
-            logger.info("Setting socket to listen mode")
-            self.server.listen(1)
-            self.server.setblocking(False)
-        except Exception as e:
-            logger.error("Failed to create and bind socket: %s" % str(e))
-            raise
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server.bind(self.socket_path)
+        self.server.listen(1)
+        self.server.setblocking(False)
 
-        logger.info('Successfully listening for connections on %s' % self.socket_path)
+        logger.info('Listening for connections on %s' % self.socket_path)
 
         # start loop to process event queue.
-        logger.info("Starting event processing loop")
         self.loop.create_task(self.__send_events())
 
         self.running = True
         try:
             while self.running:
                 try:
-                    logger.debug("Waiting for client connection...")
                     client, _ = await asyncio.wait_for(self.loop.sock_accept(self.server), timeout=1)
                 except asyncio.TimeoutError:
-                    continue
-                except Exception as e:
-                    logger.error("Error accepting client connection: %s" % str(e))
                     continue
 
                 fd = client.fileno()
@@ -342,17 +325,14 @@ class SelkiesGamepad:
 
                 # Add client to dictionary to receive events.
                 self.clients[fd] = client
-        except Exception as e:
-            logger.error("Error in server main loop: %s" % str(e))
-            raise
         finally:
-            logger.info("Shutting down gamepad server")
             self.server.close()
             try:
-                logger.info("Removing socket file: %s" % self.socket_path)
                 os.unlink(self.socket_path)
-            except Exception as e:
-                logger.error("Failed to remove socket file: %s" % str(e))
+            except:
+                pass
+        
+        logger.info("Stopped gamepad socket server for %s" % self.socket_path)
 
     def stop_server(self):
         self.running = False
@@ -381,7 +361,7 @@ class GamepadMapper:
             if btn_num in mapping:
                 axis_num = axis
                 if len(mapping) > 1:
-                    axis_sign = 1 if mapping[0] == btn_num else -1
+                    axis_sign = -1 if mapping[0] == btn_num else 1
                 break
 
         if axis_num is not None:

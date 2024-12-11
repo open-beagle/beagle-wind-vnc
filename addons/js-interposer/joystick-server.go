@@ -472,7 +472,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 	logrus.Infof("新创建的事件设备: %v", newEvents)
 	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
 
-	logrus.Infof("成功设置uinput设备: %s", config.Name)
+	logrus.Infof("成功设置uinput设备: %s", usetup.Name[:])
 	return nil
 }
 

@@ -426,6 +426,11 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 		usetup.Absfuzz[i] = 16
 		usetup.Absflat[i] = 128
 	}
+	// 修复十字键轴取值范围
+	usetup.Absmax[6] = 1
+	usetup.Absmin[6] = -1
+	usetup.Absmax[7] = 1
+	usetup.Absmin[7] = -1
 
 	// 2. 写入设备信息
 	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {

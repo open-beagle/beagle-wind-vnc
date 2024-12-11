@@ -289,11 +289,11 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		}
 		axeCode := h.config.AxesMap[event.Number]
 
-		// 修复 event.Value 的范围为 -1 到 1
-		if event.Number == 6 || event.Number == 7 {
-			if event.Value < -1 {
+		// 修复 ABS_HAT0X 和 ABS_HAT0Y 的范围为 -1 到 1
+		if axeCode == ABS_HAT0X || axeCode == ABS_HAT0Y {
+			if event.Value < 0 {
 				event.Value = -1
-			} else if event.Value > 1 {
+			} else if event.Value > 0 {
 				event.Value = 1
 			}
 		}

@@ -22,7 +22,7 @@ STANDARD_XPAD_CONFIG = {
     # Browser detects xpad as 4 axes 17 button controller.
     # Linux xpad has 11 buttons and 8 axes.
 
-    "name": "Selkies Controller",
+    "name": "Beagle Controller",
     "btn_map": [
         BTN_A,      # 0
         BTN_B,      # 1

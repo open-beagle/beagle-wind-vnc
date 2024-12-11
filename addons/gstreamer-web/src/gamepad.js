@@ -16,6 +16,12 @@ class GamepadManager {
     this.interval = setInterval(() => {
       this._poll();
     }, GP_TIMEOUT);
+
+    console.log("Initial Gamepad Buttons:", gamepad.buttons);
+    console.log("Initial Gamepad Axes:", gamepad.axes);
+
+    this.lastActiveTime = Date.now();
+    this.autoDisconnectTimeout = setTimeout(() => this.checkDisconnect(), 15 * 60 * 1000);
   }
 
   _poll() {
@@ -23,6 +29,7 @@ class GamepadManager {
 
     for (let i = 0; i < MAX_GAMEPADS; i++) {
       if (gamepads[i]) {
+        this.lastActiveTime = Date.now();
         let gp = this.state[i];
 
         if (!gp) gp = this.state[i] = { axes: [], buttons: [] };
@@ -31,7 +38,6 @@ class GamepadManager {
           const value = gamepads[i].buttons[x].value;
 
           if (gp.buttons[x] !== undefined && gp.buttons[x] !== value) {
-            //eslint-disable-line no-undefined
             this.onButton(i, x, value);
           }
 
@@ -43,7 +49,6 @@ class GamepadManager {
           if (Math.abs(val) < 0.05) val = 0;
 
           if (gp.axes[x] !== undefined && gp.axes[x] !== val)
-            //eslint-disable-line no-undefined
             this.onAxis(i, x, val);
 
           gp.axes[x] = val;
@@ -54,7 +59,17 @@ class GamepadManager {
     }
   }
 
+  checkDisconnect() {
+    if (Date.now() - this.lastActiveTime >= 15 * 60 * 1000) {
+      this.destroy();
+      console.log("Gamepad disconnected due to inactivity.");
+    } else {
+      this.autoDisconnectTimeout = setTimeout(() => this.checkDisconnect(), 15 * 60 * 1000);
+    }
+  }
+
   destroy() {
     clearInterval(this.interval);
+    clearTimeout(this.autoDisconnectTimeout);
   }
 }

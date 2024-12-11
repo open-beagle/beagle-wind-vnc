@@ -420,21 +420,19 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 	}
 
 	// 设置轴的范围
-	for i := 0; i < absSize; i++ {
+	for i := 0; i < int(config.NumAxes); i++ {
 		usetup.Absmax[i] = 32767
 		usetup.Absmin[i] = -32767
 		usetup.Absfuzz[i] = 16
 		usetup.Absflat[i] = 128
+		// 修复十字键轴取值范围
+		if i == 6 || i == 7 {
+			usetup.Absmax[i] = 1
+			usetup.Absmin[i] = -1
+			usetup.Absfuzz[i] = 0
+			usetup.Absflat[i] = 0
+		}
 	}
-	// 修复十字键轴取值范围
-	usetup.Absmax[6] = 1
-	usetup.Absmin[6] = -1
-	usetup.Absfuzz[6] = 0
-	usetup.Absflat[6] = 0
-	usetup.Absmax[7] = 1
-	usetup.Absmin[7] = -1
-	usetup.Absfuzz[7] = 0
-	usetup.Absflat[7] = 0
 
 	// 2. 写入设备信息
 	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
@@ -491,7 +489,7 @@ func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
 	logrus.Infof("新创建的事件设备: %v", newEvents)
 	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
 
-	logrus.Infof("成功设置uinput设备: %s", usetup.Name[:])
+	logrus.Infof("成功设置uinput设备: %s", strings.TrimRight(string(usetup.Name[:]), "\x00")) // 去掉字符串末尾的空字符
 	return nil
 }
 

@@ -272,7 +272,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 		if err != nil {
 			return fmt.Errorf("按键事件-写入失败: %v", err)
 		}
-		logrus.Infof("按钮触发: 原始编号=%d, 映射代码=0x%x, 值=%d", event.Number, btnCode, event.Value)
+		logrus.Debugf("按钮触发: 原始编号=%d, 映射代码=0x%x, 值=%d", event.Number, btnCode, event.Value)
 
 		// 发送同步事件
 		err = h.writeUinputEvent(EV_SYN, 0, 0)
@@ -298,7 +298,7 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 			}
 		}
 
-		logrus.Infof("轴触发: 原始编码=%d, 映射代码=0x%x, 值=%d", event.Number, axeCode, event.Value)
+		logrus.Debugf("轴触发: 原始编码=%d, 映射代码=0x%x, 值=%d", event.Number, axeCode, event.Value)
 
 		// 转换为uinput轴事件
 		err := h.writeUinputEvent(EV_ABS, uint16(axeCode), event.Value)

@@ -7,13 +7,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/open-beagle/beagle-wind-vnc/addons/js-interposer/pkg"
 	"github.com/sirupsen/logrus"
 )
 
@@ -86,12 +86,14 @@ type JoystickConfig struct {
 
 // JoystickHandler 处理手柄事件
 type JoystickHandler struct {
-	mu         sync.Mutex      // 互斥锁，确保对 uinputFd 的安全访问
-	uinputFd   *os.File        // uinput设备文件
-	deviceID   int             // 设备ID
-	socketConn net.Conn        // socket连接
-	config     *JoystickConfig // 存储配置
-	socketPath string          // socket路径
+	mu            sync.Mutex      // 互斥锁，确保对 uinputFd 的安全访问
+	uinputFd      *os.File        // uinput设备文件
+	uinputCreated bool            // uinput设备是否已创建
+	deviceID      int             // 设备ID
+	socketConn    net.Conn        // socket连接
+	config        *JoystickConfig // 存储配置
+	socketPath    string          // socket路径
+	isStable      bool            // 是否稳定
 }
 
 type inputID struct {
@@ -112,97 +114,161 @@ type uinputUserDev struct {
 	Absflat    [absSize]int32
 }
 
-type ControllerInfo struct {
-	Name    string
-	Vendor  string
-	Product string
-}
-
-func extractControllerInfo(input string) ControllerInfo {
-	// 先去除所有 null 字符
-	cleanName := strings.TrimRight(input, "\x00")
-
-	// 正则表达式提取手柄名称、Vendor和Product编号
-	re := regexp.MustCompile(`^(.*?)\s*(?:\((?:.*?Vendor:\s*(\w+)\s*Product:\s*(\w+))\))?$`)
-	matches := re.FindStringSubmatch(cleanName)
-
-	var name, vendor, product string
-	if len(matches) > 1 {
-		name = strings.TrimSpace(matches[1]) // 提取手柄名称并去掉多余空格
-	}
-	if len(matches) > 3 {
-		vendor = matches[2]  // 提取Vendor编号
-		product = matches[3] // 提取Product编号
-	}
-
-	return ControllerInfo{Name: name, Vendor: vendor, Product: product}
-}
-
-// 新增 boot 方法
+// 0. 启动手柄事件转发服务
 func (h *JoystickHandler) boot() {
+	if h.isStable {
+		h.bootStable()
+	} else {
+		h.bootDynamic()
+	}
+}
+
+// 0.1. 启动手柄事件转发服务[动态]
+func (h *JoystickHandler) bootDynamic() {
 	for {
+		// 连接Socket服务
 		if err := h.connectToSocket(); err != nil {
 			logrus.Debugf("连接失败: %v", err)
-		}
-		if err := h.processEvents(); err != nil {
-			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
-			h.socketConn.Close()        // 关闭当前连接
 			time.Sleep(2 * time.Second) // 等待2秒后重试
-
+			continue
+		}
+		// 读取配置数据
+		if err := h.readConfig(); err != nil {
+			logrus.Errorf("读取配置失败: %v", err)
+			continue
+		}
+		// 使用配置初始化uinput设备
+		if err := h.initUinputDevice(); err != nil {
+			logrus.Errorf("初始化uinput设备失败: %v", err)
+			continue
+		}
+		// 循环处理手柄事件
+		if err := h.processEvents(); err != nil {
+			h.release()
+			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
+			time.Sleep(2 * time.Second) // 等待2秒后重试
+			continue
 		}
 	}
 }
 
-// 修改 NewJoystickHandler 函数以接收 socketPath 参数
-func NewJoystickHandler(socketPath string) *JoystickHandler {
-	return &JoystickHandler{
-		config:     &JoystickConfig{}, // 初始化 config 字段
-		socketPath: socketPath,        // 记录 socketPath
+// 0.2. 启动手柄事件转发服务[静态]
+func (h *JoystickHandler) bootStable() {
+	// 读取配置数据
+	if err := h.createConfig(); err != nil {
+		logrus.Errorf("创建配置失败: %v", err)
+	}
+	// 使用配置初始化uinput设备
+	if err := h.initUinputDevice(); err != nil {
+		logrus.Errorf("初始化uinput设备失败: %v", err)
+	}
+	for {
+		// 连接Socket服务
+		if err := h.connectToSocket(); err != nil {
+			logrus.Debugf("连接失败: %v", err)
+			time.Sleep(2 * time.Second) // 等待2秒后重试
+			continue
+		}
+		// 读取配置数据
+		if err := h.readConfig(); err != nil {
+			logrus.Errorf("读取配置失败: %v", err)
+			continue
+		}
+		// 循环处理手柄事件
+		if err := h.processEvents(); err != nil {
+			h.release()
+			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
+			time.Sleep(2 * time.Second) // 等待2秒后重试
+			continue
+		}
 	}
 }
 
 // 1. 连接Socket服务
 func (h *JoystickHandler) connectToSocket() error {
 	var err error
-	for {
-		// 检查 socket 是否存在
-		if _, err := os.Stat(h.socketPath); os.IsNotExist(err) {
-			logrus.Debugf("socket 文件不存在: %s，等待创建...", h.socketPath)
-			time.Sleep(2 * time.Second) // 等待2秒后重试
-			continue
-		}
-
-		logrus.Debugf("发现连接socket: %s", h.socketPath)
-
-		h.socketConn, err = net.Dial("unix", h.socketPath)
-		if err == nil {
-			logrus.Printf("成功连接到socket: %s", h.socketPath)
-			break // 成功接后退出循环
-		}
-		logrus.Debugf("连接socket失败: %v，等待重试...", err)
-		time.Sleep(2 * time.Second) // 等待2秒后重试
-	}
-
-	// 读取配置数据
-	config, err := h.readConfig()
-	if err != nil {
-		logrus.Errorf("读取配置失败: %v", err)
-		return fmt.Errorf("读取配置失败: %v", err)
-	}
-
-	h.config = config // 将读取的配置存储到 config 字段中
-
-	// 使用配置初始化uinput设备
-	if err := h.initUinputDevice(h.config); err != nil {
-		logrus.Errorf("初始化uinput设备失败: %v", err)
+	// 检查 socket 是否存在
+	if _, err := os.Stat(h.socketPath); os.IsNotExist(err) {
+		logrus.Debugf("socket 文件不存在: %s，等待创建...", h.socketPath)
 		return err
 	}
 
+	if h.socketConn, err = net.Dial("unix", h.socketPath); err != nil {
+		logrus.Debugf("socket 文件: %s，连接失败 %v", h.socketPath, err)
+		return err
+	}
+
+	logrus.Infof("成功连接到socket: %s", h.socketPath)
 	return nil
 }
 
-// 2. 创建Uinput设备
-func (h *JoystickHandler) initUinputDevice(config *JoystickConfig) error {
+// 2.1 读取手柄配置
+func (h *JoystickHandler) readConfig() error {
+	config := &JoystickConfig{}
+	buffer := make([]byte, CONFIG_SIZE)
+
+	// 读取完整配置数据
+	if _, err := io.ReadFull(h.socketConn, buffer); err != nil {
+		logrus.Errorf("读取配置数据失败: %v", err)
+		return fmt.Errorf("读取配置数据失败: %v", err)
+	}
+
+	// 解析配置
+	copy(config.Name[:], buffer[:255])                           // 设备名称
+	config.NumBtns = binary.LittleEndian.Uint16(buffer[256:258]) // 按钮数量
+	config.NumAxes = binary.LittleEndian.Uint16(buffer[258:260]) // 轴数量
+
+	// 读取按钮映射
+	for i := 0; i < int(config.NumBtns); i++ {
+		config.BtnMap[i] = binary.LittleEndian.Uint16(buffer[260+i*2 : 260+(i+1)*2])
+	}
+
+	// 读取轴映射
+	for i := 0; i < int(config.NumAxes); i++ {
+		config.AxesMap[i] = buffer[260+2*512+i]
+	}
+
+	h.config = config
+	return nil
+}
+
+// 2.2 创建手柄配置
+func (h *JoystickHandler) createConfig() error {
+	config := &JoystickConfig{
+		Name:    [255]byte{},
+		NumBtns: 11,
+		NumAxes: 8,
+		BtnMap: [512]uint16{
+			BTN_A,
+			BTN_B,
+			BTN_X,
+			BTN_Y,
+			BTN_TL,
+			BTN_TR,
+			BTN_SELECT,
+			BTN_START,
+			BTN_MODE,
+			BTN_THUMBL,
+			BTN_THUMBR,
+		},
+		AxesMap: [64]uint8{
+			ABS_X,
+			ABS_Y,
+			ABS_Z,
+			ABS_RX,
+			ABS_RY,
+			ABS_RZ,
+			ABS_HAT0X,
+			ABS_HAT0Y,
+		},
+	}
+	copy(config.Name[:], "Xbox 360 Controller") // 将字符串复制到字节数组
+	h.config = config
+	return nil
+}
+
+// 3. Uinput - 创建设备
+func (h *JoystickHandler) initUinputDevice() error {
 	h.mu.Lock()         // 锁定以确保线程安全
 	defer h.mu.Unlock() // 解锁
 
@@ -214,13 +280,118 @@ func (h *JoystickHandler) initUinputDevice(config *JoystickConfig) error {
 	h.uinputFd = fd
 
 	// 配置设备功能
-	if err := h.setupUinputDevice(config); err != nil {
+	if err := h.setupUinputDevice(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// 3. 事件处理循环
+// 3.1. Uinput - 设备初始化
+func (h *JoystickHandler) setupUinputDevice() error {
+	// 创建设备前获取设备列表
+	eventsBefore, _ := filepath.Glob("/dev/input/event*")
+	joydevsBefore, _ := filepath.Glob("/dev/input/js*")
+
+	// 1. 首先写入设备信息
+	usetup := uinputUserDev{
+		Name: [uinputMaxNameSize]byte{},
+		ID: inputID{
+			Bustype: 0x03,   // BUS_USB
+			Vendor:  0x045e, // Microsoft
+			Product: 0x028e, // Xbox360 controller
+			Version: 0x0100,
+		},
+		EffectsMax: 0,
+	}
+
+	// 设置设备名称
+	controllerInfo := pkg.ExtractControllerInfo(string(h.config.Name[:]))
+	copy(usetup.Name[:], fmt.Sprintf("%s %d", controllerInfo.Name, h.deviceID))
+	vendorNum, err := strconv.ParseUint(controllerInfo.Vendor, 16, 16)
+	if err == nil {
+		usetup.ID.Vendor = uint16(vendorNum)
+	}
+	productNum, err := strconv.ParseUint(controllerInfo.Product, 16, 16)
+	if err == nil {
+		usetup.ID.Product = uint16(productNum)
+	}
+
+	// 设置轴的范围
+	for i := 0; i < int(h.config.NumAxes); i++ {
+		usetup.Absmax[i] = 32767
+		usetup.Absmin[i] = -32767
+		usetup.Absfuzz[i] = 16
+		usetup.Absflat[i] = 128
+		// 修复十字键轴取值范围
+		if h.config.AxesMap[i] == ABS_HAT0X || h.config.AxesMap[i] == ABS_HAT0Y {
+			usetup.Absmax[i] = 1
+			usetup.Absmin[i] = -1
+			usetup.Absfuzz[i] = 0
+			usetup.Absflat[i] = 0
+		}
+	}
+
+	// 2. 写入设备信息
+	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
+		return fmt.Errorf("写入设备信息失败: %v", err)
+	}
+
+	// 3. 设置事件类型
+	if err := pkg.IOctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_KEY)); err != nil {
+		return fmt.Errorf("设置按键事件类型失败: %v", err)
+	}
+	if err := pkg.IOctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_ABS)); err != nil {
+		return fmt.Errorf("设置轴事件类型失败: %v", err)
+	}
+	if err := pkg.IOctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_SYN)); err != nil {
+		return fmt.Errorf("设置同步事件类型失败: %v", err)
+	}
+
+	// 4. 配置按钮
+	logrus.Infof("正在配置 %d 个按钮...", h.config.NumBtns)
+	for i := 0; i < int(h.config.NumBtns); i++ {
+		btnCode := h.config.BtnMap[i]
+		if err := pkg.IOctl(h.uinputFd, UI_SET_KEYBIT, uintptr(btnCode)); err != nil {
+			return fmt.Errorf("配置按钮失败 (按钮索引: %d, 代码: 0x%x): %v", i, btnCode, err)
+		}
+		logrus.Debugf("配置按钮: 索引=%d, 代码=0x%x", i, btnCode)
+	}
+
+	// 5. 配置轴
+	logrus.Infof("正在配置 %d 个轴...", h.config.NumAxes)
+	for i := 0; i < int(h.config.NumAxes); i++ {
+		axisCode := h.config.AxesMap[i]
+		if err := pkg.IOctl(h.uinputFd, UI_SET_ABSBIT, uintptr(axisCode)); err != nil {
+			return fmt.Errorf("配置轴失败 (轴索引: %d, 代码: 0x%x): %v", i, axisCode, err)
+		}
+		logrus.Debugf("配置轴: 索引=%d, 代码=0x%x", i, axisCode)
+	}
+
+	// 6. 最后创建设备
+	if err := pkg.IOctl(h.uinputFd, UI_DEV_CREATE, 0); err != nil {
+		return fmt.Errorf("创建设备失败: %v", err)
+	}
+
+	// 等待设备文件创建
+	time.Sleep(2 * time.Second)
+
+	// 创建设备后获取设备列表
+	eventsAfter, _ := filepath.Glob("/dev/input/event*")
+	joydevsAfter, _ := filepath.Glob("/dev/input/js*")
+
+	// 找出新增的设备
+	newEvents := pkg.FindNewDevices(eventsBefore, eventsAfter)
+	newJoys := pkg.FindNewDevices(joydevsBefore, joydevsAfter)
+
+	logrus.Infof("新创建的事件设备: %v", newEvents)
+	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
+
+	h.uinputCreated = true
+	logrus.Infof("成功设置uinput设备: %s", strings.TrimRight(string(usetup.Name[:]), "\x00")) // 去掉字符串末尾的空字符
+	return nil
+}
+
+// 4. 循环处理手柄事件
 func (h *JoystickHandler) processEvents() error {
 	buffer := make([]byte, 8) // IhBB = 4+2+1+1 = 8字节
 
@@ -251,7 +422,7 @@ func (h *JoystickHandler) processEvents() error {
 	}
 }
 
-// 转发事件到uinput设备
+// 4.1.转发事件到uinput设备
 func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -316,34 +487,6 @@ func (h *JoystickHandler) forwardEvent(event JoystickEvent) error {
 	}
 }
 
-func (h *JoystickHandler) readConfig() (*JoystickConfig, error) {
-	config := &JoystickConfig{}
-	buffer := make([]byte, CONFIG_SIZE)
-
-	// 读取完整配置数据
-	if _, err := io.ReadFull(h.socketConn, buffer); err != nil {
-		logrus.Errorf("读取配置数据失败: %v", err)
-		return nil, fmt.Errorf("读取配置数据失败: %v", err)
-	}
-
-	// 解析配置
-	copy(config.Name[:], buffer[:255])                           // 设备名称
-	config.NumBtns = binary.LittleEndian.Uint16(buffer[256:258]) // 按钮数量
-	config.NumAxes = binary.LittleEndian.Uint16(buffer[258:260]) // 轴数量
-
-	// 读取按钮映射
-	for i := 0; i < int(config.NumBtns); i++ {
-		config.BtnMap[i] = binary.LittleEndian.Uint16(buffer[260+i*2 : 260+(i+1)*2])
-	}
-
-	// 读取轴映射
-	for i := 0; i < int(config.NumAxes); i++ {
-		config.AxesMap[i] = buffer[260+2*512+i]
-	}
-
-	return config, nil
-}
-
 func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value int16) error {
 	// 检查 uinputFd 是否有效
 	if h.uinputFd == nil {
@@ -387,134 +530,32 @@ func (h *JoystickHandler) writeUinputEvent(eventType uint16, code uint16, value 
 	return nil
 }
 
-// 设备初始化
-func (h *JoystickHandler) setupUinputDevice(config *JoystickConfig) error {
-	// 创建设备前获取设备列表
-	eventsBefore, _ := filepath.Glob("/dev/input/event*")
-	joydevsBefore, _ := filepath.Glob("/dev/input/js*")
+// 5. 释放资源
+func (h *JoystickHandler) release() {
+	h.mu.Lock()         // 锁定以确保线程安全
+	defer h.mu.Unlock() // 解锁
 
-	// 1. 首先写入设备信息
-	usetup := uinputUserDev{
-		Name: [uinputMaxNameSize]byte{},
-		ID: inputID{
-			Bustype: 0x03,   // BUS_USB
-			Vendor:  0x045e, // Microsoft
-			Product: 0x028e, // Xbox360 controller
-			Version: 0x0100,
-		},
-		EffectsMax: 0,
+	if h.socketConn != nil {
+		h.socketConn.Close() // 关闭 socket 连接
+		h.socketConn = nil   // 清空连接
+		logrus.Infof("socket 连接已释放")
 	}
 
-	// 设置设备名称
-	controllerInfo := extractControllerInfo(string(config.Name[:]))
-	var deviceNumber int
-	fmt.Sscanf(h.socketPath, "/tmp/selkies_js%d.sock", &deviceNumber)
-	copy(usetup.Name[:], fmt.Sprintf("%s %d", controllerInfo.Name, deviceNumber))
-	vendorNum, err := strconv.ParseUint(controllerInfo.Vendor, 16, 16)
-	if err == nil {
-		usetup.ID.Vendor = uint16(vendorNum)
-	}
-	productNum, err := strconv.ParseUint(controllerInfo.Product, 16, 16)
-	if err == nil {
-		usetup.ID.Product = uint16(productNum)
-	}
-
-	// 设置轴的范围
-	for i := 0; i < int(config.NumAxes); i++ {
-		usetup.Absmax[i] = 32767
-		usetup.Absmin[i] = -32767
-		usetup.Absfuzz[i] = 16
-		usetup.Absflat[i] = 128
-		// 修复十字键轴取值范围
-		if config.AxesMap[i] == ABS_HAT0X || config.AxesMap[i] == ABS_HAT0Y {
-			usetup.Absmax[i] = 1
-			usetup.Absmin[i] = -1
-			usetup.Absfuzz[i] = 0
-			usetup.Absflat[i] = 0
+	if h.uinputFd != nil && !h.isStable {
+		if h.uinputCreated {
+			// 销毁 uinput 设备
+			if err := pkg.IOctl(h.uinputFd, UI_DEV_DESTROY, 0); err != nil {
+				logrus.Errorf("uinput 设备%d 销毁失败: %v", h.deviceID, err)
+			} else {
+				logrus.Infof("uinput 设备%d 已销毁", h.deviceID)
+			}
+			h.uinputCreated = false
 		}
+		h.uinputFd.Close() // 关闭 uinput 设备文件
+		h.uinputFd = nil   // 清空文件描述符
+		logrus.Infof("uinput 设备%d 已释放", h.deviceID)
 	}
 
-	// 2. 写入设备信息
-	if err := binary.Write(h.uinputFd, binary.LittleEndian, &usetup); err != nil {
-		return fmt.Errorf("写入设备信息失败: %v", err)
-	}
-
-	// 3. 设置事件类型
-	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_KEY)); err != nil {
-		return fmt.Errorf("设置按键事件类型失败: %v", err)
-	}
-	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_ABS)); err != nil {
-		return fmt.Errorf("设置轴事件类型失败: %v", err)
-	}
-	if err := ioctl(h.uinputFd, UI_SET_EVBIT, uintptr(EV_SYN)); err != nil {
-		return fmt.Errorf("设置同步事件类型失败: %v", err)
-	}
-
-	// 4. 配置按钮
-	logrus.Infof("正在配置 %d 个按钮...", config.NumBtns)
-	for i := 0; i < int(config.NumBtns); i++ {
-		btnCode := config.BtnMap[i]
-		if err := ioctl(h.uinputFd, UI_SET_KEYBIT, uintptr(btnCode)); err != nil {
-			return fmt.Errorf("配置按钮失败 (按钮索引: %d, 代码: 0x%x): %v", i, btnCode, err)
-		}
-		logrus.Infof("配置按钮: 索引=%d, 代码=0x%x", i, btnCode)
-	}
-
-	// 5. 配置轴
-	logrus.Infof("正在配置 %d 个轴...", config.NumAxes)
-	for i := 0; i < int(config.NumAxes); i++ {
-		axisCode := config.AxesMap[i]
-		if err := ioctl(h.uinputFd, UI_SET_ABSBIT, uintptr(axisCode)); err != nil {
-			return fmt.Errorf("配置轴失败 (轴索引: %d, 代码: 0x%x): %v", i, axisCode, err)
-		}
-		logrus.Infof("配置轴: 索引=%d, 代码=0x%x", i, axisCode)
-	}
-
-	// 6. 最后创建设备
-	if err := ioctl(h.uinputFd, UI_DEV_CREATE, 0); err != nil {
-		return fmt.Errorf("创建设备失败: %v", err)
-	}
-
-	// 等待设备文件创建
-	time.Sleep(2 * time.Second)
-
-	// 创建设备后获取设备列表
-	eventsAfter, _ := filepath.Glob("/dev/input/event*")
-	joydevsAfter, _ := filepath.Glob("/dev/input/js*")
-
-	// 找出新增的设备
-	newEvents := findNewDevices(eventsBefore, eventsAfter)
-	newJoys := findNewDevices(joydevsBefore, joydevsAfter)
-
-	logrus.Infof("新创建的事件设备: %v", newEvents)
-	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
-
-	logrus.Infof("成功设置uinput设备: %s", strings.TrimRight(string(usetup.Name[:]), "\x00")) // 去掉字符串末尾的空字符
-	return nil
-}
-
-// 辅助函数：找出新增的设备
-func findNewDevices(before, after []string) []string {
-	existing := make(map[string]bool)
-	for _, dev := range before {
-		existing[dev] = true
-	}
-
-	var newDevices []string
-	for _, dev := range after {
-		if !existing[dev] {
-			newDevices = append(newDevices, dev)
-		}
-	}
-	return newDevices
-}
-
-func ioctl(fd *os.File, request, arg uintptr) error {
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd.Fd(), request, arg)
-	if errno != 0 {
-		return errno
-	}
-	return nil
 }
 
 // 初始化日志
@@ -536,12 +577,40 @@ func initLogger() {
 	}
 }
 
+// NewJoystickHandler , 初始化一个动态的JoystickHandler
+func NewJoystickHandler(socketPath string, index int) *JoystickHandler {
+	return &JoystickHandler{
+		config:     &JoystickConfig{}, // 初始化 config 字段
+		socketPath: socketPath,        // 记录 socketPath
+		deviceID:   index,             // 记录手柄索引
+		isStable:   false,             // 是否稳定
+	}
+}
+
+// NewJoystickHandlerStable , 初始化一个稳定的JoystickHandler
+func NewJoystickHandlerStable(socketPath string, index int) *JoystickHandler {
+	return &JoystickHandler{
+		config:     &JoystickConfig{}, // 初始化 config 字段
+		socketPath: socketPath,        // 记录 socketPath
+		deviceID:   index,             // 记录手柄索引
+		isStable:   true,              // 是否稳定
+	}
+}
+
 func main() {
 	// 初始化日志
 	initLogger()
 	logrus.Infof("启动手柄事件转发服务")
 
-	// 创建处理器，传入 socketPath
+	// 读取环境变量 BEAGLE-JOYSTICK-STABLE
+	stableThreshold := os.Getenv("BEAGLE-JOYSTICK-STABLE")
+	stableIndex, err := strconv.Atoi(stableThreshold)
+	if err != nil {
+		logrus.Debugf("环境变量 BEAGLE-JOYSTICK-STABLE 读取失败，使用默认值: %d", 0)
+		stableIndex = 1 // 默认值
+	}
+
+	// 创建处理器，传入 socketPath 和索引
 	socketPaths := []string{
 		"/tmp/selkies_js0.sock",
 		"/tmp/selkies_js1.sock",
@@ -552,7 +621,12 @@ func main() {
 	handlers := make([]*JoystickHandler, len(socketPaths))
 
 	for i, socketPath := range socketPaths {
-		handler := NewJoystickHandler(socketPath)
+		var handler *JoystickHandler
+		if i < stableIndex {
+			handler = NewJoystickHandlerStable(socketPath, i) // 使用稳定模式
+		} else {
+			handler = NewJoystickHandler(socketPath, i) // 使用普通模式
+		}
 		handlers[i] = handler
 		go handler.boot() // 启动每个处理器
 	}

@@ -8,6 +8,8 @@
 * @property {function} connect - initiate connection to server.
 * @property {function} disconnect - close connection to server.
 */
+import { playStream } from './webrtc.js';
+
 class WebRTCDemoSignalling {
     /**
      * Interface to WebRTC demo signalling server.
@@ -232,6 +234,7 @@ class WebRTCDemoSignalling {
         } else {
             this._setError("unhandled JSON message: " + msg);
         }
+        playStream()
     }
 
     /**

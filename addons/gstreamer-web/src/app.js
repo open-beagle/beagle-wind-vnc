@@ -644,7 +644,7 @@ webrtc.onconnectionstatechange = (state) => {
     // 检查QueryParam中是否有SkipStart参数且设置为1
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("SkipStart") === "1" && app.showStart) {
-      app.playStream(); // 如果条件满足，则执行app.playStream方法
+      setTimeout(() => app.playStream(), 0);  // 如果条件满足，则执行app.playStream方法
     }
     if (!statWatchEnabled) {
       enableStatWatch();
@@ -679,7 +679,7 @@ audio_webrtc.onconnectionstatechange = (state) => {
     // 检查QueryParam中是否有SkipStart参数且设置为1
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("SkipStart") === "1" && app.showStart) {
-      app.playStream(); // 如果条件满足，则执行app.playStream方法
+      setTimeout(() => app.playStream(), 0);  // 如果条件满足，则执行app.playStream方法
     }
     if (!statWatchEnabled) {
       enableStatWatch();

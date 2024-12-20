@@ -23,6 +23,7 @@ bash /home/beagle/entrypoint.sh
 
 locale-gen en_US.UTF-8
 
+docker pull registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:weston && \
 docker run -it --rm \
   -p 3389:3389 \
   registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:weston

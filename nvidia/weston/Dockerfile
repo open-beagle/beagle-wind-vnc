@@ -9,48 +9,17 @@ LABEL maintainer=${AUTHOR} version=${VERSION}
 # Copy the ubuntu.sources file
 COPY nvidia/weston/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources
 
-# Install necessary packages
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt update -y && \
-    apt install -y --no-install-recommends \
-    weston \
-    freerdp2-x11 \
-    gnome-terminal \
-    procps \
-    sudo \
-    vim \
-    fonts-dejavu \
-    software-properties-common \
-    ca-certificates \
-    locales \
-    winpr-utils \
-    dbus-user-session
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt update && \
+    apt install -y --no-install-recommends ubuntu-desktop gnome-core gnome-terminal xrdp \
+    && apt autoremove -y && \
+    apt clean
 
-# Create a user for running Weston
-RUN useradd -G video -m -s /bin/bash beagle && \
-    echo 'beagle:beagle' | chpasswd && \
-    usermod -aG sudo beagle && \
-    usermod -aG video beagle && \
-    echo '%sudo ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
+# 配置 xrdp
+COPY nvidia/weston/xrdp.ini /etc/xrdp/
 
-# Create a directory for the user's runtime files
-RUN mkdir -p /run/user/beagle && \
-    chown beagle:beagle /run/user/beagle && \
-    locale-gen en_US.UTF-8
-
-# Set the working directory
-WORKDIR /home/beagle
-
-# Copy the Weston configuration file
-COPY nvidia/weston/weston.ini /home/beagle/.config/weston.ini
-
-# Copy the entrypoint script
-COPY nvidia/weston/entrypoint.sh /opt/entrypoint.sh
-RUN chmod +x /opt/entrypoint.sh
-
-# Expose the RDP port
+# 暴露端口
 EXPOSE 3389
 
-# Set the entrypoint
-USER beagle
-ENTRYPOINT ["/opt/entrypoint.sh"]
+# 启动命令
+CMD ["/usr/bin/startwm.sh"]

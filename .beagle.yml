@@ -6,7 +6,7 @@ trigger:
     - gstreamer-web
 
 workspace:
-  path: /go/src/github.com/open-beagle/kasm-images
+  path: /go/src/github.com/open-beagle/beagle-wind-vnc
 
 volumes:
   - name: docker
@@ -78,7 +78,7 @@ trigger:
     - js-interposer
 
 workspace:
-  path: /go/src/github.com/open-beagle/kasm-images
+  path: /go/src/github.com/open-beagle/beagle-wind-vnc
 
 volumes:
   - name: docker
@@ -138,7 +138,7 @@ trigger:
     - dev
 
 workspace:
-  path: /go/src/github.com/open-beagle/kasm-images
+  path: /go/src/github.com/open-beagle/beagle-wind-vnc
 
 volumes:
   - name: docker
@@ -182,6 +182,61 @@ steps:
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop24.04-20241103070509
       repo: wod/beagle-wind-vnc
       version: v1.0.2-ubuntu24.04-nvidia-egl
+      args: "TARGETOS=linux,TARGETARCH=amd64"
+      registry: registry-vpc.cn-qingdao.aliyuncs.com
+      registry_user:
+        from_secret: REGISTRY_USER_ALIYUN
+      registry_password:
+        from_secret: REGISTRY_PASSWORD_ALIYUN
+
+---
+kind: pipeline
+name: weston
+
+trigger:
+  branch:
+    - weston
+
+workspace:
+  path: /go/src/github.com/open-beagle/beagle-wind-vnc
+
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+clone:
+  disable: true
+
+steps:
+  - name: s3-cache
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-s3-cache:1.0
+    settings:
+      restore: true
+      mount:
+        - ./.git
+      endpoint: https://cache.ali.wodcloud.com
+      access_key:
+        from_secret: S3_ACCESS_KEY_ALIYUN
+      secret_key:
+        from_secret: S3_SECRET_KEY_ALIYUN
+
+  - name: fetch
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-git:1.0
+    settings:
+      proxy:
+        from_secret: SOCKS5_PROXY
+
+  - name: docker-egl
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    settings:
+      dockerfile: nvidia/weston/Dockerfile
+      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/ubuntu:v24.04-amd64
+      repo: wod/beagle-wind-vnc
+      version: weston
       args: "TARGETOS=linux,TARGETARCH=amd64"
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:

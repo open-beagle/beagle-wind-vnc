@@ -163,8 +163,8 @@ def make_turn_rtc_config_json_legacy(turn_host, turn_port, username, password, p
     stun_list = ["stun:{}:{}".format(turn_host, turn_port)]
     if stun_host is not None and stun_port is not None and (stun_host != turn_host or str(stun_port) != str(turn_port)):
         stun_list.insert(0, "stun:{}:{}".format(stun_host, stun_port))
-    if stun_host != "stun.l.google.com" or (str(stun_port) != "19302"):
-        stun_list.append("stun:stun.l.google.com:19302")
+    # if stun_host != "stun.l.google.com" or (str(stun_port) != "19302"):
+    #     stun_list.append("stun:stun.l.google.com:19302")
 
     rtc_config = {}
     rtc_config["lifetimeDuration"] = "86400s"

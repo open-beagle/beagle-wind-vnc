@@ -13,6 +13,7 @@ COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/entrypoint.sh
 COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
 COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
 
+COPY --chown=1000:1000 ./src/selkies_gstreamer/__main__.py /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/__main__.py
 COPY --chown=1000:1000 ./src/selkies_gstreamer/gamepad.py /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/gamepad.py
 
 RUN sudo chown -R root:root /opt/gst-web && \

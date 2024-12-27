@@ -63,11 +63,15 @@ def generate_rtc_config(turn_host, turn_port, shared_secret, user, protocol='udp
     password = base64.b64encode(hashed).decode()
 
     # Configure STUN servers
-    stun_list = ["stun:{}:{}".format(turn_host, turn_port)]
-    if stun_host is not None and stun_port is not None and (stun_host != turn_host or str(stun_port) != str(turn_port)):
+    stun_list = []
+    # 将 turn_host 拆分为列表
+    turn_hosts = turn_host.split(",") if "," in turn_host else [turn_host]
+    for host in turn_hosts:
+        stun_list.append("stun:{}:{}".format(host, turn_port))
+    if stun_host is not None and stun_host != "stun.l.google.com" and stun_port is not None and (stun_host != turn_host or str(stun_port) != str(turn_port)):
         stun_list.insert(0, "stun:{}:{}".format(stun_host, stun_port))
-    if stun_host != "stun.l.google.com" or (str(stun_port) != "19302"):
-        stun_list.append("stun:stun.l.google.com:19302")
+    # if stun_host != "stun.l.google.com" or (str(stun_port) != "19302"):
+    #     stun_list.append("stun:stun.l.google.com:19302")
 
     rtc_config = {}
     rtc_config["lifetimeDuration"] = "{}s".format(expiry_hour * 3600)
@@ -77,13 +81,14 @@ def generate_rtc_config(turn_host, turn_port, shared_secret, user, protocol='udp
     rtc_config["iceServers"].append({
         "urls": stun_list
     })
-    rtc_config["iceServers"].append({
-        "urls": [
-            "{}:{}:{}?transport={}".format('turns' if turn_tls else 'turn', turn_host, turn_port, protocol)
-        ],
-        "username": username,
-        "credential": password
-    })
+    for host in turn_hosts:
+        rtc_config["iceServers"].append({
+            "urls": [
+                "{}:{}:{}?transport={}".format('turns' if turn_tls else 'turn', host.strip(), turn_port, protocol)
+            ],
+            "username": username,
+            "credential": password
+        })
 
     return json.dumps(rtc_config, indent=2)
 

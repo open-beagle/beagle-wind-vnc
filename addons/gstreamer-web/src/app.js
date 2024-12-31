@@ -167,6 +167,16 @@ var app = new Vue({
     };
   },
 
+  mounted() {
+    // 监听键盘事件
+    window.addEventListener('keydown', this.handleKeyDown);
+  },
+
+  beforeDestroy() {
+      // 移除键盘事件监听器
+      window.removeEventListener('keydown', this.handleKeyDown);
+  },
+
   methods: {
     getIntParam: (key, default_value) => {
       const prefixedKey = app.appName + "_" + key;
@@ -206,6 +216,16 @@ var app = new Vue({
           app.showDrawer = !app.showDrawer;
         }
         webrtc.input.enterFullscreen();
+      }
+    },
+    // 处理键盘按下事件
+    handleKeyDown(event) {
+      // 检查是否按下 Enter 键
+      if (event.key === 'Enter') {
+        console.log(
+          `handleKeyDown: key Down: ${event.key}`
+        );
+        this.playStream();
       }
     },
     playStream() {
@@ -641,11 +661,6 @@ webrtc.onconnectionstatechange = (state) => {
   }
   if (videoConnected === "connected" && audioConnected === "connected") {
     app.status = state;
-    // 检查QueryParam中是否有SkipStart参数且设置为1
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("SkipStart") === "1" && app.showStart) {
-      setTimeout(() => app.playStream(), 0);  // 如果条件满足，则执行app.playStream方法
-    }
     if (!statWatchEnabled) {
       enableStatWatch();
     }
@@ -676,11 +691,6 @@ audio_webrtc.onconnectionstatechange = (state) => {
   }
   if (audioConnected === "connected" && videoConnected === "connected") {
     app.status = state;
-    // 检查QueryParam中是否有SkipStart参数且设置为1
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("SkipStart") === "1" && app.showStart) {
-      setTimeout(() => app.playStream(), 0);  // 如果条件满足，则执行app.playStream方法
-    }
     if (!statWatchEnabled) {
       enableStatWatch();
     }

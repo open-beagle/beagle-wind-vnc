@@ -415,6 +415,13 @@
                 </ul>
               </small>
               </p>
+              <p>
+                高级设置
+                <v-switch v-model="resizeRemote"
+                          :label="`自动调整分辨率: ${resizeRemote.toString()}`"></v-switch>
+                <v-switch v-model="scaleLocal"
+                          :label="`自动缩放视频流: ${scaleLocal.toString()}`"></v-switch>
+              </p>
               <hr />
               <v-textarea bottom
                           class="scrolly"
@@ -428,12 +435,6 @@
                           readonly
                           :value="debugEntries.join('\n\n')">
               </v-textarea>
-              <p>
-                <v-switch v-model="resizeRemote"
-                          :label="`自动调整分辨率: ${resizeRemote.toString()}`"></v-switch>
-                <v-switch v-model="scaleLocal"
-                          :label="`自动缩放视频流: ${scaleLocal.toString()}`"></v-switch>
-              </p>
               <p>
                 调试
                 <v-switch v-model="debug"

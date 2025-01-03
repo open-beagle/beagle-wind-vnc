@@ -187,9 +187,9 @@ class WebRTCInput:
                 publish_num = 2 - js_num
             else:
                 publish_num = js_num - 1
-        elif js_num == 0
+        elif js_num == 0:
             self.publish_mode = "PC"
-            self.__js_disconnect();
+            self.__js_disconnect()
 
         logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (publish_num, name, num_btns, num_axes))
 

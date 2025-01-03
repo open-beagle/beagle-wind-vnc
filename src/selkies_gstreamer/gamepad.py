@@ -99,6 +99,87 @@ STANDARD_XPAD_CONFIG = {
     }
 }
 
+STANDARD_SWITCHPRO_CONFIG = {
+    # Browser detects xpad as 4 axes 17 button controller.
+    # Linux xpad has 11 buttons and 8 axes.
+
+    "name": "Switch Pro Controller",
+    "btn_map": [
+        BTN_B,      # 0
+        BTN_A,      # 1
+        BTN_Y,      # 2
+        BTN_X,      # 3
+        BTN_TL,     # 4
+        BTN_TR,     # 5
+        BTN_SELECT, # 6
+        BTN_START,  # 7
+        BTN_MODE,   # 8
+        BTN_THUMBL, # 9
+        BTN_THUMBR  # 10
+    ],
+    "axes_map": [
+        ABS_X,      # 0
+        ABS_Y,      # 1
+        ABS_Z,      # 2
+        ABS_RX,     # 3
+        ABS_RY,     # 4
+        ABS_RZ,     # 5
+        ABS_HAT0X,  # 6
+        ABS_HAT0Y   # 7
+    ],
+
+
+    # Input mapping from javascript:
+    #   Axis 0: Left thumbstick X
+    #   Axis 1: Left thumbstick Y
+    #   Axis 2: Right thumbstick X
+    #   Axis 3: Right thumbstick Y
+    #   Button 0: A
+    #   Button 1: B
+    #   Button 2: X
+    #   Button 3: Y
+    #   Button 4: L1
+    #   Button 5: R1
+    #   Button 6: L2 (abs)
+    #   Button 7: R2 (abs)
+    #   Button 8: Select
+    #   Button 9: Start
+    #   Button 10: L3
+    #   Button 11: R3
+    #   Button 12: DPad Up
+    #   Button 13: DPad Down
+    #   Button 14: DPad Left
+    #   Button 15: DPad Right
+    #   Button 16: Xbox Button
+    "mapping": {
+        # Remap some buttons to axes
+        "axes_to_btn": {
+            2: (6,),     # ABS_Z to L2
+            5: (7,),     # ABS_RZ to R2
+            6: (14, 15), # ABS_HAT0X to DPad Left and DPad Right
+            7: (13, 12)  # ABS_HAT0Y to DPad Down and DPad Up
+        },
+        # Remap axis, done in conjunction with axes_to_btn_map
+        "axes": {
+            2: 3, # Right Thumbstick X to ABS_RX
+            3: 4, # Right Thumbstick Y to ABS_RY
+        },
+        # Because some buttons are remapped to axis, remap the other buttons to match target mapping.
+        "btns": {
+            8: 6,    # Select to BTN_SELECT
+            9: 7,    # Start to BTN_START
+            10: 9,   # L3 to BTN_THUMBL
+            11: 10,  # R2 to BTN_THUMBR
+            16: 8    # BTN_MODE
+        },
+        # Treat triggers as full range single axes
+        "trigger_axes": [
+            2, # ABS_Z
+            5  # ABS_RZ
+        ]
+    }
+}
+
 # Vendor and product IDs to configs.
 XPAD_CONFIG_MAP = {
     ("045e", "0b12"): STANDARD_XPAD_CONFIG,   # Xbox Series S/X
@@ -154,6 +235,8 @@ def get_axis_event(axis_num, axis_val):
 
 def detect_gamepad_config(name):
     # TODO switch mapping based on name.
+    if name == "Pro Controller Extended Gamepad":
+        return STANDARD_SWITCHPRO_CONFIG
     return STANDARD_XPAD_CONFIG
 
 def get_num_btns_for_mapping(cfg):

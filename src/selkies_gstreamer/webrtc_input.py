@@ -86,6 +86,10 @@ class WebRTCInput:
         """
         self.loop = None
 
+        # 发布模式：PC/Phone/TV
+        self.publish_mode = ""
+        self.publish_num = 3
+
         self.clipboard_running = False
         self.uinput_mouse_socket_path = uinput_mouse_socket_path
         self.uinput_mouse_socket = None
@@ -170,11 +174,28 @@ class WebRTCInput:
         """
         assert self.loop is not None
 
-        logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (js_num, name, num_btns, num_axes))
+        publish_num = js_num
+        if "TV VRC" in name:
+            self.publish_mode = "TV"
+            if js_num == 0:
+                self.publish_num = 0
+                publish_num = 3
+            if js_num == 3:
+                self.publish_num = 3
+        elif self.publish_mode == "TV":
+            if self.publish_num == 3:
+                publish_num = 2 - js_num
+            else:
+                publish_num = js_num - 1
+        elif js_num == 0
+            self.publish_mode = "PC"
+            self.__js_disconnect();
 
-        socket_path = self.js_socket_path_map.get(js_num, None)
+        logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (publish_num, name, num_btns, num_axes))
+
+        socket_path = self.js_socket_path_map.get(publish_num, None)
         if socket_path is None:
-            logger.error("failed to connect js%d because socket_path was not found" % js_num)
+            logger.error("failed to connect js%d because socket_path was not found" % publish_num)
             return
 
         # Create the gamepad and button config.

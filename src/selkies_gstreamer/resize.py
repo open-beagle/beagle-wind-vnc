@@ -153,6 +153,13 @@ def set_dpi(dpi):
         if p.returncode != 0:
             logger.error("failed to set XFCE DPI to: '%d': %s%s" % (dpi, str(stdout), str(stderr)))
             return False
+    elif which("xrandr"):
+        cmd = ["xrandr", "--dpi", str(dpi)]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        if p.returncode != 0:
+            logger.error("failed to set KDE Plasma DPI to: '%d': %s%s" % (dpi, str(stdout), str(stderr)))
+            return False
     else:
         logger.warning("failed to find supported window manager to set DPI.")
         return False
@@ -167,6 +174,13 @@ def set_cursor_size(size):
         stdout, stderr = p.communicate()
         if p.returncode != 0:
             logger.error("failed to set XFCE cursor size to: '%d': %s%s" % (size, str(stdout), str(stderr)))
+            return False
+    elif which("xset"):
+        cmd = ["xset", "root", "cursor", str(size)]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        if p.returncode != 0:
+            logger.error("failed to set KDE Plasma cursor size to: '%d': %s%s" % (size, str(stdout), str(stderr)))
             return False
     else:
         logger.warning("failed to find supported window manager to set DPI.")

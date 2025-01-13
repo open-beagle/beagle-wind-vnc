@@ -105,10 +105,10 @@ STANDARD_SWITCHPRO_CONFIG = {
 
     "name": "Switch Pro Controller",
     "btn_map": [
-        BTN_B,      # 0
-        BTN_A,      # 1
-        BTN_Y,      # 2
-        BTN_X,      # 3
+        BTN_A,      # 0
+        BTN_B,      # 1
+        BTN_X,      # 2
+        BTN_Y,      # 3
         BTN_TL,     # 4
         BTN_TR,     # 5
         BTN_SELECT, # 6
@@ -157,7 +157,7 @@ STANDARD_SWITCHPRO_CONFIG = {
             2: (6,),     # ABS_Z to L2
             5: (7,),     # ABS_RZ to R2
             6: (14, 15), # ABS_HAT0X to DPad Left and DPad Right
-            7: (13, 12)  # ABS_HAT0Y to DPad Down and DPad Up
+            7: (12, 13)  # ABS_HAT0Y to DPad Down and DPad Up
         },
         # Remap axis, done in conjunction with axes_to_btn_map
         "axes": {
@@ -236,6 +236,8 @@ def get_axis_event(axis_num, axis_val):
 def detect_gamepad_config(name):
     # TODO switch mapping based on name.
     if name == "Pro Controller Extended Gamepad":
+        return STANDARD_SWITCHPRO_CONFIG
+    elif name == "Wireless Gamepad (STANDARD GAMEPAD Vendor: 057e Product: 2009)":
         return STANDARD_SWITCHPRO_CONFIG
     return STANDARD_XPAD_CONFIG
 

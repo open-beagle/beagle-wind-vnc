@@ -15,6 +15,19 @@ COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
 
 COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
 
+RUN export DEBIAN_FRONTEND=noninteractive && \
+  sudo apt update && \
+  sudo apt install -y \
+    xboxdrv \
+    joystick \
+    jstest-gtk \
+    mangohud \
+    gamemode && \
+  sudo apt install -y \
+    fonts-noto-cjk \
+    fonts-wqy-zenhei \
+    fonts-wqy-microhei
+
 RUN sudo chown -R root:root /opt/gst-web && \
   sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \
   sudo sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu/https:\/\/mirrors.tuna.tsinghua.edu.cn\/ubuntu/g' /etc/apt/sources.list.d/ubuntu.sources && \

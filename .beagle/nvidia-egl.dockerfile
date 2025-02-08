@@ -16,6 +16,7 @@ COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
 
 COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
 
+ARG SOCKS5_PROXY_LOCAL=socks5://10.3.242.28:1080
 RUN export DEBIAN_FRONTEND=noninteractive && \
   sudo apt update && \
   sudo apt install --no-install-recommends -y \

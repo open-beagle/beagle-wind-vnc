@@ -18,19 +18,21 @@ COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
   sudo apt update && \
-  sudo apt install -y \
+  sudo apt install --no-install-recommends -y \
     xboxdrv \
     joystick \
     jstest-gtk \
     mangohud \
     gamemode && \
-  sudo apt install -y \
+  sudo apt install --no-install-recommends -y \
     fonts-noto-cjk \
     fonts-wqy-zenhei \
     fonts-wqy-microhei && \
-  sudo apt update && sudo apt install --no-install-recommends -y \
-    steam \
-    steam-devices && \
+  curl -x $SOCKS5_PROXY_LOCAL \
+    -o /tmp/steam_latest.deb \
+    -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
+  sudo apt install --no-install-recommends -y \
+    /tmp/steam_latest.deb && \
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 

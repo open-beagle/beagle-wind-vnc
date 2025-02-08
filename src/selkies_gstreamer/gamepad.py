@@ -76,7 +76,7 @@ STANDARD_XPAD_CONFIG = {
             2: (6,),     # ABS_Z to L2
             5: (7,),     # ABS_RZ to R2
             6: (14, 15), # ABS_HAT0X to DPad Left and DPad Right
-            7: (13, 12)  # ABS_HAT0Y to DPad Down and DPad Up
+            7: (12, 13)  # ABS_HAT0Y to DPad Down and DPad Up
         },
         # Remap axis, done in conjunction with axes_to_btn_map
         "axes": {

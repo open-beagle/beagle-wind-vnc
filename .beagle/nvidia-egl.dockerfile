@@ -35,7 +35,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
   sudo apt install --no-install-recommends -y \
     /tmp/steam_latest.deb && \
   sudo apt update && \
-  sudo sudo apt install -y --no-install-recommends \
+  sudo apt install -y --no-install-recommends \
     libc6:amd64 libc6:i386 \
     libegl1:amd64 libegl1:i386 \
     libgbm1:amd64 libgbm1:i386 \

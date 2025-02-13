@@ -1,10 +1,10 @@
 ---
 kind: pipeline
-name: dev
+name: docker
 
 trigger:
   branch:
-    - dev
+    - main
 
 workspace:
   path: /go/src/github.com/open-beagle/kasm-images

@@ -566,6 +566,9 @@ COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
 RUN chmod -f 755 /usr/bin/joystick-server
 
+# Copy selkies_gstreamer
+COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
+
 # Copy scripts and configurations used to start the container with `--chown=1000:1000`
 COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 RUN chmod -f 755 /etc/beagle-wind-vnc/entrypoint.sh
@@ -577,8 +580,6 @@ COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-gam
 RUN chmod -f 755 /etc/beagle-wind-vnc/steam-game.sh
 COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
 RUN chmod -f 755 /etc/beagle-wind-vnc/supervisord.conf
-
-COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
 
 # Configure coTURN script
 RUN echo "#!/bin/bash\n\

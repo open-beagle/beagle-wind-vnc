@@ -2,11 +2,12 @@ FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
 
 LABEL maintainer="https://github.com/open-beagle"
 
-ARG DEBIAN_FRONTEND=noninteractive
+COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
+COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/steam-game.sh
 
+ARG DEBIAN_FRONTEND=noninteractive
 # Install Steam and other packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-  sudo apt update && \
+RUN sudo apt update && \
   sudo apt install --no-install-recommends -y \
     xboxdrv \
     joystick \
@@ -28,3 +29,5 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     xdg-desktop-portal xdg-desktop-portal-kde xterm && \
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+
+ENV PATH="/usr/local/games:/usr/games:$PATH"

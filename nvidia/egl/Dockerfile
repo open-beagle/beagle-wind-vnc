@@ -560,15 +560,25 @@ ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/lib/rustdesk/li
 
 # Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
 
+COPY ./addons/gstreamer-web/src/. /opt/gst-web/
+
+# Copy joystick-server
+COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
+RUN chmod -f 755 /usr/bin/joystick-server
+
 # Copy scripts and configurations used to start the container with `--chown=1000:1000`
-COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/entrypoint.sh
-RUN chmod -f 755 /etc/entrypoint.sh
-COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
-RUN chmod -f 755 /etc/selkies-gstreamer-entrypoint.sh
-COPY --chown=1000:1000 ./nvidia/egl/kasmvnc-entrypoint.sh /etc/kasmvnc-entrypoint.sh
-RUN chmod -f 755 /etc/kasmvnc-entrypoint.sh
-COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
-RUN chmod -f 755 /etc/supervisord.conf
+COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
+RUN chmod -f 755 /etc/beagle-wind-vnc/entrypoint.sh
+COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
+RUN chmod -f 755 /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
+COPY --chown=1000:1000 ./nvidia/egl/kasmvnc-entrypoint.sh /etc/beagle-wind-vnc/kasmvnc-entrypoint.sh
+RUN chmod -f 755 /etc/beagle-wind-vnc/kasmvnc-entrypoint.sh
+COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
+RUN chmod -f 755 /etc/beagle-wind-vnc/steam-game.sh
+COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
+RUN chmod -f 755 /etc/beagle-wind-vnc/supervisord.conf
+
+COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
 
 # Configure coTURN script
 RUN echo "#!/bin/bash\n\

@@ -48,9 +48,9 @@ steps:
         path: /var/run/docker.sock
     settings:
       dockerfile: .beagle/nvidia-egl.dockerfile
-      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop24.04-20241222100454
+      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
       repo: wod/beagle-wind-vnc
-      version: v1.0.7-ubuntu24.04-nvidia-egl
+      version: v1.0.8-steam
       args: "TARGETOS=linux,TARGETARCH=amd64"
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:

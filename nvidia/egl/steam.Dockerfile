@@ -3,7 +3,7 @@ FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
 LABEL maintainer="https://github.com/open-beagle"
 
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/steam-game.sh
+COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
 
 ARG DEBIAN_FRONTEND=noninteractive
 # Install Steam and other packages

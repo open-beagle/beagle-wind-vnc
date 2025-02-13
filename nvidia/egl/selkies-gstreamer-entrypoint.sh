@@ -33,8 +33,14 @@ export GSTREAMER_PATH=/opt/gstreamer
 export SELKIES_ENCODER="${SELKIES_ENCODER:-x264enc}"
 export SELKIES_ENABLE_RESIZE="${SELKIES_ENABLE_RESIZE:-false}"
 if [ -z "${SELKIES_TURN_REST_URI}" ] && { { [ -z "${SELKIES_TURN_USERNAME}" ] || [ -z "${SELKIES_TURN_PASSWORD}" ]; } && [ -z "${SELKIES_TURN_SHARED_SECRET}" ] || [ -z "${SELKIES_TURN_HOST}" ] || [ -z "${SELKIES_TURN_PORT}" ]; }; then
-  export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
-  export SELKIES_TURN_HOST="${SELKIES_TURN_HOST:-$(dig -4 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "$(echo $output | sed 's,\",,g')"; fi } || dig -6 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "[$(echo $output | sed 's,\",,g')]"; fi } || hostname -I 2>/dev/null | awk '{print $1; exit}' || echo '127.0.0.1')}"
+  export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 24)"
+  export SELKIES_TURN_HOST="${SELKIES_TURN_HOST:-$(dig -4 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | {
+    read output
+    if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "$(echo $output | sed 's,\",,g')"; fi
+  } || dig -6 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | {
+    read output
+    if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "[$(echo $output | sed 's,\",,g')]"; fi
+  } || hostname -I 2>/dev/null | awk '{print $1; exit}' || echo '127.0.0.1')}"
   export TURN_EXTERNAL_IP="${TURN_EXTERNAL_IP:-$(getent ahostsv4 $(echo ${SELKIES_TURN_HOST} | tr -d '[]') 2>/dev/null | awk '{print $1; exit}' || getent ahostsv6 $(echo ${SELKIES_TURN_HOST} | tr -d '[]') 2>/dev/null | awk '{print "[" $1 "]"; exit}')}"
   export SELKIES_TURN_PORT="${SELKIES_TURN_PORT:-3478}"
   export SELKIES_TURN_USERNAME="selkies"
@@ -58,7 +64,10 @@ server {
     listen [::]:${NGINX_PORT:-8080} $(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
     ssl_certificate ${SELKIES_HTTPS_CERT-/etc/ssl/certs/ssl-cert-snakeoil.pem};
     ssl_certificate_key ${SELKIES_HTTPS_KEY-/etc/ssl/private/ssl-cert-snakeoil.key};
-    $(if [ \"$(echo ${SELKIES_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"; fi)
+    $(if [ \"$(echo ${SELKIES_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then
+  echo "auth_basic \"Selkies\";"
+  echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"
+fi)
 
     location / {
         root /opt/gst-web/;
@@ -145,16 +154,16 @@ server {
     location = /50x.html {
         root /opt/gst-web/;
     }
-}" | tee /etc/nginx/sites-available/default > /dev/null
+}" | tee /etc/nginx/sites-available/default >/dev/null
 
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 # Start the Selkies-GStreamer WebRTC HTML5 remote desktop application
 selkies-gstreamer \
-    --addr="localhost" \
-    --port="${SELKIES_PORT:-8081}" \
-    --enable_basic_auth="false" \
-    --enable_metrics_http="true" \
-    --metrics_http_port="${SELKIES_METRICS_HTTP_PORT:-9081}" \
-    $@
+  --addr="localhost" \
+  --port="${SELKIES_PORT:-8081}" \
+  --enable_basic_auth="false" \
+  --enable_metrics_http="true" \
+  --metrics_http_port="${SELKIES_METRICS_HTTP_PORT:-9081}" \
+  $@

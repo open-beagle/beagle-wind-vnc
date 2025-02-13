@@ -18,7 +18,9 @@ if [ -n "${STEAM_APP_ID}" ]; then
   echo "Starting Steam game with AppID: ${STEAM_APP_ID}"
   
   # 启动游戏
-  steam -silent -noverifyfiles -nobootstrapupdate "${STEAM_APP_ID}" &
+  # -gameid 582010
+  # steam://rungameid/582010
+  steam -silent -noverifyfiles -nobootstrapupdate "steam://rungameid/${STEAM_APP_ID}" &
 
   # 等待游戏进程出现，最多等待90秒
   WAIT_TIME=0
@@ -27,7 +29,7 @@ if [ -n "${STEAM_APP_ID}" ]; then
 
   while [ "$WAIT_TIME" -lt "$MAX_WAIT_TIME" ]; do
     # 查找包含"\Steam\steamapps\common\"的游戏进程
-    GAME_PID=$(ps -ef | grep -E "\Steam\steamapps\common" | grep -v grep | awk '{print $2}')
+    GAME_PID=$(ps -ef | grep -E "\-gameid ${STEAM_APP_ID}" | grep -v grep | awk '{print $2}')
     
     # 如果找到游戏进程，则退出等待循环
     if [ -n "$GAME_PID" ]; then

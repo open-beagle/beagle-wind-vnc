@@ -17,7 +17,9 @@ COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
 COPY --chown=1000:1000 ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
 
 ARG SOCKS5_PROXY_LOCAL=socks5://10.3.242.28:1080
-RUN export DEBIAN_FRONTEND=noninteractive && \
+RUN   sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \
+  sudo sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu/https:\/\/mirrors.tuna.tsinghua.edu.cn\/ubuntu/g' /etc/apt/sources.list.d/ubuntu.sources && \
+  export DEBIAN_FRONTEND=noninteractive && \
   sudo apt update && \
   sudo apt install --no-install-recommends -y \
     xboxdrv \
@@ -48,8 +50,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"
 RUN sudo chown -R root:root /opt/gst-web && \
-  sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \
-  sudo sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu/https:\/\/mirrors.tuna.tsinghua.edu.cn\/ubuntu/g' /etc/apt/sources.list.d/ubuntu.sources && \
   sudo chmod +x /etc/entrypoint.sh && \
   sudo chmod +x /etc/selkies-gstreamer-entrypoint.sh && \
   sudo chmod +x /etc/steam-game.sh && \

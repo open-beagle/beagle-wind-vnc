@@ -447,6 +447,8 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
     # Ensure Firefox as the default web browser
     xdg-settings set default-web-browser firefox.desktop && \
     update-alternatives --set x-www-browser /usr/bin/firefox && \
+    # Install Google Chrome for supported architectures
+    if [ "$(dpkg --print-architecture)" = "amd64" ]; then cd /tmp && curl -o google-chrome-stable.deb -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" && apt-get update && apt-get install --no-install-recommends -y ./google-chrome-stable.deb && rm -f google-chrome-stable.deb && sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/google-chrome.desktop; fi && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
     # Fix KDE startup permissions issues in containers
     MULTI_ARCH=$(dpkg --print-architecture | sed -e 's/arm64/aarch64-linux-gnu/' -e 's/armhf/arm-linux-gnueabihf/' -e 's/riscv64/riscv64-linux-gnu/' -e 's/ppc64el/powerpc64le-linux-gnu/' -e 's/s390x/s390x-linux-gnu/' -e 's/i.*86/i386-linux-gnu/' -e 's/amd64/x86_64-linux-gnu/' -e 's/unknown/x86_64-linux-gnu/') && \
@@ -509,35 +511,6 @@ RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
     curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \
     chmod -f 755 /usr/bin/winetricks && \
     curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"; fi
-
-# Install Steam and other packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-  sudo apt update && \
-  sudo apt install --no-install-recommends -y \
-    xboxdrv \
-    joystick \
-    jstest-gtk \
-    mangohud \
-    gamemode && \
-  sudo apt install --no-install-recommends -y \
-    fonts-noto-cjk \
-    fonts-wqy-zenhei \
-    fonts-wqy-microhei && \
-  curl -o /tmp/steam_latest.deb \
-    -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
-  sudo apt install --no-install-recommends -y \
-    /tmp/steam_latest.deb && \
-  sudo apt update && \
-  sudo apt install -y --no-install-recommends \
-    libc6:amd64 libc6:i386 \
-    libegl1:amd64 libegl1:i386 \
-    libgbm1:amd64 libgbm1:i386 \
-    libgl1-mesa-dri:amd64 libgl1-mesa-dri:i386 \
-    libgl1:amd64 libgl1:i386 \
-    steam-libs-amd64:amd64 steam-libs-i386:i386 \
-    xdg-desktop-portal xdg-desktop-portal-kde xterm && \
-  sudo apt clean && \
-  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 
 # Install latest Selkies-GStreamer (https://github.com/selkies-project/selkies-gstreamer) build, Python application, and web application, should be consistent with Selkies-GStreamer documentation
 ARG PIP_BREAK_SYSTEM_PACKAGES=1

@@ -24,3 +24,14 @@ RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
   sudo chmod -f 755 /usr/bin/winetricks && \
   sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"; \
   fi
+
+# 安装手柄驱动
+RUN sudo apt update && \
+  sudo apt install --no-install-recommends -y \
+    xboxdrv \
+    joystick \
+    jstest-gtk \
+    mangohud \
+    gamemode && \
+  sudo apt clean && \
+  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*

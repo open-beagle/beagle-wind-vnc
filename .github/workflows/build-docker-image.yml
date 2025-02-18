@@ -5,6 +5,7 @@ on:
     branches:
       - nvidia-egl
       - nvidia-egl-steam
+      - nvidia-egl-lutris
 
 jobs:
   build-nvidia-egl:

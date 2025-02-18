@@ -5,6 +5,7 @@ on:
     branches:
       - nvidia-egl
       - nvidia-egl-steam
+      - nvidia-egl-lutris
 
 jobs:
   build-nvidia-egl:
@@ -103,3 +104,56 @@ jobs:
 
       - name: Image push success - nvidia-egl-steam
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-steam-${{ env.IMAGE_TAG_TIMESTAMP }}"
+
+  build-nvidia-egl-lutris:
+    if: github.ref == 'refs/heads/nvidia-egl-lutris'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.20"
+
+      - name: Build joystick-server
+        run: bash .beagle/build.sh
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-qingdao.aliyuncs.com
+          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
+          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
+
+      - name: Generate image tag timestamp
+        id: timestamp
+        run: echo "IMAGE_TAG_TIMESTAMP=$(date '+%Y%m%d%H%M')" >> $GITHUB_ENV
+
+      - name: Build and push Docker image - nvidia-egl-lutris
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./nvidia/egl/lutris.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:nvidia-egl-lutris-${{ env.IMAGE_TAG_TIMESTAMP }}
+            ghcr.io/${{ github.repository }}:nvidia-egl-lutris-latest
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-${{ env.IMAGE_TAG_TIMESTAMP }}
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
+          platforms: linux/amd64
+
+      - name: Image push success - nvidia-egl-lutris
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-lutris-${{ env.IMAGE_TAG_TIMESTAMP }}"

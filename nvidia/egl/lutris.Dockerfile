@@ -1,4 +1,4 @@
-FROM registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-latest
+FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
 
 LABEL maintainer="https://github.com/open-beagle"
 

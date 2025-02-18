@@ -64,7 +64,7 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl.dockerfile
+      dockerfile: .beagle/nvidia-egl-lutris.dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-lutris

@@ -1,30 +1,26 @@
-FROM registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-202502131122
+FROM registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-latest
 
 LABEL maintainer="https://github.com/open-beagle"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Install Steam and other packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-  sudo apt update && \
-  sudo apt install --no-install-recommends -y \
-    xboxdrv \
-    joystick \
-    jstest-gtk \
-    mangohud \
-    gamemode && \
-  curl -o /tmp/steam_latest.deb \
-    -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
-  sudo apt install --no-install-recommends -y \
-    /tmp/steam_latest.deb && \
-  sudo apt update && \
-  sudo apt install -y --no-install-recommends \
-    libc6:amd64 libc6:i386 \
-    libegl1:amd64 libegl1:i386 \
-    libgbm1:amd64 libgbm1:i386 \
-    libgl1-mesa-dri:amd64 libgl1-mesa-dri:i386 \
-    libgl1:amd64 libgl1:i386 \
-    steam-libs-amd64:amd64 steam-libs-i386:i386 \
-    xdg-desktop-portal xdg-desktop-portal-kde xterm && \
-  sudo apt clean && \
-  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+# Wine, Winetricks, and launchers, this process must be consistent with https://wiki.winehq.org/Ubuntu
+ARG WINE_BRANCH=staging
+RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+  sudo mkdir -pm755 /etc/apt/keyrings && \
+  sudo curl -fsSL -o /etc/apt/keyrings/winehq-archive.key "https://dl.winehq.org/wine-builds/winehq.key" && \
+  sudo curl -fsSL -o "/etc/apt/sources.list.d/winehq-$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"').sources" "https://dl.winehq.org/wine-builds/ubuntu/dists/$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"')/winehq-$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"').sources" && \
+  sudo apt-get update && \
+  sudo apt-get install --install-recommends -y winehq-${WINE_BRANCH} && \
+  sudo apt-get install --no-install-recommends -y q4wine playonlinux && \
+  LUTRIS_VERSION="$(curl -fsSL "https://api.github.com/repos/lutris/lutris/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \
+  cd /tmp && \
+  curl -o lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v${LUTRIS_VERSION}/lutris_${LUTRIS_VERSION}_all.deb" && \
+  sudo apt-get install --no-install-recommends -y ./lutris.deb && \
+  rm -f lutris.deb && \
+  sudo apt-get clean && \
+  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
+  sudo curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \
+  sudo chmod -f 755 /usr/bin/winetricks && \
+  sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"; \
+  fi

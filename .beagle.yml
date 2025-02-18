@@ -41,7 +41,7 @@ steps:
     commands:
       - bash .beagle/build.sh
 
-  - name: docker-egl
+  - name: docker-steam
     image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
     volumes:
       - name: docker
@@ -51,6 +51,23 @@ steps:
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-steam
+      args: "TARGETOS=linux,TARGETARCH=amd64"
+      registry: registry-vpc.cn-qingdao.aliyuncs.com
+      registry_user:
+        from_secret: REGISTRY_USER_ALIYUN
+      registry_password:
+        from_secret: REGISTRY_PASSWORD_ALIYUN
+
+  - name: docker-lutris
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    settings:
+      dockerfile: .beagle/nvidia-egl.dockerfile
+      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
+      repo: wod/beagle-wind-vnc
+      version: v1.0.8-lutris
       args: "TARGETOS=linux,TARGETARCH=amd64"
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:

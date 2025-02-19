@@ -8,7 +8,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG WINE_BRANCH=staging
 RUN sudo mkdir -pm755 /etc/apt/keyrings && \
   sudo curl -fsSL -o /etc/apt/keyrings/winehq-archive.key "https://dl.winehq.org/wine-builds/winehq.key" && \
-  sudo curl -fsSL -o "/etc/apt/sources.list.d/winehq-$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"').sources" "https://dl.winehq.org/wine-builds/ubuntu/dists/$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"')/winehq-$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr -d '\"').sources" && \
+  sudo curl -fsSL -o /etc/apt/sources.list.d/winehq-noble.sources "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources" && \
   sudo apt-get update && \
   sudo apt-get install --install-recommends -y winehq-${WINE_BRANCH} && \
   sudo apt-get install --no-install-recommends -y q4wine playonlinux && \

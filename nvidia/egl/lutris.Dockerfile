@@ -5,13 +5,12 @@ LABEL maintainer="https://github.com/open-beagle"
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Wine, Winetricks, and launchers, this process must be consistent with https://wiki.winehq.org/Ubuntu
-ARG WINE_BRANCH=staging
 RUN sudo apt-get update && \
   # Install Wine
   sudo mkdir -pm755 /etc/apt/keyrings && \
-  sudo curl -fsSL -o /etc/apt/keyrings/winehq-archive.key "https://dl.winehq.org/wine-builds/winehq.key" && \
-  sudo curl -fsSL -o /etc/apt/sources.list.d/winehq-noble.sources "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources" && \  
-  sudo apt-get install --install-recommends -y winehq-${WINE_BRANCH} && \
+  sudo curl -o /etc/apt/keyrings/winehq-archive.key -fsSL "https://dl.winehq.org/wine-builds/winehq.key" && \
+  sudo curl -o /etc/apt/sources.list.d/winehq-noble.sources -fsSL "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources" && \  
+  sudo apt-get install --install-recommends -y winehq-staging && \
   sudo apt-get install --no-install-recommends -y q4wine playonlinux && \
   # Install Winetricks
   sudo curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \

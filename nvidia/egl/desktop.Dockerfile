@@ -20,7 +20,7 @@ RUN echo "Install Desktop Environment" && \
   # Install Joystick
   sudo apt install -y xboxdrv joystick jstest-gtk mangohud gamemode && \
   # Install Lutris
-  curl -o /tmp/lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v0.5.18/lutris_v0.5.18_all.deb" && \
+  curl -o /tmp/lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v0.5.18/lutris_0.5.18_all.deb" && \
   sudo apt install -y /tmp/lutris.deb && \
   rm -f /tmp/lutris.deb && \  
   # Install Google Chrome

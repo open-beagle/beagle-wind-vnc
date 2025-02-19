@@ -21,8 +21,8 @@ RUN sudo apt update && \
   sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
   # Install Protontricks
   sudo apt install -y pipx && \
-  sudo pipx ensurepath && \
-  sudo pipx install protontricks && \    
+  pipx ensurepath && \
+  pipx install protontricks && \    
   # Install Steam
   curl -o /tmp/steam_latest.deb \
   -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \

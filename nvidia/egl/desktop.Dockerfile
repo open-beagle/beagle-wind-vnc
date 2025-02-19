@@ -47,5 +47,3 @@ RUN sudo apt update && \
     gamemode && \
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
-
-ENV SDL_JOYSTICK_DEVICE=/dev/input/js0

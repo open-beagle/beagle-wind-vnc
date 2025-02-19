@@ -630,4 +630,5 @@ WORKDIR /home/ubuntu
 
 EXPOSE 8080
 
+ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 ENTRYPOINT ["/usr/bin/supervisord"]

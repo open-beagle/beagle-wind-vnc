@@ -8,16 +8,19 @@ COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-gam
 ARG DEBIAN_FRONTEND=noninteractive
 # Install Steam and other packages
 RUN sudo apt update && \
+  # Install Joystick
   sudo apt install --no-install-recommends -y \
     xboxdrv \
     joystick \
     jstest-gtk \
     mangohud \
     gamemode && \
+  # Install Steam
   curl -o /tmp/steam_latest.deb \
     -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
   sudo apt install --no-install-recommends -y \
     /tmp/steam_latest.deb && \
+  # Install Steam Launcher
   sudo apt update && \
   sudo apt install -y --no-install-recommends \
     steam steam-launcher \
@@ -28,6 +31,19 @@ RUN sudo apt update && \
     libgl1:amd64 libgl1:i386 \
     steam-libs-amd64:amd64 steam-libs-i386:i386 \
     xdg-desktop-portal xdg-desktop-portal-kde xterm && \
+  # Install BaiduDisk
+  curl -o baidunetdisk_4.17.7_amd64.deb -fsSL "https://issuecdn.baidupcs.com/issue/netdisk/LinuxGuanjia/4.17.7/baidunetdisk_4.17.7_amd64.deb" && \
+  sudo apt-get install --no-install-recommends -y ./baidunetdisk_4.17.7_amd64.deb && \
+  rm -f baidunetdisk_4.17.7_amd64.deb &&  \
+  # Install Winetricks
+  sudo curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \
+  sudo chmod -f 755 /usr/bin/winetricks && \
+  sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
+  # Install Protontricks
+  sudo apt install -y pipx && \
+  sudo pipx ensurepath && \
+  sudo pipx install protontricks && \
+  # Clean up
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 

@@ -31,19 +31,12 @@ RUN sudo mkdir -pm755 /etc/apt/keyrings && \
   curl -o baidunetdisk_4.17.7_amd64.deb -fsSL "https://issuecdn.baidupcs.com/issue/netdisk/LinuxGuanjia/4.17.7/baidunetdisk_4.17.7_amd64.deb" && \
   sudo apt-get install --no-install-recommends -y ./baidunetdisk_4.17.7_amd64.deb && \
   rm -f baidunetdisk_4.17.7_amd64.deb &&  \
-  sudo apt-get clean && \
-  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
+  # Install Winetricks
   sudo curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \
   sudo chmod -f 755 /usr/bin/winetricks && \
-  sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"; 
-
-# 安装手柄驱动
-RUN sudo apt update && \
-  sudo apt install --no-install-recommends -y \
-    xboxdrv \
-    joystick \
-    jstest-gtk \
-    mangohud \
-    gamemode && \
-  sudo apt clean && \
+  sudo curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
+  # Install Joystick
+  sudo apt-get install --no-install-recommends -y xboxdrv joystick jstest-gtk mangohud gamemode && \
+  # Clean up
+  sudo apt-get clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*

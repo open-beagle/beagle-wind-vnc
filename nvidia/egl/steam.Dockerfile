@@ -41,7 +41,7 @@ RUN sudo apt update && \
     xdg-desktop-portal xdg-desktop-portal-kde xterm && \
   # Install BaiduDisk
   curl -o /tmp/baidunetdisk_4.17.7_amd64.deb -fsSL "https://issuecdn.baidupcs.com/issue/netdisk/LinuxGuanjia/4.17.7/baidunetdisk_4.17.7_amd64.deb" && \
-  sudo apt-get install -y ./baidunetdisk_4.17.7_amd64.deb && \
+  sudo apt install -y ./baidunetdisk_4.17.7_amd64.deb && \
   rm -f /tmp/baidunetdisk_4.17.7_amd64.deb &&  \
   # Clean up
   sudo apt clean && \

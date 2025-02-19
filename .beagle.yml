@@ -47,7 +47,7 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl.dockerfile
+      dockerfile: .beagle/nvidia-egl-steam.dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-steam
@@ -68,6 +68,23 @@ steps:
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-lutris
+      args: "TARGETOS=linux,TARGETARCH=amd64"
+      registry: registry-vpc.cn-qingdao.aliyuncs.com
+      registry_user:
+        from_secret: REGISTRY_USER_ALIYUN
+      registry_password:
+        from_secret: REGISTRY_PASSWORD_ALIYUN
+
+  - name: docker-desktop
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    settings:
+      dockerfile: .beagle/nvidia-egl-desktop.dockerfile
+      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-latest
+      repo: wod/beagle-wind-vnc
+      version: v1.0.8-desktop
       args: "TARGETOS=linux,TARGETARCH=amd64"
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:

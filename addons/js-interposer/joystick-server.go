@@ -144,10 +144,8 @@ func (h *JoystickHandler) bootDynamic() {
 		}
 		// 循环处理手柄事件
 		if err := h.processEvents(); err != nil {
-			h.release()
 			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
-			time.Sleep(2 * time.Second) // 等待2秒后重试
-			continue
+			release()
 		}
 	}
 }
@@ -176,10 +174,8 @@ func (h *JoystickHandler) bootStable() {
 		}
 		// 循环处理手柄事件
 		if err := h.processEvents(); err != nil {
-			h.release()
 			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
-			time.Sleep(2 * time.Second) // 等待2秒后重试
-			continue
+			release()
 		}
 	}
 }
@@ -219,7 +215,7 @@ func (h *JoystickHandler) readConfig() error {
 	config.NumAxes = binary.LittleEndian.Uint16(buffer[258:260]) // 轴数量
 
 	// 读取按钮映射
-	for i := 0; i < int(config.NumBtns); i++ {
+	for i := range make([]struct{}, config.NumBtns) {
 		config.BtnMap[i] = binary.LittleEndian.Uint16(buffer[260+i*2 : 260+(i+1)*2])
 	}
 
@@ -541,7 +537,7 @@ func (h *JoystickHandler) release() {
 		logrus.Infof("socket 连接已释放")
 	}
 
-	if h.uinputFd != nil && !h.isStable {
+	if h.uinputFd != nil {
 		if h.uinputCreated {
 			// 销毁 uinput 设备
 			if err := pkg.IOctl(h.uinputFd, UI_DEV_DESTROY, 0); err != nil {
@@ -597,6 +593,16 @@ func NewJoystickHandlerStable(socketPath string, index int) *JoystickHandler {
 	}
 }
 
+// 创建处理器，传入 socketPath 和索引
+var socketPaths = []string{
+	"/tmp/selkies_js0.sock",
+	"/tmp/selkies_js1.sock",
+	"/tmp/selkies_js2.sock",
+	"/tmp/selkies_js3.sock",
+}
+
+var handlers = make([]*JoystickHandler, len(socketPaths))
+
 func main() {
 	// 初始化日志
 	initLogger()
@@ -609,16 +615,6 @@ func main() {
 		logrus.Debugf("环境变量 BEAGLE-JOYSTICK-STABLE 读取失败，使用默认值: %d", 0)
 		stableIndex = 1 // 默认值
 	}
-
-	// 创建处理器，传入 socketPath 和索引
-	socketPaths := []string{
-		"/tmp/selkies_js0.sock",
-		"/tmp/selkies_js1.sock",
-		"/tmp/selkies_js2.sock",
-		"/tmp/selkies_js3.sock",
-	}
-
-	handlers := make([]*JoystickHandler, len(socketPaths))
 
 	for i, socketPath := range socketPaths {
 		var handler *JoystickHandler
@@ -633,4 +629,14 @@ func main() {
 
 	// 阻塞主线程，直到所有处理器完成
 	select {}
+}
+
+func release() {
+	for _, handler := range handlers {
+		handler.release()
+	}
+
+	// 退出程序，状态码1表示异常退出
+	logrus.Info("程序即将退出...")
+	os.Exit(1)
 }

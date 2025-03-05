@@ -175,21 +175,14 @@ class WebRTCInput:
         assert self.loop is not None
 
         publish_num = js_num
-        if "TV VRC" in name:
+        if "TV VRC" in name and js_num == 0:
             self.publish_mode = "TV"
-            if js_num == 0:
-                self.publish_num = 0
-                publish_num = 3
-            if js_num == 3:
-                self.publish_num = 3
-        elif self.publish_mode == "TV":
-            if self.publish_num == 3:
-                publish_num = 2 - js_num
-            else:
-                publish_num = js_num - 1
-        elif js_num == 0:
+            publish_num = 3
+        else:
             self.publish_mode = "PC"
-            self.__js_disconnect()
+
+        if self.publish_mode == "TV" and js_num > 0 :
+            publish_num = js_num - 1
 
         logger.info("creating selkies gamepad for js%d, name: '%s', buttons: %d, axes: %d" % (publish_num, name, num_btns, num_axes))
 

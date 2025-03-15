@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - nvidia-egl
-      - nvidia-egl-steam
-      - nvidia-egl-lutris
-      - nvidia-egl-desktop
+      - nvidia-egl-*
 
 jobs:
   build-nvidia-egl:
@@ -101,6 +99,7 @@ jobs:
             ghcr.io/${{ github.repository }}:nvidia-egl-steam-latest
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-${{ env.IMAGE_TAG_TIMESTAMP }}
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-steam
           platforms: linux/amd64
 
       - name: Image push success - nvidia-egl-steam
@@ -154,6 +153,7 @@ jobs:
             ghcr.io/${{ github.repository }}:nvidia-egl-lutris-latest
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-${{ env.IMAGE_TAG_TIMESTAMP }}
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-lutris
           platforms: linux/amd64
 
       - name: Image push success - nvidia-egl-lutris
@@ -199,6 +199,7 @@ jobs:
             ghcr.io/${{ github.repository }}:nvidia-egl-desktop-latest
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-${{ env.IMAGE_TAG_TIMESTAMP }}
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-latest
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop
           platforms: linux/amd64
 
       - name: Image push success - nvidia-egl-desktop

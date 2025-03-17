@@ -7,7 +7,7 @@ trigger:
     - main
 
 workspace:
-  path: /go/src/github.com/open-beagle/kasm-images
+  path: /go/src/github.com/open-beagle/beagle-wind-vnc
 
 volumes:
   - name: docker

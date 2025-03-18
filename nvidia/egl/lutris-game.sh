@@ -49,6 +49,14 @@ if [ -n "${LUTRIS_APP_ID}" ]; then
   else
     # 监控游戏进程
     while ps -p "$GAME_PID" > /dev/null; do
+      if [ -n "${WINDOW_NAME}" ]; then
+          WINDOW_ID=$(xdotool search --name "${WINDOW_NAME}")
+          if [ -n "$GAME_PID" ]; then
+            echo "Game window is opening"
+          else 
+            echo "Game window is not open"
+          fi
+      fi
       sleep 1
     done
 

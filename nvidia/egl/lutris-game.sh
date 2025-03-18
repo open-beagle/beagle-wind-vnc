@@ -62,7 +62,7 @@ if [ -n "${LUTRIS_APP_ID}" ]; then
 
     # 游戏进程结束后,使用supervisorctl关闭所有进程
     echo "Game process ended, shutting down container..."
-    supervisorctl shutdown
+    # supervisorctl shutdown
   fi
 else
   # 如果没有指定LUTRIS_APP_ID,保持脚本运行但不做任何事

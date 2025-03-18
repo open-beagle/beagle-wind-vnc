@@ -356,6 +356,7 @@
                           menu-props="left"
                           v-model="videoBitRate"
                           hint="视频设置：最大码率."
+                          disabled
                           persistent-hint></v-select>
               </p>
               <p>
@@ -364,6 +365,7 @@
                           menu-props="left"
                           v-model="videoFramerate"
                           hint="视频设置：最大帧率."
+                          disabled
                           persistent-hint>
                 </v-select>
               </p>
@@ -373,6 +375,7 @@
                           menu-props="left"
                           v-model="audioBitRate"
                           hint="音频设置：最大码率."
+                          disabled
                           persistent-hint>
                 </v-select>
               </p>
@@ -418,9 +421,9 @@
               <p>
                 高级设置
                 <v-switch v-model="resizeRemote"
-                          :label="`自动调整分辨率: ${resizeRemote.toString()}`"></v-switch>
+                          :label="`自动调整分辨率: ${resizeRemote.toString()}`" disabled></v-switch>
                 <v-switch v-model="scaleLocal"
-                          :label="`自动缩放视频流: ${scaleLocal.toString()}`"></v-switch>
+                          :label="`自动缩放视频流: ${scaleLocal.toString()}`" disabled></v-switch>
               </p>
               <hr />
               <v-textarea bottom
@@ -438,9 +441,9 @@
               <p>
                 调试
                 <v-switch v-model="debug"
-                          :label="`调试日志: ${debug.toString()}`"></v-switch>
+                          :label="`调试日志: ${debug.toString()}`" disabled></v-switch>
                 <v-switch v-model="turnSwitch"
-                          :label="`强制延迟连接: ${turnSwitch.toString()}`"></v-switch>
+                          :label="`强制延迟连接: ${turnSwitch.toString()}`" disabled></v-switch>
               </p>
 
               <p v-if="publishingAllowed">

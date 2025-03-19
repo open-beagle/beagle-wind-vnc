@@ -382,6 +382,55 @@ func (h *JoystickHandler) setupUinputDevice() error {
 	logrus.Infof("新创建的事件设备: %v", newEvents)
 	logrus.Infof("新创建的游戏手柄设备: %v", newJoys)
 
+	// Todo: 纠正SDL_JOYSTICK_DEVICE的值
+	// newJoys的值默认为/dev/input/js0，即SDL_JOYSTICK_DEVICE=/dev/input/js0
+	// 当此前已经有启动的游戏机了，当前实例的第一个手柄可能是/dev/input/jsX
+	if h.deviceID == 0 && len(newJoys) > 0 {
+		// 找到第一个新创建的游戏手柄设备
+		firstJoyDevice := newJoys[0]
+
+		// 更新 SDL_JOYSTICK_DEVICE 环境变量
+		logrus.Infof("更新 SDL_JOYSTICK_DEVICE 为: %s", firstJoyDevice)
+
+		// 读取 ~/.bashrc 文件
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			bashrcPath := filepath.Join(homeDir, ".bashrc")
+			content, err := os.ReadFile(bashrcPath)
+			if err == nil {
+				// 使用正则表达式查找并替换 SDL_JOYSTICK_DEVICE 行
+				lines := strings.Split(string(content), "\n")
+				found := false
+
+				for i, line := range lines {
+					if strings.Contains(line, "export SDL_JOYSTICK_DEVICE=") {
+						lines[i] = fmt.Sprintf("export SDL_JOYSTICK_DEVICE=%s", firstJoyDevice)
+						found = true
+						break
+					}
+				}
+
+				// 如果没有找到该环境变量，则添加到文件末尾
+				if !found {
+					lines = append(lines, fmt.Sprintf("export SDL_JOYSTICK_DEVICE=%s", firstJoyDevice))
+				}
+
+				// 写回文件
+				newContent := strings.Join(lines, "\n")
+				err = os.WriteFile(bashrcPath, []byte(newContent), 0644)
+				if err != nil {
+					logrus.Errorf("无法写入 ~/.bashrc 文件: %v", err)
+				} else {
+					logrus.Infof("已更新 ~/.bashrc 中的 SDL_JOYSTICK_DEVICE 为: %s", firstJoyDevice)
+				}
+			} else {
+				logrus.Errorf("无法读取 ~/.bashrc 文件: %v", err)
+			}
+		} else {
+			logrus.Errorf("无法获取用户主目录: %v", err)
+		}
+	}
+
 	h.uinputCreated = true
 	logrus.Infof("成功设置uinput设备: %s", strings.TrimRight(string(usetup.Name[:]), "\x00")) // 去掉字符串末尾的空字符
 	return nil

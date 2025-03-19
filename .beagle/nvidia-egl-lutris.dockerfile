@@ -7,6 +7,7 @@ ARG VERSION=ubuntu-24.04
 LABEL maintainer=${AUTHOR} version=${VERSION}
 
 COPY --chown=1000:1000 ./nvidia/egl/lutris-game.sh /etc/beagle-wind-vnc/lutris-game.sh
+COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \

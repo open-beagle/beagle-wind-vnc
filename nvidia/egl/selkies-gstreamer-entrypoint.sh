@@ -69,12 +69,17 @@ server {
   echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"
 fi)
 
-    location / {
+    location ${SERVICE_PREFIX}/ {
         root /opt/gst-web/;
         index  index.html index.htm;
     }
 
-    location /health {
+    location ${SERVICE_PREFIX}/desktop {
+        root /opt/gst-web/;
+        index  index.html index.htm;
+    }
+
+    location ${SERVICE_PREFIX}/health {
         proxy_http_version      1.1;
         proxy_read_timeout      3600s;
         proxy_send_timeout      3600s;
@@ -86,7 +91,7 @@ fi)
         proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${SELKIES_PORT:-8081};
     }
 
-    location /turn {
+    location ${SERVICE_PREFIX}/turn {
         proxy_http_version      1.1;
         proxy_read_timeout      3600s;
         proxy_send_timeout      3600s;
@@ -98,7 +103,7 @@ fi)
         proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${SELKIES_PORT:-8081};
     }
 
-    location /ws {
+    location ${SERVICE_PREFIX}/ws {
         proxy_set_header        Upgrade \$http_upgrade;
         proxy_set_header        Connection \"upgrade\";
 
@@ -118,7 +123,7 @@ fi)
         proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${SELKIES_PORT:-8081};
     }
 
-    location /webrtc/signalling {
+    location ${SERVICE_PREFIX}/webrtc/signalling {
         proxy_set_header        Upgrade \$http_upgrade;
         proxy_set_header        Connection \"upgrade\";
 
@@ -138,7 +143,7 @@ fi)
         proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${SELKIES_PORT:-8081};
     }
 
-    location /metrics {
+    location ${SERVICE_PREFIX}/metrics {
         proxy_http_version      1.1;
         proxy_read_timeout      3600s;
         proxy_send_timeout      3600s;

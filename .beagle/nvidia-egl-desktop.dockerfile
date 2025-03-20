@@ -12,7 +12,7 @@ RUN sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/
 
 # Copy joystick-server
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-RUN chmod -f 755 /usr/bin/joystick-server
+RUN sudo chmod +x /usr/bin/joystick-server
 
 # Copy selkies_gstreamer
 COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/

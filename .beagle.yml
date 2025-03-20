@@ -37,7 +37,7 @@ steps:
         from_secret: SOCKS5_PROXY
 
   - name: build
-    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/golang:1.23
+    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/golang:1.24
     commands:
       - bash .beagle/build.sh
 

@@ -88,6 +88,6 @@ sudo usermod -a -G input $USER
 docker run -it --rm \
   -v $PWD/:/go/src/github.com/open-beagle/beagle-wind-vnc \
   -w /go/src/github.com/open-beagle/beagle-wind-vnc \
-  registry.cn-qingdao.aliyuncs.com/wod/golang:1.24 \
+  registry.cn-qingdao.aliyuncs.com/wod/golang:1.24-alpine \
   bash .beagle/build.sh
 ```

@@ -53,7 +53,7 @@ fi
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
-
+echo "Configure Nginx 【${SERVICE_PREFIX}】"
 # Configure NGINX
 if [ "$(echo ${SELKIES_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${SELKIES_BASIC_AUTH_USER:-${USER}}" "${SELKIES_BASIC_AUTH_PASSWORD:-${PASSWD}}"; fi
 echo "# Selkies-GStreamer NGINX Configuration
@@ -70,14 +70,10 @@ server {
 fi)
 
     location ${SERVICE_PREFIX}/ {
-        root /opt/gst-web/;
+        alias  /opt/gst-web/;
         index  index.html index.htm;
     }
 
-    location ${SERVICE_PREFIX}/desktop {
-        root /opt/gst-web/;
-        index  index.html index.htm;
-    }
 
     location ${SERVICE_PREFIX}/health {
         proxy_http_version      1.1;

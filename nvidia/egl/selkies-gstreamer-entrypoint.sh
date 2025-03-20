@@ -69,6 +69,8 @@ server {
   echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"
 fi)
 
+    rewrite ^/${SERVICE_PREFIX}(/.*)$ $1 break;
+
     location ${SERVICE_PREFIX}/ {
         alias  /opt/gst-web/;
         index  index.html index.htm;
@@ -76,6 +78,7 @@ fi)
 
 
     location ${SERVICE_PREFIX}/health {
+        
         proxy_http_version      1.1;
         proxy_read_timeout      3600s;
         proxy_send_timeout      3600s;

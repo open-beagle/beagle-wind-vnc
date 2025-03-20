@@ -145,7 +145,7 @@ func (h *JoystickHandler) bootDynamic() {
 		// 循环处理手柄事件
 		if err := h.processEvents(); err != nil {
 			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
-			release()
+			h.release()
 		}
 	}
 }
@@ -175,7 +175,7 @@ func (h *JoystickHandler) bootStable() {
 		// 循环处理手柄事件
 		if err := h.processEvents(); err != nil {
 			logrus.Debugf("事件处理失败: %v，准备重新连接...", err)
-			release()
+			h.release()
 		}
 	}
 }
@@ -680,12 +680,12 @@ func main() {
 	select {}
 }
 
-func release() {
-	for _, handler := range handlers {
-		handler.release()
-	}
+// func release() {
+// 	for _, handler := range handlers {
+// 		handler.release()
+// 	}
 
-	// 退出程序，状态码1表示异常退出
-	logrus.Info("程序即将退出...")
-	os.Exit(1)
-}
+// 	// 退出程序，状态码1表示异常退出
+// 	logrus.Info("程序即将退出...")
+// 	os.Exit(1)
+// }

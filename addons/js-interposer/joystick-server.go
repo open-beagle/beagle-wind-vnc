@@ -586,7 +586,7 @@ func (h *JoystickHandler) release() {
 		logrus.Infof("socket 连接已释放")
 	}
 
-	if h.uinputFd != nil {
+	if h.uinputFd != nil && !h.isStable {
 		if h.uinputCreated {
 			// 销毁 uinput 设备
 			if err := pkg.IOctl(h.uinputFd, UI_DEV_DESTROY, 0); err != nil {

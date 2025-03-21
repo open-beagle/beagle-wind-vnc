@@ -1404,7 +1404,20 @@ class GSTWebRTCApp:
         logger.info("sending window reload")
         self.__send_data_channel_message(
             "system", {"action": "reload"})
+        
+    def send_debug_enabled(self, enabled):
+        """Sends the current debug enabled state to the data channel
+        """
+        logger.info("sending debug enabled state")
+        self.__send_data_channel_message(
+            "system", {"action": "debug_enabled,"+str(enabled)})
 
+    def send_framerate(self, framerate):
+        """Sends the current framerate to the data channel
+        """
+        self.__send_data_channel_message(
+            "system", {"action": "framerate,"+str(framerate)})
+        
     def send_framerate(self, framerate):
         """Sends the current framerate to the data channel
         """

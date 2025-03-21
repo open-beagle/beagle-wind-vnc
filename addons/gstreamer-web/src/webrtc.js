@@ -55,7 +55,7 @@ class WebRTCDemo {
       lifetimeDuration: "86400s",
       iceServers: [
         {
-          urls: ["stun:stun.l.google.com:19302"],
+          urls: ["stun:stun.ali.wodcloud.com:19302"],
         },
       ],
       blockStatus: "NOT_BLOCKED",

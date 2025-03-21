@@ -457,6 +457,9 @@ def main():
     parser.add_argument('--enable_resize',
                         default=os.environ.get('SELKIES_ENABLE_RESIZE', 'false'),
                         help='Enable dynamic resizing to match browser size')
+    parser.add_argument('--enable_debug',
+                        default=os.environ.get('BEAGLE_ENABLE_DEBUG', 'false'),
+                        help='Enable debug logging')
     parser.add_argument('--enable_cursors',
                         default=os.environ.get('SELKIES_ENABLE_CURSORS', 'true'),
                         help='Enable passing remote cursors to client')
@@ -496,6 +499,8 @@ def main():
                     args.audio_bitrate = str(int(v))
                 if k == "enable_resize":
                     args.enable_resize = str((str(v).lower() == 'true')).lower()
+                if k == "enable_debug":
+                    args.enable_debug = str((str(v).lower() == 'true')).lower()
                 if k == "encoder":
                     args.encoder = v.lower()
         except Exception as e:
@@ -609,6 +614,7 @@ def main():
 
     # Extract arguments
     enable_resize = args.enable_resize.lower() == "true"
+    enable_debug = args.enable_debug.lower() == "true"
     audio_channels = int(args.audio_channels)
     curr_fps = int(args.framerate)
     gpu_id = int(args.gpu_id)
@@ -686,7 +692,8 @@ def main():
     def data_channel_ready():
         logger.info(
             "opened peer data channel for user input to X11")
-
+        # 发送调试许可，默认为false，禁止前端调试性能环境变量
+        app.send_debug_enabled(enable_debug)
         app.send_framerate(app.framerate)
         app.send_video_bitrate(app.video_bitrate)
         app.send_audio_bitrate(audio_app.audio_bitrate)

@@ -21,7 +21,10 @@ class GamepadManager {
     console.log("Initial Gamepad Axes:", gamepad.axes);
 
     this.lastActiveTime = Date.now();
-    this.autoDisconnectTimeout = setTimeout(() => this.checkDisconnect(), 15 * 60 * 1000);
+    this.autoDisconnectTimeout = setTimeout(
+      () => this.checkDisconnect(),
+      15 * 60 * 1000
+    );
   }
 
   _poll() {
@@ -64,7 +67,10 @@ class GamepadManager {
       this.destroy();
       console.log("Gamepad disconnected due to inactivity.");
     } else {
-      this.autoDisconnectTimeout = setTimeout(() => this.checkDisconnect(), 15 * 60 * 1000);
+      this.autoDisconnectTimeout = setTimeout(
+        () => this.checkDisconnect(),
+        15 * 60 * 1000
+      );
     }
   }
 

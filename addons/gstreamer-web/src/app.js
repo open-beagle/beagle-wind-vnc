@@ -29,7 +29,7 @@ var app = new Vue({
     return {
       // appName:(window.location.pathname.endsWith("/") && window.location.pathname.split("/")[1]) || "webrtc",
       appName: "webrtc",
-      videoBitRate: 8000,
+      videoBitRate: 1000,
       videoBitRateOptions: [
         { text: "250 kbps", value: 250 },
         { text: "500 kbps", value: 500 },
@@ -74,7 +74,7 @@ var app = new Vue({
         { text: "200 fps", value: 200 },
         { text: "240 fps", value: 240 },
       ],
-      audioBitRate: 128000,
+      audioBitRate: 24000,
       audioBitRateOptions: [
         { text: "24 kb/s", value: 24000 },
         { text: "32 kb/s", value: 32000 },
@@ -129,7 +129,7 @@ var app = new Vue({
         serverMemoryUsed: 0,
       },
       serverLatency: 0,
-      resizeRemote: true,
+      resizeRemote: false,
       scaleLocal: false,
       debug: false,
       turnSwitch: false,
@@ -164,21 +164,23 @@ var app = new Vue({
           return true;
         },
       },
+      disabled: true,
     };
   },
 
   mounted() {
     // 监听键盘事件
-    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener("keydown", this.handleKeyDown);
   },
 
   beforeDestroy() {
-      // 移除键盘事件监听器
-      window.removeEventListener('keydown', this.handleKeyDown);
+    // 移除键盘事件监听器
+    window.removeEventListener("keydown", this.handleKeyDown);
   },
 
   methods: {
     getIntParam: (key, default_value) => {
+      if (app.disabled) return default_value;
       const prefixedKey = app.appName + "_" + key;
       return (
         parseInt(window.localStorage.getItem(prefixedKey)) || default_value
@@ -190,6 +192,7 @@ var app = new Vue({
       window.localStorage.setItem(prefixedKey, value.toString());
     },
     getBoolParam: (key, default_value) => {
+      if (app.disabled) return default_value;
       const prefixedKey = app.appName + "_" + key;
       var v = window.localStorage.getItem(prefixedKey);
       if (v === null) {
@@ -221,10 +224,8 @@ var app = new Vue({
     // 处理键盘按下事件
     handleKeyDown(event) {
       // 检查是否按下 Enter 键
-      if (event.key === 'Enter') {
-        console.log(
-          `handleKeyDown: key Down: ${event.key}`
-        );
+      if (event.key === "Enter") {
+        console.log(`handleKeyDown: key Down: ${event.key}`);
         this.playStream();
       }
     },
@@ -815,6 +816,9 @@ webrtc.onsystemaction = (action) => {
       // trigger webrtc.reset() by disconnecting from the signalling server.
       signalling.disconnect();
     }, 700);
+  } else if (action.startsWith("debug_enabled")) {
+    // Server received debug enabled setting.
+    app.disabled = action.split(",")[1].toLowerCase() != "true";
   } else if (action.startsWith("framerate")) {
     // Server received framerate setting.
     const framerateSetting = app.getIntParam("videoFramerate", null);

@@ -1,5 +1,5 @@
 # Node/Angular Builder
-ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-lutris-latest
+ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
 FROM ${BASE}
 
 ARG AUTHOR=mengkzhaoyun@gmail.com
@@ -9,6 +9,9 @@ LABEL maintainer=${AUTHOR} version=${VERSION}
 ARG DEBIAN_FRONTEND=noninteractive
 RUN sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list && \
   sudo sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu/https:\/\/mirrors.tuna.tsinghua.edu.cn\/ubuntu/g' /etc/apt/sources.list.d/ubuntu.sources
+
+# Copy gstreamer-web
+COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 # Copy joystick-server
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server

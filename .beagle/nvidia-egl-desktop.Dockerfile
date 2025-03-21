@@ -55,3 +55,5 @@ RUN echo "Install Desktop Environment" && \
   # Clean up
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+
+ENV PATH="/usr/local/games:/usr/games:$PATH"

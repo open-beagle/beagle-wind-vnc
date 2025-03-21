@@ -42,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/build.dockerfile
+          file: ./.beagle/build.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop
@@ -90,7 +90,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/build.dockerfile
+          file: ./.beagle/build.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-steam
@@ -137,7 +137,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/build.dockerfile
+          file: ./.beagle/build.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-lutris

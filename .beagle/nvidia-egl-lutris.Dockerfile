@@ -2,6 +2,8 @@ FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
 
 LABEL maintainer="https://github.com/open-beagle"
 
+COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Wine, Winetricks, and launchers, this process must be consistent with https://wiki.winehq.org/Ubuntu

@@ -47,7 +47,7 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl-steam.dockerfile
+      dockerfile: .beagle/nvidia-egl-steam.Dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-steam
@@ -64,7 +64,7 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl-lutris.dockerfile
+      dockerfile: .beagle/nvidia-egl-lutris.Dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-lutris
@@ -81,7 +81,7 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl-desktop.dockerfile
+      dockerfile: .beagle/nvidia-egl-desktop.Dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-latest
       repo: wod/beagle-wind-vnc
       version: v1.0.8-desktop

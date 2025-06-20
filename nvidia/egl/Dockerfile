@@ -577,6 +577,8 @@ COPY --chown=1000:1000 ./nvidia/egl/kasmvnc-entrypoint.sh /etc/beagle-wind-vnc/k
 RUN chmod -f 755 /etc/beagle-wind-vnc/kasmvnc-entrypoint.sh
 COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
 RUN chmod -f 755 /etc/beagle-wind-vnc/steam-game.sh
+COPY --chown=1000:1000 ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
+RUN chmod -f 755 /etc/beagle-wind-vnc/bgctl.sh
 COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
 RUN chmod -f 755 /etc/supervisord.conf
 

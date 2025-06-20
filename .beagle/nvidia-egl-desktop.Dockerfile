@@ -4,6 +4,8 @@ LABEL maintainer="https://github.com/open-beagle"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+COPY --chown=1000:1000 ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
+
 # Wine, Winetricks, and launchers, this process must be consistent with https://wiki.winehq.org/Ubuntu
 RUN echo "Install Desktop Environment" && \
   # Install Wine

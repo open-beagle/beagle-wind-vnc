@@ -171,9 +171,7 @@ apt-get install --install-recommends -y \
 # 安装中文语言包和KDE中文支持
 apt-get install --no-install-recommends -y \
   language-pack-zh-hans \
-  language-pack-gnome-zh-hans \
-  language-pack-kde-zh-hans \
-  kde-l10n-zhcn || true
+  language-pack-kde-zh-hans || true
 
 # KDE Plasma 默认语言设置（全局）
 echo '[Locale]' > /etc/xdg/plasma-localerc

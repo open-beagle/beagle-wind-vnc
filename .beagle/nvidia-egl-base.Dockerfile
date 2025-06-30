@@ -15,11 +15,11 @@ ARG TZ=Asia/Shanghai
 ENV PASSWD=mypasswd
 
 # Copy scripts to container
-COPY scripts/base/ /tmp/scripts/
-RUN chmod +x /tmp/scripts/*.sh
+COPY scripts/base/ /etc/beagle-wind-vnc/scripts/
+RUN chmod +x /etc/beagle-wind-vnc/scripts/*.sh
 
 # Run base system setup
-RUN /tmp/scripts/base-system-setup.sh
+RUN /etc/beagle-wind-vnc/scripts/base-system-setup.sh
 
 # Set locales
 ENV LANG="zh_CN.UTF-8"
@@ -31,7 +31,7 @@ USER 1000
 SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
 
 # Install operating system libraries or packages
-RUN /tmp/scripts/os-libraries-install.sh
+RUN /etc/beagle-wind-vnc/scripts/os-libraries-install.sh
 
 # Expose NVIDIA libraries and paths
 ENV PATH="/usr/local/nvidia/bin${PATH:+:${PATH}}"
@@ -60,15 +60,15 @@ ENV SELKIES_ENABLE_RESIZE=false
 ENV SELKIES_ENABLE_BASIC_AUTH=true
 
 # Install Xvfb
-RUN /tmp/scripts/xvfb-install.sh
+RUN /etc/beagle-wind-vnc/scripts/xvfb-install.sh
 
 # Install VirtualGL and make libraries available for preload
-RUN /tmp/scripts/virtualgl-install.sh
+RUN /etc/beagle-wind-vnc/scripts/virtualgl-install.sh
 
 # Anything below this line should always be kept the same between docker-nvidia-glx-desktop and docker-nvidia-egl-desktop
 
 # Install KDE and other GUI packages
-RUN /tmp/scripts/kde-install.sh
+RUN /etc/beagle-wind-vnc/scripts/kde-install.sh
 
 # KDE environment variables
 ENV DESKTOP_SESSION=plasma
@@ -94,10 +94,10 @@ ENV XMODIFIERS="@im=fcitx"
 
 # Install latest Selkies-GStreamer
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
-RUN /tmp/scripts/selkies-gstreamer-install.sh
+RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 
 # # Install KasmVNC and RustDesk
-# RUN /tmp/scripts/kasmvnc-rustdesk-install.sh
+# RUN /etc/beagle-wind-vnc/scripts/kasmvnc-rustdesk-install.sh
 
 # ENV PATH="${PATH:+${PATH}:}/usr/lib/rustdesk"
 # ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/lib/rustdesk/lib"
@@ -155,11 +155,11 @@ SHELL ["/bin/sh", "-c"]
 
 USER 0
 # Enable sudo through sudo-root with uid 0
-RUN /tmp/scripts/sudo-root-setup.sh
+RUN /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
 USER 1000
 
 # Clean up temporary scripts
-RUN rm -rf /tmp/scripts/
+RUN rm -rf /etc/beagle-wind-vnc/scripts/
 
 ENV PIPEWIRE_LATENCY="128/48000"
 ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu

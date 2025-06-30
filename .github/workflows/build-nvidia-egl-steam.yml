@@ -50,6 +50,8 @@ jobs:
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-1.0.0.82
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
           platforms: linux/amd64
+          build-args: |
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
 
       - name: Image push success
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-steam-1.0.0.82"

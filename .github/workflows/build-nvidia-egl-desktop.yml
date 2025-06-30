@@ -37,11 +37,13 @@ jobs:
           file: ./.beagle/nvidia-egl-desktop.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-egl-desktop-1.0.0.82
+            ghcr.io/${{ github.repository }}:nvidia-egl-desktop-1.0.9
             ghcr.io/${{ github.repository }}:nvidia-egl-desktop-latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.0.82
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.9
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-latest
           platforms: linux/amd64
+          build-args: |
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-desktop-1.0.0.82"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-desktop-1.0.9"

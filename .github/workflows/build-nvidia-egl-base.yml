@@ -35,12 +35,15 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./nvidia/egl/Dockerfile
+          file: ./.beagle/nvidia-egl-base.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-egl-2204-20250127
+            ghcr.io/${{ github.repository }}:nvidia-egl-2404-20250630
+            ghcr.io/${{ github.repository }}:nvidia-egl-2404
             ghcr.io/${{ github.repository }}:nvidia-egl-latest
           platforms: linux/amd64
+          build-args: |
+            BASE_IMAGE=ubuntu:24.04
 
       - name: Image push success - nvidia-egl
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-2204-20250127"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-2404-20250630"

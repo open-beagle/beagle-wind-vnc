@@ -45,14 +45,14 @@ jobs:
           file: ./.beagle/build.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-desktop
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-desktop"
 
   build-steam:
     runs-on: ubuntu-latest
@@ -93,13 +93,13 @@ jobs:
           file: ./.beagle/build.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-steam
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-steam
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-steam-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-steam"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-steam"
 
   build-lutris:
     runs-on: ubuntu-latest
@@ -140,10 +140,10 @@ jobs:
           file: ./.beagle/build.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-lutris
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-lutris
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-lutris-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-lutris"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.9-lutris"

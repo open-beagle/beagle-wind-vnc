@@ -42,7 +42,7 @@ ln -snf /usr/bin/fakeroot /usr/bin/sudo
 groupadd -g 1000 ubuntu || echo 'Failed to add ubuntu group'
 useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || echo 'Failed to add ubuntu user'
 # 将ubuntu用户添加到各种系统组
-usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice ubuntu
+usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,polkitd,ssl-cert,sudo,tape,tty,video,voice ubuntu
 # 配置sudo权限，允许ubuntu用户无密码执行所有命令
 echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
 # 设置ubuntu用户密码

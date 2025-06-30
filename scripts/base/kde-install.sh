@@ -178,8 +178,9 @@ echo '[Locale]' >/etc/xdg/plasma-localerc
 echo 'LANG=zh_CN.UTF-8' >>/etc/xdg/plasma-localerc
 
 # 确保Firefox作为默认网络浏览器
-xdg-settings set default-web-browser firefox.desktop
-update-alternatives --set x-www-browser /usr/bin/firefox
+# 注意：在容器构建阶段，这些命令可能失败，所以暂时注释掉
+# xdg-settings set default-web-browser firefox.desktop
+# update-alternatives --set x-www-browser /usr/bin/firefox
 
 # 清理系统缓存和临时文件
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*

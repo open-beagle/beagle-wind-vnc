@@ -58,6 +58,7 @@ apt-get install --no-install-recommends -y \
   enchant-2 \
   fcitx \
   fcitx-config-common \
+  fcitx-config-gtk \
   fcitx-frontend-gtk2 \
   fcitx-frontend-gtk3 \
   fcitx-frontend-qt5 \

@@ -25,7 +25,7 @@ echo "deb https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu $(grep '^VERSI
 # - KDE基础应用：kde-baseapps, plasma-desktop, plasma-workspace, dolphin, kwrite, kcalc, kcharselect, kdeadmin
 # - 主题和图标：adwaita-icon-theme-full, breeze, breeze-cursor-theme, breeze-gtk-theme, breeze-icon-theme
 # - 系统工具：kinfocenter, systemsettings, kdf, kfind, kget, khotkeys, kmenuedit, kmix, kmousetool, kmouth, ktimer, kwin-addons, kwin-x11
-# - 输入法框架：fcitx系列包（fcitx, fcitx-frontend-gtk2/gtk3/qt5, fcitx-module-*, fcitx-hangul, fcitx-libpinyin, fcitx-m17n, fcitx-mozc, fcitx-sayura, fcitx-unikey）
+# - 输入法框架：fcitx5系列包（fcitx5, fcitx5-frontend-gtk4/qt5/qt6, fcitx5-module-*, fcitx5-chinese-addons, fcitx5-mozc, fcitx5-unikey）
 # - 实用工具：ark, filelight, gwenview, kde-spectacle, kdialog, ksshaskpass, sweeper, print-manager, qapt-deb-installer
 # - KDE框架库：frameworkintegration, kio, kio-extras, libkf5*系列包
 # - 多媒体支持：kimageformat-plugins, libqt5multimedia5-plugins, qtspeech5-flite-plugin, qtvirtualkeyboard-plugin
@@ -34,7 +34,7 @@ echo "deb https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu $(grep '^VERSI
 # - Qt主题和插件：qt5-gtk-platformtheme, qt5-image-formats-plugins, qt5-style-plugins
 # - 其他工具：appmenu-gtk3-module, dbus-x11, debconf-kde-helper, desktop-file-utils, enchant-2, haveged, hunspell, im-config, libdbusmenu-*, libgail-common, libgdk-pixbuf2.0-bin, libgtk-*, librsvg2-common, media-player-info, okular, okular-extra-backends, software-properties-qt, sonnet-plugins, ubuntu-drivers-common, xdg-user-dirs, xdg-utils
 # - 媒体播放器：vlc系列包（vlc, vlc-plugin-access-extra, vlc-plugin-notify, vlc-plugin-samba, vlc-plugin-skins2, vlc-plugin-video-splitter, vlc-plugin-visualization）
-# - 桌面环境工具：kdeconnect, kde-config-fcitx, kde-config-gtk-style, kde-config-gtk-style-preview, kdegraphics-thumbnailers, kmag
+# - 桌面环境工具：kdeconnect, kde-config-fcitx5, kde-config-gtk-style, kde-config-gtk-style-preview, kdegraphics-thumbnailers, kmag
 # - 网络浏览器：firefox, transmission-qt
 apt-get update
 apt-get install --no-install-recommends -y \
@@ -56,18 +56,17 @@ apt-get install --no-install-recommends -y \
   dolphin \
   dolphin-plugins \
   enchant-2 \
-  fcitx \
-  fcitx-config-common \
-  fcitx-config-gtk \
-  fcitx-frontend-gtk2 \
-  fcitx-frontend-gtk3 \
-  fcitx-frontend-qt5 \
-  fcitx-module-dbus \
-  fcitx-module-kimpanel \
-  fcitx-module-lua \
-  fcitx-module-x11 \
-  fcitx-tools \
-  fcitx-libpinyin \
+  fcitx5 \
+  fcitx5-config-qt \
+  fcitx5-frontend-gtk4 \
+  fcitx5-frontend-qt5 \
+  fcitx5-frontend-qt6 \
+  fcitx5-module-dbus \
+  fcitx5-module-kimpanel \
+  fcitx5-module-lua \
+  fcitx5-module-x11 \
+  fcitx5-tools \
+  fcitx5-chinese-addons \
   filelight \
   frameworkintegration \
   gwenview \
@@ -78,7 +77,7 @@ apt-get install --no-install-recommends -y \
   kcalc \
   kcharselect \
   kdeadmin \
-  kde-config-fcitx \
+  kde-config-fcitx5 \
   kde-config-gtk-style \
   kde-config-gtk-style-preview \
   kdeconnect \
@@ -216,4 +215,68 @@ logout=false
 
 [General]
 BrowserApplication=firefox.desktop
+EOF
+
+# =============================================================================
+# Fcitx5输入法框架配置
+# =============================================================================
+# 设置fcitx5为默认输入法
+cat >/etc/environment.d/fcitx5.conf <<EOF
+GTK_IM_MODULE=fcitx5
+QT_IM_MODULE=fcitx5
+XMODIFIERS=@im=fcitx5
+EOF
+
+# 配置fcitx5全局设置
+mkdir -p /etc/xdg/fcitx5
+cat >/etc/xdg/fcitx5/config <<EOF
+[Hotkey]
+TriggerKeys=Alt+space
+UseAltTriggerKey=True
+EnableHotkey=True
+EnumerateWithTriggerKeys=True
+EnumerateSkipFirst=False
+EnumerateGroupBy=0
+
+[Behavior]
+ShareInputState=All
+DefaultInputMethod=keyboard-chinese
+EOF
+
+# 配置fcitx5输入法列表
+cat >/etc/xdg/fcitx5/inputmethod <<EOF
+[Groups/0]
+Name=Default
+DefaultLayout=us
+DefaultIM=keyboard-chinese
+
+[Groups/0/Items/0]
+Name=keyboard-chinese
+Layout=
+
+[Groups/0/Items/1]
+Name=keyboard-us
+Layout=
+
+[GroupOrder]
+0=Default
+EOF
+
+# 配置fcitx5主题和界面
+mkdir -p /etc/xdg/fcitx5/conf.d
+cat >/etc/xdg/fcitx5/conf.d/classicui.conf <<EOF
+[Theme]
+Name=classicui
+EOF
+
+# 确保fcitx5在KDE中自动启动
+mkdir -p /etc/xdg/autostart
+cat >/etc/xdg/autostart/fcitx5.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=Fcitx5
+Comment=Input Method Framework
+Exec=fcitx5
+Terminal=false
+X-GNOME-Autostart-enabled=true
 EOF

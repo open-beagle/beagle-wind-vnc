@@ -112,8 +112,8 @@ else
   /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
 fi
 
-# Start Fcitx input method framework
-/usr/bin/fcitx &
+# Start Fcitx5 input method framework (will be auto-started by KDE autostart)
+# /usr/bin/fcitx5 &
 
 # Add custom processes right below this line, or within `supervisord.conf` to perform service management similar to systemd
 

@@ -292,21 +292,25 @@ echo "libnvidia-opencl.so.1" >/etc/OpenCL/vendors/nvidia.icd
 # 手动配置Vulkan
 VULKAN_API_VERSION=$(dpkg -s libvulkan1 | grep -oP 'Version: [0-9|\.]+' | grep -oP '[0-9]+(\.[0-9]+)(\.[0-9]+)')
 mkdir -pm755 /etc/vulkan/icd.d/
-echo "{\n\
-    \"file_format_version\" : \"1.0.0\",\n\
-    \"ICD\": {\n\
-        \"library_path\": \"libGLX_nvidia.so.0\",\n\
-        \"api_version\" : \"${VULKAN_API_VERSION}\"\n\
-    }\n\
-}" >/etc/vulkan/icd.d/nvidia_icd.json
+cat >/etc/vulkan/icd.d/nvidia_icd.json <<EOF
+{
+    "file_format_version" : "1.0.0",
+    "ICD": {
+        "library_path": "libGLX_nvidia.so.0",
+        "api_version" : "${VULKAN_API_VERSION}"
+    }
+}
+EOF
 # =============================================================================
 # EGL配置
 # =============================================================================
 # 手动配置EGL
 mkdir -pm755 /usr/share/glvnd/egl_vendor.d/
-echo "{\n\
-    \"file_format_version\" : \"1.0.0\",\n\
-    \"ICD\": {\n\
-        \"library_path\": \"libEGL_nvidia.so.0\"\n\
-    }\n\
-}" >/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+cat >/usr/share/glvnd/egl_vendor.d/10_nvidia.json <<EOF
+{
+    "file_format_version" : "1.0.0",
+    "ICD": {
+        "library_path": "libEGL_nvidia.so.0"
+    }
+}
+EOF

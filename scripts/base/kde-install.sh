@@ -199,19 +199,25 @@ rm -f /tmp/start_kdeinit
 # KDE桌面环境配置
 # =============================================================================
 # 禁用屏幕锁定
-echo "[Daemon]\n\
-Autolock=false\n\
-LockOnResume=false" >/etc/xdg/kscreenlockerrc
+cat >/etc/xdg/kscreenlockerrc <<EOF
+[Daemon]
+Autolock=false
+LockOnResume=false
+EOF
 # 禁用合成器
-echo "[Compositing]\n\
-Enabled=false" >/etc/xdg/kwinrc
+cat >/etc/xdg/kwinrc <<EOF
+[Compositing]
+Enabled=false
+EOF
 # 配置KDE全局设置
-echo "[KDE]\n\
-SingleClick=false\n\
-\n\
-[KDE Action Restrictions]\n\
-action/lock_screen=false\n\
-logout=false\n\
-\n\
-[General]\n\
-BrowserApplication=firefox.desktop" >/etc/xdg/kdeglobals
+cat >/etc/xdg/kdeglobals <<EOF
+[KDE]
+SingleClick=false
+
+[KDE Action Restrictions]
+action/lock_screen=false
+logout=false
+
+[General]
+BrowserApplication=firefox.desktop
+EOF

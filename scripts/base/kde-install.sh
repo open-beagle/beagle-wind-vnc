@@ -67,12 +67,7 @@ apt-get install --no-install-recommends -y \
   fcitx-module-lua \
   fcitx-module-x11 \
   fcitx-tools \
-  fcitx-hangul \
   fcitx-libpinyin \
-  fcitx-m17n \
-  fcitx-mozc \
-  fcitx-sayura \
-  fcitx-unikey \
   filelight \
   frameworkintegration \
   gwenview \

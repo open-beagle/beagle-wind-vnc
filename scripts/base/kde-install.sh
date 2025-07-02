@@ -61,11 +61,8 @@ apt-get install --no-install-recommends -y \
   fcitx5-frontend-gtk4 \
   fcitx5-frontend-qt5 \
   fcitx5-frontend-qt6 \
-  fcitx5-module-dbus \
-  fcitx5-module-kimpanel \
+  fcitx5-modules \
   fcitx5-module-lua \
-  fcitx5-module-x11 \
-  fcitx5-tools \
   fcitx5-chinese-addons \
   filelight \
   frameworkintegration \

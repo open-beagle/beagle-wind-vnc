@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-config
+data:
+  config.json: |
+    {
+      "log": {
+        "loglevel": "warning"
+      },
+      "inbounds": [
+        {
+          "port": 1080,
+          "protocol": "socks",
+          "settings": {
+            "auth": "noauth",
+            "udp": true,
+            "ip": "0.0.0.0"
+          },
+          "sniffing": {
+            "enabled": true,
+            "destOverride": ["http", "tls"]
+          }
+        },
+        {
+          "port": 8080,
+          "protocol": "http",
+          "settings": {
+            "timeout": 300
+          }
+        }
+      ],
+      "outbounds": [
+        {
+          "protocol": "vmess",
+          "settings": {
+            "vnext": [
+              {
+                "address": "your-vmess-server.com",
+                "port": 443,
+                "users": [
+                  {
+                    "id": "your-uuid-here",
+                    "alterId": 0,
+                    "security": "auto"
+                  }
+                ]
+              }
+            ]
+          },
+          "streamSettings": {
+            "network": "ws",
+            "security": "tls",
+            "wsSettings": {
+              "path": "/path",
+              "headers": {
+                "Host": "your-vmess-server.com"
+              }
+            }
+          },
+          "tag": "proxy"
+        },
+        {
+          "protocol": "freedom",
+          "tag": "direct"
+        }
+      ],
+      "routing": {
+        "rules": [
+          {
+            "type": "field",
+            "ip": [
+              "geoip:private"
+            ],
+            "outboundTag": "direct"
+          },
+          {
+            "type": "field",
+            "domain": [
+              "geosite:cn"
+            ],
+            "outboundTag": "direct"
+          },
+          {
+            "type": "field",
+            "network": "tcp,udp",
+            "outboundTag": "proxy"
+          }
+        ]
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beagle-desktop
+  labels:
+    app: beagle-desktop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beagle-desktop
+  template:
+    metadata:
+      labels:
+        app: beagle-desktop
+    spec:
+      containers:
+      - name: desktop
+        image: registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.9
+        env:
+        - name: TZ
+          value: "Asia/Shanghai"
+        - name: DISPLAY_SIZEW
+          value: "1920"
+        - name: DISPLAY_SIZEH
+          value: "1080"
+        - name: DISPLAY_REFRESH
+          value: "60"
+        - name: DISPLAY_DPI
+          value: "96"
+        - name: DISPLAY_CDEPTH
+          value: "24"
+        - name: PASSWD
+          value: "GB8PJZL6IuH5"
+        - name: SELKIES_ENCODER
+          value: "nvh264enc"
+        - name: SELKIES_VIDEO_BITRATE
+          value: "4000"
+        - name: SELKIES_FRAMERATE
+          value: "30"
+        - name: SELKIES_AUDIO_BITRATE
+          value: "24000"
+        - name: SELKIES_ENABLE_RESIZE
+          value: "true"
+        - name: SELKIES_BASIC_AUTH_PASSWORD
+          value: "GB8PJZL6IuH5"
+        - name: SELKIES_ENABLE_HTTPS
+          value: "false"
+        # 代理环境变量
+        - name: http_proxy
+          value: "http://localhost:8080"
+        - name: https_proxy
+          value: "http://localhost:8080"
+        - name: HTTP_PROXY
+          value: "http://localhost:8080"
+        - name: HTTPS_PROXY
+          value: "http://localhost:8080"
+        - name: no_proxy
+          value: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: NO_PROXY
+          value: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        ports:
+        - containerPort: 8080
+          name: web
+        - containerPort: 8081
+          name: webrtc
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - name: desktop-data
+          mountPath: /home/ubuntu
+        - name: nvidia-driver
+          mountPath: /data/nvidia
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_RAWIO
+      - name: xray
+        image: ghcr.io/xtls/xray-core:latest
+        args:
+        - run
+        - -c
+        - /etc/xray/config.json
+        ports:
+        - containerPort: 1080
+          name: socks5
+        - containerPort: 8080
+          name: http-proxy
+        volumeMounts:
+        - name: xray-config
+          mountPath: /etc/xray
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: xray-config
+        configMap:
+          name: xray-config
+      - name: desktop-data
+        persistentVolumeClaim:
+          claimName: desktop-pvc
+      - name: nvidia-driver
+        hostPath:
+          path: /usr/lib/x86_64-linux-gnu
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beagle-desktop-service
+spec:
+  selector:
+    app: beagle-desktop
+  ports:
+  - name: web
+    port: 8080
+    targetPort: 8080
+  - name: webrtc
+    port: 8081
+    targetPort: 8081
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: desktop-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi 

@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: beagle-desktop-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/websocket-services: "beagle-desktop-service"
+    nginx.ingress.kubernetes.io/websocket-paths: "/ws,/webrtc/signalling"
+spec:
+  rules:
+  - host: desktop.your-domain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: beagle-desktop-service
+            port:
+              number: 8080
+  tls:
+  - hosts:
+    - desktop.your-domain.com
+    secretName: desktop-tls-secret 

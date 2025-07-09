@@ -60,6 +60,6 @@ RUN echo "Install Desktop Environment" && \
   # 添加 deadsnakes PPA 源（包含最新 Python 版本）
   sudo add-apt-repository -y ppa:deadsnakes/ppa && \
   sudo apt-get update && \
-  sudo apt-get install python3.12-venv
+  sudo apt-get install -y python3.12-venv
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"

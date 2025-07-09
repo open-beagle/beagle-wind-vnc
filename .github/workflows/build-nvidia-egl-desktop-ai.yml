@@ -1,0 +1,49 @@
+name: Build Nvidia EGL Desktop Image
+
+on:
+  push:
+    branches:
+      - nvidia-egl-desktop-ai
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-qingdao.aliyuncs.com
+          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
+          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./.beagle/nvidia-egl-desktop-ai.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:nvidia-egl-desktop-ai-1.0.9
+            ghcr.io/${{ github.repository }}:nvidia-egl-desktop-ai-latest
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-ai-1.0.9
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-ai-latest
+          platforms: linux/amd64
+          build-args: |
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
+
+      - name: Image push success
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-desktop-ai-1.0.9"

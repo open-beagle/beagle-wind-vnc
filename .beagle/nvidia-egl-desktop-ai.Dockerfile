@@ -9,7 +9,7 @@ RUN echo "Install ComfyUI" && \
     cd /usr/local/lib/ComfyUI && \
     python3 -m venv venv && \
     . venv/bin/activate && \
-    pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn && \
+    pip install -qr requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn && \
     mkdir -p /home/ubuntu/Desktop && \
     # 修正Here Document格式（EOF顶格）
     cat <<EOF > $HOME/Desktop/Comfyui.desktop

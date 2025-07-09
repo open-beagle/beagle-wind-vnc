@@ -58,7 +58,7 @@ RUN echo "Install Desktop Environment" && \
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
   # 添加 deadsnakes PPA 源（包含最新 Python 版本）
-  sudo add-apt-repository ppa:deadsnakes/ppa && \
+  sudo add-apt-repository -y ppa:deadsnakes/ppa && \
   sudo apt-get update && \
   sudo apt-get install python3.12-venv
 

@@ -56,6 +56,13 @@ RUN echo "Install Desktop Environment" && \
   xdg-desktop-portal xdg-desktop-portal-kde xterm && \
   # Clean up
   sudo apt clean && \
-  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+  sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
+  # 添加 deadsnakes PPA 源（包含最新 Python 版本）
+  sudo add-apt-repository -y ppa:deadsnakes/ppa && \
+  sudo apt-get update && \
+  sudo apt-get install -y python3.12-venv && \
+  # bgctl
+  curl -o /usr/local/bin/bgctl -fsSL "https://cache.wodcloud.com/kubernetes/bgctl/amd64/bgctl" && \
+  sudo chmod +x /usr/local/bin/bgctl
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"

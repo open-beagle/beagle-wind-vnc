@@ -4,9 +4,9 @@ ARG BASE_IMAGE
 ARG S3_URL
 ARG S3_ACCESS_KEY
 ARG S3_ACCESS_SECRET
-ENV S3_URL=${S3_URL}
-ENV S3_ACCESS_KEY=${S3_ACCESS_KEY}
-ENV S3_ACCESS_SECRET=${S3_ACCESS_SECRET}
+ENV S3_URL=$S3_URL
+ENV S3_ACCESS_KEY=$S3_ACCESS_KEY
+ENV S3_ACCESS_SECRET=$S3_ACCESS_SECRET
 
 RUN echo "Install cuda-toolkit" && \
     wget -q -P /tmp https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin && \

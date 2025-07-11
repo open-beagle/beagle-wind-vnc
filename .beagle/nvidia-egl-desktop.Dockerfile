@@ -58,4 +58,7 @@ RUN echo "Install Desktop Environment" && \
   sudo apt clean && \
   sudo rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 
+# 更换背景
+COPY src/img/ /usr/share/wallpapers/Next/contents/images/
+
 ENV PATH="/usr/local/games:/usr/games:$PATH"

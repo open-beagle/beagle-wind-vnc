@@ -65,4 +65,7 @@ RUN echo "Install Desktop Environment" && \
   curl -o /usr/local/bin/bgctl -fsSL "https://cache.wodcloud.com/kubernetes/bgctl/amd64/bgctl" && \
   sudo chmod +x /usr/local/bin/bgctl
 
+# 更换背景
+COPY src/img/ /usr/share/wallpapers/Next/contents/images/
+
 ENV PATH="/usr/local/games:/usr/games:$PATH"

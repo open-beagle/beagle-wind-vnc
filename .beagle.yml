@@ -40,6 +40,13 @@ steps:
         from_secret: REGISTRY_USER_ALIYUN
       registry_password:
         from_secret: REGISTRY_PASSWORD_ALIYUN
+      ssl_url:
+        from_secret: S3_URL_BDWIND
+      ssl_access_key:
+        from_secret: S3_ACCESS_KEY_BDWIND
+      ssl_access_secret:
+        from_secret: S3_ACCESS_SECRET_BDWIND
+        
 
 ---
 kind: secret
@@ -64,14 +71,21 @@ get:
 
 ---
 kind: secret
-name: S3_ACCESS_KEY_ALIYUN
+name: S3_ACCESS_KEY_BDWIND
 get:
-  name: S3_ACCESS_KEY_ALIYUN
+  name: S3_ACCESS_KEY_BDWIND
   path: devops-secrets
 
 ---
 kind: secret
-name: S3_SECRET_KEY_ALIYUN
+name: S3_ACCESS_SECRET_BDWIND
 get:
-  name: S3_SECRET_KEY_ALIYUN
+  name: S3_ACCESS_SECRET_BDWIND
+  path: devops-secrets
+
+---
+kind: secret
+name: S3_URL_BDWIND
+get:
+  name: S3_URL_BDWIND
   path: devops-secrets

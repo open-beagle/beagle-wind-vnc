@@ -1,5 +1,5 @@
-ARG BASE_IMAGE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
-FROM ${BASE_IMAGE}
+ARG BASE
+FROM $BASE
 ARG BASE_IMAGE
 ARG S3_URL
 ARG S3_ACCESS_KEY

@@ -4,7 +4,7 @@ name: docker
 
 trigger:
   branch:
-    - main
+    - nvidia-egl-desktop-ai
 
 workspace:
   path: /go/src/github.com/open-beagle/beagle-wind-vnc
@@ -18,62 +18,11 @@ clone:
   disable: true
 
 steps:
-  - name: s3-cache
-    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-s3-cache:1.0
-    settings:
-      restore: true
-      mount:
-        - ./.git
-      endpoint: https://cache.ali.wodcloud.com
-      access_key:
-        from_secret: S3_ACCESS_KEY_ALIYUN
-      secret_key:
-        from_secret: S3_SECRET_KEY_ALIYUN
-
   - name: fetch
     image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-git:1.0
     settings:
       proxy:
         from_secret: SOCKS5_PROXY
-
-  - name: build
-    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/golang:1.24-alpine
-    commands:
-      - bash .beagle/build.sh
-
-  - name: docker-steam
-    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
-    volumes:
-      - name: docker
-        path: /var/run/docker.sock
-    settings:
-      dockerfile: .beagle/nvidia-egl-steam.Dockerfile
-      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-steam-latest
-      repo: wod/beagle-wind-vnc
-      version: v1.0.9-steam
-      args: "TARGETOS=linux,TARGETARCH=amd64"
-      registry: registry-vpc.cn-qingdao.aliyuncs.com
-      registry_user:
-        from_secret: REGISTRY_USER_ALIYUN
-      registry_password:
-        from_secret: REGISTRY_PASSWORD_ALIYUN
-
-  - name: docker-lutris
-    image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
-    volumes:
-      - name: docker
-        path: /var/run/docker.sock
-    settings:
-      dockerfile: .beagle/nvidia-egl-lutris.Dockerfile
-      base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
-      repo: wod/beagle-wind-vnc
-      version: v1.0.9-lutris
-      args: "TARGETOS=linux,TARGETARCH=amd64"
-      registry: registry-vpc.cn-qingdao.aliyuncs.com
-      registry_user:
-        from_secret: REGISTRY_USER_ALIYUN
-      registry_password:
-        from_secret: REGISTRY_PASSWORD_ALIYUN
 
   - name: docker-desktop
     image: registry-vpc.cn-qingdao.aliyuncs.com/wod/devops-docker:1.0
@@ -81,10 +30,10 @@ steps:
       - name: docker
         path: /var/run/docker.sock
     settings:
-      dockerfile: .beagle/nvidia-egl-desktop.Dockerfile
+      dockerfile: .beagle/nvidia-egl-desktop-ai.Dockerfile
       base: registry-vpc.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-latest
       repo: wod/beagle-wind-vnc
-      version: v1.0.9-desktop
+      version: nvidia-egl-desktop-ai-1.0.9
       args: "TARGETOS=linux,TARGETARCH=amd64"
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:

@@ -23,12 +23,12 @@ RUN echo "Install cuda-toolkit" && \
     sudo apt-get update && \
     sudo apt-get -y install cudnn && \
     rm -f /tmp/cudnn-local-repo-ubuntu2404-9.10.2_1.0-1_amd64.debecho  && \
-    "Install ComfyUI" && \
+    echo "Install ComfyUI" && \
     bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
     curl -s -ko /tmp/ComfyUI_0.3.43_install.sh https://www.bc-cloud.com/maas/api/static/software/ComfyUI0.3.43/install.sh && \
     bash /tmp/ComfyUI_0.3.43_install.sh /usr/local/lib && \
     rm -f /tmp/ComfyUI_0.3.43_install.sh && \
-    "Install StableDiffusion" && \
+    echo "Install StableDiffusion" && \
     bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
     curl -s -ko /tmp/StableDiffusion_V1.0.0_install.sh https://www.bc-cloud.com/maas/api/static/software/StableDiffusionV1.0.0/install.sh && \
     bash  /tmp/StableDiffusion_V1.0.0_install.sh /usr/local/lib && \

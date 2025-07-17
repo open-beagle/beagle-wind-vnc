@@ -32,7 +32,7 @@ RUN echo "Install cuda-toolkit" && \
     bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
     curl -s -ko /tmp/StableDiffusion_V1.0.0_install.sh https://www.bc-cloud.com/maas/api/static/software/StableDiffusionV1.0.0/install.sh && \
     bash  /tmp/StableDiffusion_V1.0.0_install.sh /usr/local/lib && \
-    rm -f /tmp/StableDiffusion_V1.0.0_install.sh
+    rm -f /tmp/StableDiffusion_V1.0.0_install.sh && \
     echo "Install Rope" && \
     bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
     curl -s -ko /tmp/Rope_24.05.27_install.sh https://www.bc-cloud.com/maas/api/static/software/Rope_24.05.27_install.sh/install.sh && \

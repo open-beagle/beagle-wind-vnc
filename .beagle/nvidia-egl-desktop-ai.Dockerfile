@@ -33,7 +33,7 @@ RUN echo "Install cuda-toolkit" && \
     bash  /tmp/StableDiffusion_V1.0.0_install.sh /usr/local/lib && \
     rm -f /tmp/StableDiffusion_V1.0.0_install.sh && \
     echo "Install Rope" && \
-    curl -s -ko /tmp/Rope_24.05.27_install.sh https://www.bc-cloud.com/maas/api/static/software/Rope_24.05.27/install.sh && \
+    curl -s -ko /tmp/Rope_24.05.27_install.sh https://www.bc-cloud.com/maas/api/static/software/Rope24.05.27/install.sh && \
     bash  /tmp/Rope_24.05.27_install.sh /usr/local/lib && \
     rm -f /tmp/Rope_24.05.27_install.sh && \
     echo "Install Blender" && \

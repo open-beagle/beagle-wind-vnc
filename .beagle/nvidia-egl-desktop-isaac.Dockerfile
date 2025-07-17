@@ -24,13 +24,13 @@ RUN echo "Install cuda-toolkit" && \
     sudo apt-get -y install cudnn && \
     rm -f /tmp/cudnn-local-repo-ubuntu2404-9.10.2_1.0-1_amd64.debecho  && \
     bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
-    echo "Install IsaacSim" && \
-    curl -s -ko /tmp/IsaacSim_4.5.0_install.sh https://www.bc-cloud.com/maas/api/static/software/IsaacSim4.5.0/install.sh && \
-    bash /tmp/IsaacSim_4.5.0_install.sh /usr/local/lib && \
-    rm -f /tmp/IsaacSim_4.5.0_install.sh && \
     echo "Install IsaacGym" && \
     curl -s -ko /tmp/IsaacGym_4.5.0_install.sh https://www.bc-cloud.com/maas/api/static/software/IsaacGym4.5.0/install.sh && \
     bash  /tmp/IsaacGym_4.5.0_install.sh /usr/local/lib && \
-    rm -f /tmp/IsaacGym_4.5.0_install.sh
+    rm -f /tmp/IsaacGym_4.5.0_install.sh && \
+    echo "Install IsaacSim" && \
+    curl -s -ko /tmp/IsaacSim_4.5.0_install.sh https://www.bc-cloud.com/maas/api/static/software/IsaacSim4.5.0/install.sh && \
+    bash /tmp/IsaacSim_4.5.0_install.sh /usr/local/lib && \
+    rm -f /tmp/IsaacSim_4.5.0_install.sh
 
 ENV PATH="/usr/local/cuda-12.8/bin:$PATH"

@@ -4,6 +4,16 @@ if [ -f "/tools/bgctl" ]; then
   bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET
 fi
 
-if [ -f "/usr/local/lib/ComfyUI-0.3.43/Comfyui.desktop" ]; then
-  cp /usr/local/lib/ComfyUI-0.3.43/Comfyui.desktop $HOME/Desktop/
-fi
+# 遍历 /usr/local/lib/ 下的所有文件夹
+for dir in /usr/local/lib/*/; do
+    # 检查文件夹是否存在且可访问
+    if [ -d "$dir" ]; then
+        # 查找 .desktop 文件
+        desktop_files=$(find "$dir" -maxdepth 1 -name "*.desktop" -type f)
+        
+        # 如果找到 .desktop 文件，则复制到桌面
+        if [ -n "$desktop_files" ]; then
+            cp -v $desktop_files "$HOME/Desktop/"
+        fi
+    fi
+done

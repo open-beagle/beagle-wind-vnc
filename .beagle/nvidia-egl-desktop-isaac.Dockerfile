@@ -23,22 +23,13 @@ RUN bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET && \
     sudo apt-get update && \
     sudo apt-get -y install cudnn && \
     rm -f /tmp/cudnn-local-repo-ubuntu2404-9.10.2_1.0-1_amd64.debecho  && \
-    echo "Install ComfyUI" && \
-    curl -s -ko /tmp/ComfyUI_0.3.43_install.sh https://www.bc-cloud.com/maas/api/static/software/ComfyUI0.3.43/install.sh && \
-    bash /tmp/ComfyUI_0.3.43_install.sh /usr/local/lib && \
-    rm -f /tmp/ComfyUI_0.3.43_install.sh && \
-    echo "Install StableDiffusion" && \
-    curl -s -ko /tmp/StableDiffusion_V1.0.0_install.sh https://www.bc-cloud.com/maas/api/static/software/StableDiffusionV1.0.0/install.sh && \
-    bash  /tmp/StableDiffusion_V1.0.0_install.sh /usr/local/lib && \
-    rm -f /tmp/StableDiffusion_V1.0.0_install.sh && \
-    echo "Install Rope" && \
-    curl -s -ko /tmp/Rope_24.05.27_install.sh https://www.bc-cloud.com/maas/api/static/software/Rope_24.05.27/install.sh && \
-    bash  /tmp/Rope_24.05.27_install.sh /usr/local/lib && \
-    rm -f /tmp/Rope_24.05.27_install.sh && \
-    echo "Install Blender" && \
-    curl -s -ko /tmp/Blender_4.4.3_install.sh https://www.bc-cloud.com/maas/api/static/software/Blender4.4.3/install.sh && \
-    bash  /tmp/Blender_4.4.3_install.sh /usr/local/lib && \
-    rm -f /tmp/Blender_4.4.3_install.sh
+    echo "Install IsaacSim" && \
+    curl -s -ko /tmp/IsaacSim_4.5.0_install.sh https://www.bc-cloud.com/maas/api/static/software/IsaacSim4.5.0/install.sh && \
+    bash /tmp/IsaacSim_4.5.0_install.sh /usr/local/lib && \
+    rm -f /tmp/IsaacSim_4.5.0_install.sh && \
+    echo "Install IsaacGym" && \
+    curl -s -ko /tmp/IsaacGym_4.5.0_install.sh https://www.bc-cloud.com/maas/api/static/software/IsaacGym4.5.0/install.sh && \
+    bash  /tmp/IsaacGym_4.5.0_install.sh /usr/local/lib && \
+    rm -f /tmp/IsaacGym_4.5.0_install.sh
 
-    
 ENV PATH="/usr/local/cuda-12.8/bin:$PATH"

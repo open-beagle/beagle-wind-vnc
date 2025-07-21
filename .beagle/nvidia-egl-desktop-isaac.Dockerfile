@@ -34,3 +34,4 @@ RUN echo "Install cuda-toolkit" && \
     rm -f /tmp/IsaacSim_4.5.0_install.sh
 
 ENV PATH="/usr/local/cuda-12.8/bin:$PATH"
+ENV HF_ENDPOINT=https://hf-mirror.com

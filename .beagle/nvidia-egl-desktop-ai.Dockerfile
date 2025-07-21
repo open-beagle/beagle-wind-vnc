@@ -5,7 +5,6 @@ ARG S3_URL
 ARG S3_ACCESS_KEY
 ARG S3_ACCESS_SECRET
 
-
 RUN echo "Install cuda-toolkit" && \
     wget -q -P /tmp https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin && \
     sudo mv /tmp/cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
@@ -43,3 +42,4 @@ RUN echo "Install cuda-toolkit" && \
 
     
 ENV PATH="/usr/local/cuda-12.8/bin:$PATH"
+ENV HF_ENDPOINT=https://hf-mirror.com

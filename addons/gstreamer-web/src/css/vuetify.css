@@ -3395,6 +3395,12 @@ p {
   max-height: -webkit-fill-available;
   max-width: 100%;
   position: relative;
+  background:
+       #fff
+       url("../images/kasm_logo.svg")
+       no-repeat
+       center 44%;
+  background-size: 30%;
 }
 .theme--light.application {
   background: #fafafa;

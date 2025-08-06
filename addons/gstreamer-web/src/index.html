@@ -549,7 +549,7 @@
 
 <script type="text/javascript">
   // Handle messages from the ServiceWorker
-  navigator.serviceWorker.addEventListener('message', event => {
+  navigator.serviceWorker?.addEventListener('message', event => {
     console.log("Message from service worker: ", event.data);
     if (event.data.msg === "reload") {
       setTimeout(() => {

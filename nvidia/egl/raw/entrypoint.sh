@@ -93,9 +93,18 @@ echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do 
 # Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
-if [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)" ] || [ -n "$(ls -A /dev/dri 2>/dev/null)" ]; then
+# Prefer VirtualGL when a GPU is available and vglrun is present; otherwise fall back gracefully.
+if { [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader 2>/dev/null | head -n1)" ] || [ -n "$(ls -A /dev/dri 2>/dev/null)" ] || [ -e "/dev/dxg" ]; } \
+   && command -v /usr/bin/vglrun >/dev/null 2>&1 \
+   && [ -z "${DISABLE_VGL}" ]; then
   export VGL_FPS="${DISPLAY_REFRESH}"
-  /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+  # Preflight-check VirtualGL to avoid hard failure when LD_PRELOAD or EGL/GLX is incompatible
+  if /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" /usr/bin/true >/dev/null 2>&1; then
+    /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+  else
+    echo 'VirtualGL preflight failed; starting desktop without vgl (set DISABLE_VGL=1 to suppress this check)' 1>&2
+    /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+  fi
 else
   /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
 fi

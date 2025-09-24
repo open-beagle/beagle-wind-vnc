@@ -62,7 +62,7 @@ RUN echo "Install Desktop Environment" && \
   sudo apt-get update && \
   sudo apt-get install -y python3.12-venv && \
   # bgctl
-  curl -o /usr/local/bin/bgctl -fsSL "http://cache.wodcloud.com/kubernetes/bgctl/amd64/bgctl" && \
+  curl -o /usr/local/bin/bgctl -fsSL "https://cache.wodcloud.com/kubernetes/bgctl/amd64/bgctl" && \
   sudo chmod +x /usr/local/bin/bgctl
 
 # 更换背景

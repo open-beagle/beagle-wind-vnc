@@ -23,13 +23,30 @@ export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"
 # Add LibreOffice to library path
 export LD_LIBRARY_PATH="/usr/lib/libreoffice/program${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
-# Configure joystick interposer
-export SELKIES_INTERPOSER='/usr/$LIB/selkies_joystick_interposer.so'
-export LD_PRELOAD="${SELKIES_INTERPOSER}${LD_PRELOAD:+:${LD_PRELOAD}}"
+# Configure joystick interposer (resolve multiarch path and preload only if present)
+MULTI_ARCH_INTERPOSER="$(dpkg --print-architecture | sed -e 's/arm64/aarch64-linux-gnu/' -e 's/armhf/arm-linux-gnueabihf/' -e 's/riscv64/riscv64-linux-gnu/' -e 's/ppc64el/powerpc64le-linux-gnu/' -e 's/s390x/s390x-linux-gnu/' -e 's/i.*86/i386-linux-gnu/' -e 's/amd64/x86_64-linux-gnu/' -e 's/unknown/x86_64-linux-gnu/')"
+SELKIES_INTERPOSER="/usr/lib/${MULTI_ARCH_INTERPOSER}/selkies_joystick_interposer.so"
+if [ -f "${SELKIES_INTERPOSER}" ]; then
+  export LD_PRELOAD="${SELKIES_INTERPOSER}${LD_PRELOAD:+:${LD_PRELOAD}}"
+fi
 export SDL_JOYSTICK_DEVICE=/dev/input/js0
 mkdir -pm1777 /dev/input || sudo-root mkdir -pm1777 /dev/input || echo 'Failed to create joystick interposer directory'
 touch /dev/input/js0 /dev/input/js1 /dev/input/js2 /dev/input/js3 || sudo-root touch /dev/input/js0 /dev/input/js1 /dev/input/js2 /dev/input/js3 || echo 'Failed to create joystick interposer devices'
 chmod 777 /dev/input/js* || sudo-root chmod 777 /dev/input/js* || echo 'Failed to change permission for joystick interposer devices'
+
+# Ensure real dlopen is available to VirtualGL's dlfaker (prepend to LD_PRELOAD)
+DL_PATH="$(ldconfig -p 2>/dev/null | awk '/libdl\\.so\\.2/ {print $NF; exit}')"
+if [ -z "${DL_PATH}" ] || [ ! -f "${DL_PATH}" ]; then
+  MULTI_ARCH="$(dpkg --print-architecture | sed -e 's/arm64/aarch64-linux-gnu/' -e 's/armhf/arm-linux-gnueabihf/' -e 's/riscv64/riscv64-linux-gnu/' -e 's/ppc64el/powerpc64le-linux-gnu/' -e 's/s390x/s390x-linux-gnu/' -e 's/i.*86/i386-linux-gnu/' -e 's/amd64/x86_64-linux-gnu/' -e 's/unknown/x86_64-linux-gnu/')"
+  if [ -f "/lib/${MULTI_ARCH}/libdl.so.2" ]; then
+    DL_PATH="/lib/${MULTI_ARCH}/libdl.so.2"
+  elif [ -f "/usr/lib/${MULTI_ARCH}/libdl.so.2" ]; then
+    DL_PATH="/usr/lib/${MULTI_ARCH}/libdl.so.2"
+  fi
+fi
+if [ -n "${DL_PATH}" ] && [ -f "${DL_PATH}" ]; then
+  export LD_PRELOAD="${DL_PATH}${LD_PRELOAD:+:${LD_PRELOAD}}"
+fi
 
 # Set default display
 export DISPLAY="${DISPLAY:-:20}"
@@ -81,8 +98,12 @@ if [ -z "$(ldconfig -N -v $(sed 's/:/ /g' <<< $LD_LIBRARY_PATH) 2>/dev/null | gr
   fi
 fi
 
-# Run Xvfb server with required extensions
-/usr/bin/Xvfb "${DISPLAY}" -screen 0 "8192x4096x${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
+# Run Xvfb server with required extensions (skip if X socket already exists)
+if [ ! -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; then
+  /usr/bin/Xvfb "${DISPLAY}" -screen 0 "8192x4096x${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
+else
+  echo "X server already running on ${DISPLAY}, skipping Xvfb start"
+fi
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
@@ -100,12 +121,14 @@ if { [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader 2>/dev/null | hea
   export VGL_FPS="${DISPLAY_REFRESH}"
   # Preflight-check VirtualGL to avoid hard failure when LD_PRELOAD or EGL/GLX is incompatible
   if /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" /usr/bin/true >/dev/null 2>&1; then
+    echo "VirtualGL preflight succeeded; starting desktop with vgl"
     /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
   else
-    echo 'VirtualGL preflight failed; starting desktop without vgl (set DISABLE_VGL=1 to suppress this check)' 1>&2
+    echo 'VirtualGL preflight failed; starting desktop without vgl'
     /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
   fi
 else
+  echo 'No GPU available or VirtualGL disabled; starting desktop without vgl'
   /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
 fi
 

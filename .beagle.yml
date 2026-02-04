@@ -43,13 +43,11 @@ steps:
       repo: wod/beagle-wind-vnc
       version: nvidia-egl-desktop-ai-1.0.9
       args: "TARGETOS=linux,TARGETARCH=amd64,S3_URL=$${S3_URL},S3_ACCESS_KEY=$${S3_ACCESS_KEY},S3_ACCESS_SECRET=$${S3_ACCESS_SECRET}"
-      
       registry: registry-vpc.cn-qingdao.aliyuncs.com
       registry_user:
         from_secret: REGISTRY_USER_ALIYUN
       registry_password:
         from_secret: REGISTRY_PASSWORD_ALIYUN
-        
 
 ---
 kind: secret

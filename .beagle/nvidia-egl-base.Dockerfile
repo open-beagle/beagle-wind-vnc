@@ -14,6 +14,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
 ENV PASSWD=mypasswd
 
+# Ensure we use standard shell for root operations (not fakeroot)
+SHELL ["/bin/sh", "-c"]
+
 # Copy scripts to container
 COPY scripts/base/ /etc/beagle-wind-vnc/scripts/
 RUN chmod +x /etc/beagle-wind-vnc/scripts/*.sh
@@ -102,7 +105,8 @@ RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 
 # Switch to non-root user for remaining operations
 USER 1000
-# Use BUILDAH_FORMAT=docker in buildah
+# Now use fakeroot for operations that need to simulate root permissions
+# This is only for the runtime/copy phase, NOT for the build phase above
 SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
 
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/

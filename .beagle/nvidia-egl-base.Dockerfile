@@ -141,10 +141,11 @@ SHELL ["/bin/sh", "-c"]
 USER 0
 # Enable sudo through sudo-root with uid 0
 RUN /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
-USER 1000
 
-# Clean up temporary scripts
+# Clean up temporary scripts (must be done as root since scripts are owned by root)
 RUN rm -rf /etc/beagle-wind-vnc/scripts/
+
+USER 1000
 
 ENV PIPEWIRE_LATENCY="128/48000"
 ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu

@@ -1,8 +1,10 @@
 #!/bin/bash
-if [ -f "/tools/bgctl" ]; then
-  cp -r /tools/bgctl /usr/local/bin/bgctl && chmod +x /usr/local/bin/bgctl
-  bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET
+if [ ! -f "/tools/bgctl" ]; then
+  echo "bgctl binary not found, skipping"
+  exit 0
 fi
+cp -r /tools/bgctl /usr/local/bin/bgctl && chmod +x /usr/local/bin/bgctl
+bgctl alias set default $S3_URL $S3_ACCESS_KEY $S3_ACCESS_SECRET
 
 # 遍历 /usr/local/lib/ 下的所有文件夹
 for dir in /usr/local/lib/*/; do

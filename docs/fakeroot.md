@@ -396,3 +396,306 @@ fakeroot 的局限性来自于它的实现方式：
 - [Kubernetes Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 - [fakeroot Manual](https://manpages.debian.org/testing/fakeroot/fakeroot.1.en.html)
 - [Linux Capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html)
+
+---
+
+## 附录：去掉 fakeroot 的可行性评估
+
+### 评估背景
+
+有人提出疑问：是否可以在基础镜像中去掉 fakeroot，恢复使用真正的 sudo？
+
+### 当前 fakeroot 的使用情况
+
+#### 1. 镜像构建阶段
+
+在 Dockerfile 中，fakeroot 被大量使用：
+
+```dockerfile
+# .beagle/nvidia-egl-desktop.Dockerfile
+RUN sudo apt update && \
+    sudo apt install -y package && \
+    sudo chmod +x /usr/bin/tool
+```
+
+**统计数据**：
+
+- `.beagle/nvidia-egl-desktop.Dockerfile`：约 30+ 处 `sudo` 调用
+- `.beagle/nvidia-egl-lutris.Dockerfile`：约 20+ 处 `sudo` 调用
+- `.beagle/nvidia-egl-steam.Dockerfile`：约 15+ 处 `sudo` 调用
+
+**用途**：
+
+- 安装软件包（`apt install`）
+- 下载文件（`curl`）
+- 修改文件权限（`chmod`）
+- 清理缓存（`apt clean`）
+
+#### 2. 容器运行阶段
+
+在 entrypoint.sh 中，混合使用 `sudo`（fakeroot）和 `sudo-root`：
+
+```bash
+# nvidia/egl/entrypoint.sh
+sudo passwd "$(id -nu)"              # 使用 fakeroot
+sudo ./nvidia-installer --silent     # 使用 fakeroot
+sudo-root ln -snf /dev/ptmx /dev/tty7  # 使用真正的 sudo
+```
+
+**用途**：
+
+- 修改用户密码（fakeroot 可以）
+- 安装 NVIDIA 驱动（fakeroot 可以）
+- 创建设备文件（需要 sudo-root）
+
+### 去掉 fakeroot 的影响分析
+
+#### 方案 A：完全去掉 fakeroot，恢复真正的 sudo
+
+**需要的改动**：
+
+1. **修改 `scripts/base/base-system-setup.sh`**：
+
+```bash
+# 删除这两行
+# mv -f /usr/bin/sudo /usr/bin/sudo-root
+# ln -snf /usr/bin/fakeroot /usr/bin/sudo
+```
+
+2. **修改 Dockerfile 构建方式**：
+
+```dockerfile
+# 从 USER 1000 改回 USER 0
+USER 0
+
+# 所有 RUN 指令以 root 执行
+RUN apt update && apt install -y package
+
+# 最后切换到普通用户
+USER 1000
+```
+
+3. **修改文件系统所有权策略**：
+
+```bash
+# 不要执行 chown -R ubuntu:ubuntu /
+# 保持标准的 Linux 文件权限模型
+```
+
+**优点**：
+
+✅ **标准化**：符合传统 Linux 系统的权限模型
+✅ **兼容性**：所有需要 root 权限的工具都能正常工作（如 Flatpak）
+✅ **简化**：不需要区分 `sudo` 和 `sudo-root`
+✅ **调试友好**：行为与标准系统一致，易于排查问题
+
+**缺点**：
+
+❌ **安全性降低**：失去 rootless 容器的安全优势
+❌ **构建复杂**：需要在 root 和普通用户之间频繁切换
+❌ **权限管理**：需要仔细管理文件所有权，避免权限问题
+❌ **不符合最佳实践**：违背容器安全的行业标准
+
+#### 方案 B：保留 fakeroot，但优化文件系统所有权
+
+**改动**：
+
+```bash
+# 不要执行 chown -R ubuntu:ubuntu /
+# 只对必要的目录执行 chown
+chown -R ubuntu:ubuntu /home/ubuntu /tmp /var/tmp /opt /usr/local
+```
+
+**优点**：
+
+✅ **保持安全性**：继续享受 rootless 容器的安全优势
+✅ **提高兼容性**：保留标准的系统文件权限
+✅ **最小改动**：只需修改一处
+
+**缺点**：
+
+⚠️ **需要充分测试**：确保容器所有功能正常
+⚠️ **可能需要调整**：某些路径可能需要 ubuntu 用户权限
+
+#### 方案 C：混合模式 - 基础镜像用 root，扩展镜像用 fakeroot
+
+**实现**：
+
+```dockerfile
+# nvidia-egl-base.Dockerfile - 使用 root 构建
+FROM ubuntu:24.04
+USER 0
+RUN apt update && apt install -y packages
+# 不执行 chown -R ubuntu:ubuntu /
+
+# nvidia-egl-desktop.Dockerfile - 切换到 fakeroot
+FROM nvidia-egl-base
+USER 1000
+SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+RUN sudo apt install -y desktop-packages
+```
+
+**优点**：
+
+✅ **基础镜像标准化**：保持传统权限模型
+✅ **扩展镜像灵活**：可以使用 fakeroot 简化构建
+✅ **兼容性好**：基础镜像中的工具都能正常工作
+
+**缺点**：
+
+⚠️ **复杂性增加**：需要理解两种模式的切换
+⚠️ **文档需求**：需要详细说明何时使用哪种模式
+
+### 技术可行性评估
+
+#### 构建阶段的 fakeroot 依赖
+
+**分析**：构建阶段的 `sudo` 调用主要用于：
+
+1. **apt 操作**：`apt update`、`apt install`、`apt clean`
+   - ✅ 可以去掉：直接以 root 用户执行 RUN 指令
+
+2. **文件操作**：`chmod`、`curl`、`mkdir`
+   - ✅ 可以去掉：root 用户可以直接操作
+
+3. **软件安装**：安装 deb 包、下载工具
+   - ✅ 可以去掉：root 用户可以直接安装
+
+**结论**：构建阶段完全不需要 fakeroot，可以直接使用 root 用户。
+
+#### 运行阶段的 fakeroot 依赖
+
+**分析**：运行阶段的 `sudo` 调用主要用于：
+
+1. **修改用户密码**：`sudo passwd`
+   - ✅ 可以去掉：以 root 用户启动容器，或使用 `sudo-root`
+
+2. **安装 NVIDIA 驱动**：`sudo ./nvidia-installer`
+   - ✅ 可以去掉：以 root 用户执行，或使用 `sudo-root`
+
+3. **创建设备文件**：`sudo-root ln -snf /dev/ptmx /dev/tty7`
+   - ⚠️ 已经在使用 `sudo-root`，不受影响
+
+**结论**：运行阶段的 fakeroot 使用较少，可以替换为 `sudo-root` 或以 root 用户启动。
+
+### 安全性影响评估
+
+#### 去掉 fakeroot 的安全风险
+
+| 风险类型     | 当前（使用 fakeroot） | 去掉 fakeroot 后     | 风险等级 |
+| ------------ | --------------------- | -------------------- | -------- |
+| 容器逃逸     | 低（普通用户运行）    | 高（root 用户运行）  | ⚠️ 高    |
+| 权限提升     | 低（无真实 root）     | 高（有真实 root）    | ⚠️ 高    |
+| 文件系统破坏 | 中（可修改所有文件）  | 高（可修改系统文件） | ⚠️ 中    |
+| 宿主机影响   | 低（隔离良好）        | 中（可能影响宿主）   | ⚠️ 中    |
+
+#### Kubernetes 环境的影响
+
+在 Kubernetes 环境中：
+
+- **Pod Security Standards**：
+  - 当前：可以在 `restricted` 模式下运行（部分功能）
+  - 去掉后：只能在 `privileged` 模式下运行
+
+- **Security Context**：
+  - 当前：`runAsNonRoot: true` 可以使用
+  - 去掉后：`runAsNonRoot: false` 必须设置
+
+- **审计和合规**：
+  - 当前：符合大多数企业安全策略
+  - 去掉后：可能违反安全合规要求
+
+### 推荐方案
+
+#### 短期（v1.0.x）：保持现状 + 优化
+
+**推荐：方案 B - 优化文件系统所有权**
+
+```bash
+# 修改 scripts/base/base-system-setup.sh
+# 不要执行 chown -R ubuntu:ubuntu /
+# 改为只对必要的目录执行 chown
+chown -R ubuntu:ubuntu /home/ubuntu /tmp /var/tmp /opt /usr/local
+```
+
+**理由**：
+
+1. 保持 rootless 容器的安全优势
+2. 解决 Flatpak 等工具的兼容性问题
+3. 改动最小，风险可控
+4. 符合容器安全最佳实践
+
+**实施步骤**：
+
+1. 修改 `scripts/base/base-system-setup.sh`
+2. 充分测试所有功能
+3. 更新文档说明新的权限模型
+4. 发布新版本
+
+#### 中期（v1.1.x）：提供选项
+
+**推荐：添加构建参数，支持两种模式**
+
+```dockerfile
+ARG USE_FAKEROOT=true
+
+RUN if [ "$USE_FAKEROOT" = "true" ]; then \
+      mv -f /usr/bin/sudo /usr/bin/sudo-root && \
+      ln -snf /usr/bin/fakeroot /usr/bin/sudo; \
+    fi
+```
+
+**理由**：
+
+1. 满足不同用户的需求
+2. 高安全场景使用 fakeroot
+3. 高兼容场景使用真正的 sudo
+4. 灵活性最大化
+
+#### 长期（v2.0.x）：重新设计
+
+**推荐：采用多阶段构建 + 最小权限原则**
+
+```dockerfile
+# 阶段 1：以 root 构建基础环境
+FROM ubuntu:24.04 AS builder
+RUN apt update && apt install -y packages
+
+# 阶段 2：创建 rootless 运行环境
+FROM builder AS runtime
+USER 1000
+# 只复制必要的文件，保持标准权限
+```
+
+**理由**：
+
+1. 构建阶段使用 root，简化流程
+2. 运行阶段使用普通用户，保证安全
+3. 符合容器最佳实践
+4. 易于维护和理解
+
+### 结论
+
+**去掉 fakeroot 的可行性**：技术上可行，但不推荐
+
+**原因**：
+
+1. ❌ **安全性大幅降低**：失去 rootless 容器的核心优势
+2. ❌ **违背行业最佳实践**：容器安全标准要求非 root 运行
+3. ❌ **Kubernetes 兼容性下降**：无法在受限模式下运行
+4. ❌ **企业合规风险**：可能违反安全审计要求
+
+**推荐做法**：
+
+1. ✅ **保留 fakeroot**：继续享受安全优势
+2. ✅ **优化文件系统所有权**：解决兼容性问题（方案 B）
+3. ✅ **提供构建选项**：满足不同场景需求（中期）
+4. ✅ **重新设计架构**：采用多阶段构建（长期）
+
+**特殊情况**：
+
+- 如果你的使用场景对安全性要求不高（如个人开发环境）
+- 并且需要运行大量需要真实 root 权限的工具
+- 可以考虑去掉 fakeroot，但需要充分理解安全风险
+
+**最终建议**：保留 fakeroot，优化文件系统所有权策略，这是安全性和兼容性的最佳平衡点。

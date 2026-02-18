@@ -48,6 +48,7 @@ steps:
         from_secret: REGISTRY_USER_ALIYUN
       registry_password:
         from_secret: REGISTRY_PASSWORD_ALIYUN
+        
 ---
 kind: pipeline
 name: nvidia-egl-desktop-isaac
@@ -97,7 +98,8 @@ steps:
       registry_user:
         from_secret: REGISTRY_USER_ALIYUN
       registry_password:
-        from_secret: REGISTRY_PASSWORD_ALIYUN        
+        from_secret: REGISTRY_PASSWORD_ALIYUN
+
 ---
 kind: secret
 name: SOCKS5_PROXY

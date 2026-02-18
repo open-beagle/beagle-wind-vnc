@@ -223,9 +223,9 @@ var app = new Vue({
     },
     // 处理键盘按下事件
     handleKeyDown(event) {
-      // 检查是否按下 Enter 键
-      if (event.key === "Enter") {
-        console.log(`handleKeyDown: key Down: ${event.key}`);
+      // 只在显示"开启"按钮时响应回车键
+      if (event.key === "Enter" && this.showStart === true && !event.repeat) {
+        console.log(`handleKeyDown: Starting stream`);
         this.playStream();
       }
     },

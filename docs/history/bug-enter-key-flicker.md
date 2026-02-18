@@ -1,12 +1,27 @@
 # Bug 追踪：按回车键导致页面闪烁
 
+> **✅ 已修复**：该问题已在 2026-02-18 修复。
+> 
+> - ✅ **修复状态**：已实施代码修改
+> - 📋 **更新日志**：详见 [CHANGELOG](./CHANGELOG.md)
+> - 📝 **修复内容**：在 `handleKeyDown` 方法中添加了状态检查
+> 
+> 本文档保留用于：
+> - 记录问题的发现和分析过程
+> - 作为类似问题的参考
+> - 展示问题解决的思路
+
+---
+
 ## Bug 信息
 
 - **Bug ID**: #001
 - **严重程度**: 中等
-- **状态**: 已确认
+- **状态**: ✅ 已修复
 - **影响版本**: nvidia-egl-desktop-1.0.9 及更早版本
+- **修复版本**: nvidia-egl-desktop-1.0.10+
 - **发现日期**: 2026-02-18
+- **修复日期**: 2026-02-18
 - **报告人**: 用户反馈
 
 ## 问题描述
@@ -156,7 +171,29 @@ handleKeyDown(event) {
 2. 实现更完善的快捷键系统
 3. 添加快捷键自定义功能
 
-## 测试计划
+## 修复验证
+
+### 验证修复是否生效
+
+检查 `addons/gstreamer-web/src/app.js` 中的代码：
+
+```javascript
+handleKeyDown(event) {
+  // 只在显示"开启"按钮时响应回车键
+  if (event.key === "Enter" && this.showStart === true && !event.repeat) {
+    console.log(`handleKeyDown: Starting stream`);
+    this.playStream();
+  }
+}
+```
+
+如果代码包含 `this.showStart === true` 检查，说明修复已生效。
+
+### 测试修复效果
+
+### 测试修复效果
+
+按照以下测试用例验证修复：
 
 ### 测试用例 1：流未启动时按回车
 

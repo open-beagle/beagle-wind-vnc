@@ -14,6 +14,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
 ENV PASSWD=mypasswd
 
+# Ensure we use standard shell for root operations (not fakeroot)
+SHELL ["/bin/sh", "-c"]
+
 # Copy scripts to container
 COPY scripts/base/ /etc/beagle-wind-vnc/scripts/
 RUN chmod +x /etc/beagle-wind-vnc/scripts/*.sh
@@ -26,11 +29,7 @@ ENV LANG="zh_CN.UTF-8"
 ENV LANGUAGE="zh_CN:zh"
 ENV LC_ALL="zh_CN.UTF-8"
 
-USER 1000
-# Use BUILDAH_FORMAT=docker in buildah
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
-
-# Install operating system libraries or packages
+# Install operating system libraries or packages (must run as root before switching user)
 RUN /etc/beagle-wind-vnc/scripts/os-libraries-install.sh
 
 # Expose NVIDIA libraries and paths
@@ -104,6 +103,12 @@ RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 
 # Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
 
+# Switch to non-root user for remaining operations
+USER 1000
+# Now use fakeroot for operations that need to simulate root permissions
+# This is only for the runtime/copy phase, NOT for the build phase above
+SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 # Copy joystick-server
@@ -136,10 +141,11 @@ SHELL ["/bin/sh", "-c"]
 USER 0
 # Enable sudo through sudo-root with uid 0
 RUN /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
-USER 1000
 
-# Clean up temporary scripts
+# Clean up temporary scripts (must be done as root since scripts are owned by root)
 RUN rm -rf /etc/beagle-wind-vnc/scripts/
+
+USER 1000
 
 ENV PIPEWIRE_LATENCY="128/48000"
 ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu

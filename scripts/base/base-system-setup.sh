@@ -50,8 +50,16 @@ echo "ubuntu:${PASSWD}" | chpasswd
 # =============================================================================
 # 设置文件系统所有权
 # =============================================================================
-# 将整个文件系统的所有权更改为ubuntu用户（保留root权限）
-chown -R -f -h --no-preserve-root ubuntu:ubuntu / || echo 'Failed to set filesystem ownership in some paths to ubuntu user'
+# 只对必要的目录更改所有权为ubuntu用户，保持系统目录为root所有者
+# 用户主目录
+chown -R -f ubuntu:ubuntu /home/ubuntu || echo 'Failed to set /home/ubuntu ownership'
+# 应用程序目录（存放 gstreamer、selkies-gstreamer-web 等）
+chown -R -f ubuntu:ubuntu /opt || echo 'Failed to set /opt ownership'
+# 本地安装目录（存放 Python 包、NVIDIA 库、工具等）
+chown -R -f ubuntu:ubuntu /usr/local || echo 'Failed to set /usr/local ownership'
+# 运行时目录
+mkdir -p /run/user/1000
+chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
 # =============================================================================
 # 恢复被chown移除的setuid/setgid权限
 # =============================================================================

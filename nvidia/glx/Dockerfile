@@ -37,8 +37,12 @@ RUN apt-get clean && apt-get update && apt-get dist-upgrade -y && apt-get instal
     usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice ubuntu && \
     echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     echo "ubuntu:${PASSWD}" | chpasswd && \
-    chown -R -f -h --no-preserve-root ubuntu:ubuntu / || echo 'Failed to set filesystem ownership in some paths to ubuntu user' && \
-    # Preserve setuid/setgid removed by chown
+    # Only change ownership of necessary directories, keep system directories as root
+    chown -R -f ubuntu:ubuntu /home/ubuntu || echo 'Failed to set /home/ubuntu ownership' && \
+    chown -R -f ubuntu:ubuntu /opt || echo 'Failed to set /opt ownership' && \
+    chown -R -f ubuntu:ubuntu /usr/local || echo 'Failed to set /usr/local ownership' && \
+    mkdir -p /run/user/1000 && chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership' && \
+    # Preserve setuid/setgid permissions for system tools
     chmod -f 4755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/bin/chfn /usr/bin/chsh /usr/bin/mount /usr/bin/gpasswd /usr/bin/passwd /usr/bin/newgrp /usr/bin/umount /usr/bin/su /usr/bin/sudo-root /usr/bin/fusermount || echo 'Failed to set chmod setuid for some paths' && \
     chmod -f 2755 /var/local /var/mail /usr/sbin/unix_chkpwd /usr/sbin/pam_extrausers_chkpwd /usr/bin/expiry /usr/bin/chage || echo 'Failed to set chmod setgid for some paths'
 

@@ -26,11 +26,7 @@ ENV LANG="zh_CN.UTF-8"
 ENV LANGUAGE="zh_CN:zh"
 ENV LC_ALL="zh_CN.UTF-8"
 
-USER 1000
-# Use BUILDAH_FORMAT=docker in buildah
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
-
-# Install operating system libraries or packages
+# Install operating system libraries or packages (must run as root before switching user)
 RUN /etc/beagle-wind-vnc/scripts/os-libraries-install.sh
 
 # Expose NVIDIA libraries and paths
@@ -103,6 +99,11 @@ RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 # ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/lib/rustdesk/lib"
 
 # Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
+
+# Switch to non-root user for remaining operations
+USER 1000
+# Use BUILDAH_FORMAT=docker in buildah
+SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
 
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 

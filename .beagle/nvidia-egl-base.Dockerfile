@@ -32,7 +32,11 @@ ENV LC_ALL="zh_CN.UTF-8"
 # Install operating system libraries or packages (must run as root before switching user)
 RUN /etc/beagle-wind-vnc/scripts/os-libraries-install.sh && \
   # Allow non-root user to write nginx site config at runtime
-  chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled
+  chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled && \
+  # Create nginx runtime directories with proper permissions for non-root user
+  mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
+  chown -R 1000:1000 /var/lib/nginx && \
+  chmod -R 755 /var/lib/nginx
 
 # Expose NVIDIA libraries and paths
 ENV PATH="/usr/local/nvidia/bin${PATH:+:${PATH}}"

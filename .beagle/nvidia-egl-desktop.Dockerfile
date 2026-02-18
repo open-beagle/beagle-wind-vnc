@@ -65,9 +65,8 @@ RUN echo "Install Desktop Environment" && \
   add-apt-repository -y ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y python3.12-venv && \
-  # bgctl
-  curl -k -o /usr/local/bin/bgctl -fsSL "https://cache.wodcloud.com/kubernetes/bgctl/amd64/bgctl" && \
-  chmod +x /usr/local/bin/bgctl
+  # bgctl (disabled: cache.wodcloud.com currently unavailable)
+  echo "bgctl install skipped"
 
 # Switch back to non-root user
 USER 1000

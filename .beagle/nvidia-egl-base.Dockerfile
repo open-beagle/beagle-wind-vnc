@@ -111,9 +111,8 @@ RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 
 # Switch to non-root user for remaining operations
 USER 1000
-# Now use fakeroot for operations that need to simulate root permissions
-# This is only for the runtime/copy phase, NOT for the build phase above
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+# Use standard shell for remaining operations
+SHELL ["/bin/sh", "-c"]
 
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 

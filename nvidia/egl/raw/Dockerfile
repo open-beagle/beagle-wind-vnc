@@ -18,7 +18,6 @@ ENV PASSWD=mypasswd
 RUN apt-get clean && apt-get update && apt-get dist-upgrade -y && apt-get install --no-install-recommends -y \
         apt-utils \
         dbus-user-session \
-        fakeroot \
         fuse \
         kmod \
         locales \
@@ -29,9 +28,7 @@ RUN apt-get clean && apt-get update && apt-get dist-upgrade -y && apt-get instal
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
     locale-gen en_US.UTF-8 && \
     ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" > /etc/timezone && \
-    # Only use sudo-root for root-owned directory (/dev, /proc, /sys) or user/group permission operations, not for apt-get installation or file/directory operations
-    mv -f /usr/bin/sudo /usr/bin/sudo-root && \
-    ln -snf /usr/bin/fakeroot /usr/bin/sudo && \
+    # Configure sudo for ubuntu user
     groupadd -g 1000 ubuntu || echo 'Failed to add ubuntu group' && \
     useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || echo 'Failed to add ubuntu user' && \
     usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice ubuntu && \
@@ -49,7 +46,7 @@ ENV LC_ALL="en_US.UTF-8"
 
 USER 1000
 # Use BUILDAH_FORMAT=docker in buildah
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+SHELL ["/bin/sh", "-c"]
 
 # Install operating system libraries or packages
 RUN apt-get update && apt-get install --no-install-recommends -y \

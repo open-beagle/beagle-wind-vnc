@@ -53,6 +53,6 @@ RUN apt update && \
 
 # Switch back to non-root user
 USER 1000
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+SHELL ["/bin/sh", "-c"]
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"

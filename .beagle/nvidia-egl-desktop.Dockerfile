@@ -25,8 +25,9 @@ RUN echo "Install Desktop Environment" && \
   curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
   # Install Joystick
   apt install -y xboxdrv joystick jstest-gtk mangohud gamemode && \
-  # Install Lutris
-  curl -o /tmp/lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v0.5.20/lutris_0.5.20_all.deb" && \
+  # Install Lutris (auto-fetch latest version)
+  LUTRIS_VERSION="$(curl -fsSL "https://api.github.com/repos/lutris/lutris/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \
+  curl -o /tmp/lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v${LUTRIS_VERSION}/lutris_${LUTRIS_VERSION}_all.deb" && \
   apt install -y /tmp/lutris.deb && \
   rm -f /tmp/lutris.deb && \  
   # Install Google Chrome
@@ -34,8 +35,8 @@ RUN echo "Install Desktop Environment" && \
   apt install -y /tmp/google-chrome-stable.deb && \
   rm -f /tmp/google-chrome-stable.deb && \
   sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/google-chrome.desktop && \
-  # Install VSCode
-  curl -o /tmp/vscode.deb -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64" && \
+  # Install VSCode (auto-fetch latest version)
+  curl -o /tmp/vscode.deb -fsSL "https://update.code.visualstudio.com/latest/linux-deb-x64/stable" && \
   apt install -y /tmp/vscode.deb && \
   rm -f /tmp/vscode.deb && \
   # Install BaiduDisk
@@ -70,7 +71,7 @@ RUN echo "Install Desktop Environment" && \
 
 # Switch back to non-root user
 USER 1000
-SHELL ["/usr/bin/fakeroot", "--", "/bin/sh", "-c"]
+SHELL ["/bin/sh", "-c"]
 
 # 更换背景
 COPY src/img/ /usr/share/wallpapers/Next/contents/images/

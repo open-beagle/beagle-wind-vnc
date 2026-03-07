@@ -127,13 +127,13 @@ spec:
         - name: SELKIES_ENCODER
           value: "nvh264enc"
         - name: SELKIES_VIDEO_BITRATE
-          value: "4000"
+          value: "25000"
         - name: SELKIES_FRAMERATE
-          value: "30"
+          value: "60"
         - name: SELKIES_AUDIO_BITRATE
           value: "24000"
         - name: SELKIES_ENABLE_RESIZE
-          value: "true"
+          value: "false"
         - name: SELKIES_BASIC_AUTH_PASSWORD
           value: "GB8PJZL6IuH5"
         - name: SELKIES_ENABLE_HTTPS

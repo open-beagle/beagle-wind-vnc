@@ -11,7 +11,6 @@ apt-get clean && apt-get update && apt-get dist-upgrade -y
 apt-get install --no-install-recommends -y \
   apt-utils \
   dbus-user-session \
-  fakeroot \
   fuse \
   kmod \
   locales \
@@ -31,11 +30,9 @@ update-locale LANG=zh_CN.UTF-8
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezone
 # =============================================================================
 # 配置sudo权限系统
-# 仅对root拥有的目录(/dev, /proc, /sys)或用户/组权限操作使用sudo-root
-# 不用于apt-get安装或文件/目录操作
+# ubuntu用户可以使用sudo执行需要root权限的操作
 # =============================================================================
-mv -f /usr/bin/sudo /usr/bin/sudo-root
-ln -snf /usr/bin/fakeroot /usr/bin/sudo
+# 不再使用fakeroot，保持标准sudo功能
 # =============================================================================
 # 创建ubuntu用户和组
 # =============================================================================

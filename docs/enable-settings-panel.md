@@ -116,22 +116,22 @@ docker run -d \
 你也可以在启动容器时通过环境变量预设这些参数，而不需要在 Web 界面中手动调整：
 
 ```bash
--e SELKIES_VIDEO_BITRATE=4000      # 视频码率（kbps）
+-e SELKIES_VIDEO_BITRATE=25000     # 视频码率（kbps）
 -e SELKIES_FRAMERATE=60            # 视频帧率
 -e SELKIES_AUDIO_BITRATE=24000     # 音频码率（bps）
--e SELKIES_ENABLE_RESIZE=true      # 自动调整分辨率
+-e SELKIES_ENABLE_RESIZE=false     # 自动调整分辨率
 ```
 
 ## 相关环境变量说明
 
-| 环境变量                | 默认值  | 说明             | 推荐值                    |
-| ----------------------- | ------- | ---------------- | ------------------------- |
-| `BEAGLE_ENABLE_DEBUG`   | `false` | 启用设置面板     | `true`（如需调整参数）    |
-| `SELKIES_VIDEO_BITRATE` | -       | 视频码率（kbps） | 4000-8000                 |
-| `SELKIES_FRAMERATE`     | -       | 视频帧率         | 30-60                     |
-| `SELKIES_AUDIO_BITRATE` | -       | 音频码率（bps）  | 16000-48000               |
-| `SELKIES_ENABLE_RESIZE` | `false` | 自动调整分辨率   | `true`（响应式）          |
-| `SELKIES_ENCODER`       | -       | 视频编码器       | `nvh264enc`（NVIDIA GPU） |
+| 环境变量                | 默认值  | 说明             | 推荐值                        |
+| ----------------------- | ------- | ---------------- | ----------------------------- |
+| `BEAGLE_ENABLE_DEBUG`   | `false` | 启用设置面板     | `true`（如需调整参数）        |
+| `SELKIES_VIDEO_BITRATE` | -       | 视频码率（kbps） | 25000（高画质）               |
+| `SELKIES_FRAMERATE`     | -       | 视频帧率         | 60（流畅）                    |
+| `SELKIES_AUDIO_BITRATE` | -       | 音频码率（bps）  | 16000-48000                   |
+| `SELKIES_ENABLE_RESIZE` | `false` | 自动调整分辨率   | `false`（固定分辨率性能更好） |
+| `SELKIES_ENCODER`       | -       | 视频编码器       | `nvh264enc`（NVIDIA GPU）     |
 
 ## 注意事项
 

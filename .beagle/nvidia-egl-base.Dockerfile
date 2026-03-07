@@ -109,6 +109,23 @@ RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
 
 # Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
 
+# Copy files that need root permissions before switching to non-root user
+COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
+RUN chmod 755 /usr/bin/joystick-server
+
+COPY ./nvidia/egl/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
+COPY ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
+COPY ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
+COPY ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
+COPY ./nvidia/egl/supervisord.conf /etc/supervisord.conf
+COPY ./scripts/base/start-turnserver.sh /etc/start-turnserver.sh
+RUN chmod 755 /etc/beagle-wind-vnc/entrypoint.sh \
+    /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh \
+    /etc/beagle-wind-vnc/steam-game.sh \
+    /etc/beagle-wind-vnc/bgctl.sh \
+    /etc/supervisord.conf \
+    /etc/start-turnserver.sh
+
 # Switch to non-root user for remaining operations
 USER 1000
 # Use standard shell for remaining operations
@@ -116,30 +133,8 @@ SHELL ["/bin/sh", "-c"]
 
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
-# Copy joystick-server
-COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-RUN chmod -f 755 /usr/bin/joystick-server
-
 # Copy selkies_gstreamer
 COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
-
-# Copy scripts and configurations used to start the container with `--chown=1000:1000`
-COPY --chown=1000:1000 ./nvidia/egl/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-RUN chmod -f 755 /etc/beagle-wind-vnc/entrypoint.sh
-COPY --chown=1000:1000 ./nvidia/egl/selkies-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
-RUN chmod -f 755 /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
-# COPY --chown=1000:1000 ./nvidia/egl/kasmvnc-entrypoint.sh /etc/beagle-wind-vnc/kasmvnc-entrypoint.sh
-# RUN chmod -f 755 /etc/beagle-wind-vnc/kasmvnc-entrypoint.sh
-COPY --chown=1000:1000 ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-RUN chmod -f 755 /etc/beagle-wind-vnc/steam-game.sh
-COPY --chown=1000:1000 ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
-RUN chmod -f 755 /etc/beagle-wind-vnc/bgctl.sh
-COPY --chown=1000:1000 ./nvidia/egl/supervisord.conf /etc/supervisord.conf
-RUN chmod -f 755 /etc/supervisord.conf
-
-# Configure coTURN script
-COPY scripts/base/start-turnserver.sh /etc/start-turnserver.sh
-RUN chmod +x /etc/start-turnserver.sh
 
 SHELL ["/bin/sh", "-c"]
 

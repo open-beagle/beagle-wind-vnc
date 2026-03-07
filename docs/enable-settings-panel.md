@@ -27,7 +27,7 @@ docker run -d \
   # ... 其他参数 ...
   -e BEAGLE_ENABLE_DEBUG=true \
   # ... 其他环境变量 ...
-  registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.9
+  registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.10
 ```
 
 ### 完整启动命令示例
@@ -70,7 +70,7 @@ docker run -d \
   -e SELKIES_TURN_PASSWORD=password \
   -e BEAGLE_ENABLE_DEBUG=true \
   -p 48080:8080 \
-  registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.9
+  registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.10
 ```
 
 **关键配置**：`-e BEAGLE_ENABLE_DEBUG=true`

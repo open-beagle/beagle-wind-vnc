@@ -1,17 +1,17 @@
 # Docker 容器中 Flatpak bwrap 权限问题分析
 
 > **📌 更新**：文件系统所有权问题已在 2026-02-18 修复。
-> 
+>
 > - ✅ **根本原因已修复**：系统目录现在保持 root 所有者
 > - 📋 **详见**：[修复说明](./CHANGELOG-ownership-fix.md) | [更新日志](./CHANGELOG.md)
-> 
+>
 > 修复后，Flatpak 的 bwrap 工具应该可以更容易地配置正确的权限。
 
 ---
 
 ## 问题描述
 
-在 Docker 容器 `registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.9` 中安装 Flatpak 后，遇到 `/usr/bin/bwrap` 文件权限无法修改的问题。
+在 Docker 容器 `registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-desktop-1.0.10` 中安装 Flatpak 后，遇到 `/usr/bin/bwrap` 文件权限无法修改的问题。
 
 ### 现象
 

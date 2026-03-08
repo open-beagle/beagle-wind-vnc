@@ -57,10 +57,12 @@ chown -R -f ubuntu:ubuntu /usr/local || echo 'Failed to set /usr/local ownership
 # 运行时目录
 mkdir -p /run/user/1000
 chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
+# 临时目录
+chown -R -f ubuntu:ubuntu /tmp /var/tmp || echo 'Failed to set /tmp ownership'
 # =============================================================================
 # 恢复被chown移除的setuid/setgid权限
 # =============================================================================
 # 设置setuid权限（4755）
-chmod -f 4755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/bin/chfn /usr/bin/chsh /usr/bin/mount /usr/bin/gpasswd /usr/bin/passwd /usr/bin/newgrp /usr/bin/umount /usr/bin/su /usr/bin/sudo-root /usr/bin/fusermount || echo 'Failed to set chmod setuid for some paths'
+chmod -f 4755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/bin/chfn /usr/bin/chsh /usr/bin/mount /usr/bin/gpasswd /usr/bin/passwd /usr/bin/newgrp /usr/bin/umount /usr/bin/su /usr/bin/sudo /usr/bin/fusermount || echo 'Failed to set chmod setuid for some paths'
 # 设置setgid权限（2755）
 chmod -f 2755 /var/local /var/mail /usr/sbin/unix_chkpwd /usr/sbin/pam_extrausers_chkpwd /usr/bin/expiry /usr/bin/chage || echo 'Failed to set chmod setgid for some paths'

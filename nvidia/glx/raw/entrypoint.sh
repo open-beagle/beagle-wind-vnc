@@ -140,6 +140,10 @@ ln -snf /dev/ptmx /dev/tty7 || sudo-root ln -snf /dev/ptmx /dev/tty7 || echo 'Fa
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
 
+# Ensure user config directories exist with correct permissions
+mkdir -p ~/.config ~/.local/share ~/.cache
+chmod 700 ~/.config ~/.local ~/.cache
+
 # Start KDE desktop environment
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"

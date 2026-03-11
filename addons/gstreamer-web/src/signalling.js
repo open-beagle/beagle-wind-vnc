@@ -74,6 +74,42 @@ class WebRTCDemoSignalling {
         this.ondisconnect = null;
 
         /**
+         * @event
+         * @type {function}
+         */
+        this.onkicked = null;
+
+        /**
+         * @event
+         * @type {function}
+         */
+        this.onpeerbusy = null;
+
+        /**
+         * @event
+         * @type {function}
+         */
+        this.onpeerready = null;
+
+        /**
+         * @private
+         * @type {boolean}
+         */
+        this._kicked = false;
+
+        /**
+         * @private
+         * @type {boolean}
+         */
+        this._force = false;
+
+        /**
+         * @private
+         * @type {boolean}
+         */
+        this._peerReady = false;
+
+        /**
          * @type {string}
          */
         this.state = 'disconnected';
@@ -158,7 +194,12 @@ class WebRTCDemoSignalling {
             "scale": window.devicePixelRatio
         };
         this.state = 'connected';
-        this._ws_conn.send(`HELLO ${this.peer_id} ${btoa(JSON.stringify(meta))}`);
+        var helloMsg = `HELLO ${this.peer_id} ${btoa(JSON.stringify(meta))}`;
+        if (this._force) {
+            helloMsg += ' FORCE';
+            this._force = false;
+        }
+        this._ws_conn.send(helloMsg);
         this._setStatus("服务器注册中, peer ID: " + this.peer_id);
         this.retry_count = 0;
     }
@@ -197,11 +238,35 @@ class WebRTCDemoSignalling {
      * @param {Event} event The event: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent
      */
     _onServerMessage(event) {
+        console.log('[SIGNALLING] Received message:', event.data);
         this._setDebug("server message: " + event.data);
 
         if (event.data === "HELLO") {
             this._setStatus("服务器已注册.");
             this._setStatus("等待推流.");
+            return;
+        }
+
+        // KICKED: 被其他用户接管
+        if (event.data === "KICKED") {
+            this._setStatus("已被其他用户接管.");
+            this._kicked = true;
+            if (this.onkicked !== null) this.onkicked();
+            return;
+        }
+
+        // PEER_BUSY: 桌面已被占用
+        if (event.data === "PEER_BUSY") {
+            this._setStatus("桌面已被占用.");
+            if (this.onpeerbusy !== null) this.onpeerbusy();
+            return;
+        }
+
+        // PEER_READY: 旧连接已清理，可以重连
+        if (event.data === "PEER_READY") {
+            this._setStatus("旧连接已清理，正在重连...");
+            this._peerReady = true;
+            if (this.onpeerready !== null) this.onpeerready();
             return;
         }
 
@@ -244,6 +309,16 @@ class WebRTCDemoSignalling {
     _onServerClose() {
         if (this.state !== 'connecting') {
             this.state = 'disconnected';
+            if (this._kicked) {
+                // 被踢场景：不触发 ondisconnect，让 app.js 的 onkicked 处理
+                this._kicked = false;
+                return;
+            }
+            if (this._peerReady) {
+                // PEER_READY 后 ws 被关闭：不触发 ondisconnect，让 onpeerready 处理重连
+                this._peerReady = false;
+                return;
+            }
             this._setError("Server closed connection.");
             if (this.ondisconnect !== null) this.ondisconnect();
         }
@@ -265,6 +340,15 @@ class WebRTCDemoSignalling {
         this._ws_conn.addEventListener('error', this._onServerError.bind(this));
         this._ws_conn.addEventListener('message', this._onServerMessage.bind(this));
         this._ws_conn.addEventListener('close', this._onServerClose.bind(this));
+    }
+
+    /**
+     * Initiates a forced connection to the signalling server.
+     * Sends HELLO with FORCE flag to kick existing peer.
+     */
+    connectForce() {
+        this._force = true;
+        this.connect();
     }
 
     /**

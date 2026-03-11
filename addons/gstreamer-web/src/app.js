@@ -165,6 +165,12 @@ var app = new Vue({
         },
       },
       disabled: true,
+      idleState: 'active',
+      idleCountdown: 60,
+      disconnectReason: '',
+      peerBusy: false,
+      peerBusyForced: false,
+      peerBusyCountdown: 0,
     };
   },
 
@@ -244,6 +250,27 @@ var app = new Vue({
         .catch((err) => {
           webrtc._setError("Failed to read clipboard contents: " + err);
         });
+    },
+    // 重置空闲计时
+    resetIdleTimer() {
+      if (this.idleState === 'warning') {
+        this.idleState = 'active';
+        this.idleCountdown = 60;
+      }
+      // 用户点击了按钮，算作交互，自动播放视频流
+      if (this.showStart) {
+        this.playStream();
+      }
+    },
+    // 取消接管
+    cancelTakeover() {
+      window.location.reload();
+    },
+    // 强制接管
+    forceTakeover() {
+      this.peerBusyForced = true;
+      signalling.connectForce();
+      audio_signalling.connectForce();
     },
     publish() {
       var data = {
@@ -357,9 +384,6 @@ app.debug = app.getBoolParam("debug", false);
 // Fetch turn setting
 app.turnSwitch = app.getBoolParam("turnSwitch", false);
 
-// Fetch scale local settings
-app.scaleLocal = app.getBoolParam("scaleLocal", !app.resizeRemote);
-
 var videoElement = document.getElementById("stream");
 if (videoElement === null) {
   throw "videoElement not found on page";
@@ -392,6 +416,9 @@ var audio_signalling = new WebRTCDemoSignalling(
 );
 var audio_webrtc = new WebRTCDemo(audio_signalling, audioElement, 3);
 
+// Fetch scale local settings AFTER webrtc is created to avoid triggering watcher before webrtc.element exists
+app.scaleLocal = app.getBoolParam("scaleLocal", !app.resizeRemote);
+
 // Function to add timestamp to logs.
 var applyTimestamp = (msg) => {
   var now = new Date();
@@ -408,9 +435,46 @@ signalling.onerror = (message) => {
   app.logEntries.push(applyTimestamp("[signalling] [ERROR] " + message));
 };
 
+// 会话冲突回调 — 被踢
+signalling.onkicked = () => {
+  app.disconnectReason = 'kicked';
+  app.idleState = 'disconnected';
+  // 主动关闭所有 WS，让后端自然触发 remove_peer
+  try { signalling.disconnect(); } catch(e) {}
+  try { audio_signalling.disconnect(); } catch(e) {}
+};
+
+// 会话冲突回调 — 桌面被占用
+signalling.onpeerbusy = () => {
+  // 不管是第一次还是 FORCE 后，都显示对话框
+  app.peerBusy = true;
+  if (app.peerBusyForced) {
+    // 已点过强制接管，显示等待中状态
+    app.peerBusyCountdown = -1; // -1 表示等待中（不是倒计时）
+  }
+};
+
+// 旧连接已清理，立即重连
+signalling.onpeerready = () => {
+  app.peerBusyCountdown = 0;
+  // 短暂延迟确保后端完全清理
+  setTimeout(() => {
+    webrtc.connect();
+    audio_webrtc.connect();
+  }, 500);
+};
+
 signalling.ondisconnect = () => {
-  var checkconnect = app.status == checkconnect;
-  // if (app.status !== "connected") return;
+  // 被踢或空闲超时，不自动重连
+  if (app.disconnectReason === 'kicked' || app.disconnectReason === 'idle') {
+    console.log("disconnected due to: " + app.disconnectReason);
+    return;
+  }
+  // PEER_BUSY 场景，不触发断线重连
+  if (app.peerBusy || app.peerBusyForced) {
+    return;
+  }
+  var checkconnect = (app.status === "checkconnect");
   console.log("signalling disconnected");
   app.status = "connecting";
   videoElement.style.cursor = "auto";
@@ -427,9 +491,22 @@ audio_signalling.onerror = (message) => {
   app.logEntries.push(applyTimestamp("[audio signalling] [ERROR] " + message));
 };
 
+// audio 通道静默处理被踢和桌面占用
+audio_signalling.onkicked = () => {};
+audio_signalling.onpeerbusy = () => {};
+audio_signalling.onpeerready = () => {};
+
 audio_signalling.ondisconnect = () => {
-  var checkconnect = app.status == checkconnect;
-  // if (app.status !== "connected") return;
+  // 被踢或空闲超时，不自动重连
+  if (app.disconnectReason === 'kicked' || app.disconnectReason === 'idle') {
+    console.log("audio disconnected due to: " + app.disconnectReason);
+    return;
+  }
+  // PEER_BUSY 场景，不触发断线重连
+  if (app.peerBusy || app.peerBusyForced) {
+    return;
+  }
+  var checkconnect = (app.status === "checkconnect");
   console.log("audio signalling disconnected");
   app.status = "connecting";
   videoElement.style.cursor = "auto";
@@ -662,6 +739,10 @@ webrtc.onconnectionstatechange = (state) => {
   }
   if (videoConnected === "connected" && audioConnected === "connected") {
     app.status = state;
+    // 连接成功，清理 peerBusy 状态
+    app.peerBusy = false;
+    app.peerBusyForced = false;
+    app.peerBusyCountdown = 0;
     if (!statWatchEnabled) {
       enableStatWatch();
     }
@@ -715,6 +796,49 @@ webrtc.ondatachannelopen = () => {
 
   // Bind input handlers.
   webrtc.input.attach();
+
+  // 空闲检测 — 每 10 秒检查一次
+  var idleWarningSeconds = 240; // 4 分钟
+  var idleDisconnectSeconds = 300; // 5 分钟
+  var idleCheckInterval = setInterval(() => {
+    if (app.idleState === 'disconnected') {
+      clearInterval(idleCheckInterval);
+      return;
+    }
+    var idleTime = (Date.now() - webrtc.input.lastActivityTime) / 1000;
+
+    if (idleTime >= idleDisconnectSeconds && app.idleState === 'warning') {
+      // 超时断连
+      app.idleState = 'disconnected';
+      app.disconnectReason = 'idle';
+      clearInterval(idleCheckInterval);
+      signalling.disconnect();
+    } else if (idleTime >= idleWarningSeconds && app.idleState === 'active') {
+      // 进入警告
+      app.idleState = 'warning';
+      app.idleCountdown = idleDisconnectSeconds - Math.floor(idleTime);
+    }
+  }, 10000);
+
+  // 警告倒计时 — 每秒更新
+  var countdownInterval = setInterval(() => {
+    if (app.idleState === 'warning') {
+      var remaining = idleDisconnectSeconds - (Date.now() - webrtc.input.lastActivityTime) / 1000;
+      app.idleCountdown = Math.max(0, Math.ceil(remaining));
+      if (app.idleCountdown <= 0) {
+        app.idleState = 'disconnected';
+        app.disconnectReason = 'idle';
+        clearInterval(countdownInterval);
+        clearInterval(idleCheckInterval);
+        signalling.disconnect();
+      }
+    } else if (app.idleState === 'disconnected') {
+      clearInterval(countdownInterval);
+    } else if (app.idleState === 'active') {
+      // 用户操作后自动从 warning 恢复到 active，重置倒计时
+      app.idleCountdown = 60;
+    }
+  }, 1000);
 
   // Send client-side metrics over data channel every 5 seconds
   setInterval(async () => {

@@ -413,21 +413,59 @@ class WebRTCSimpleServer(object):
         '''
         raddr = ws.remote_address
         hello = await ws.recv()
-        toks = hello.split(maxsplit=2)
+        toks = hello.split(maxsplit=3)
         metab64str = None
-        if len(toks) > 2:
-            hello, uid, metab64str = toks
+        force = False
+        if len(toks) >= 4:
+            hello, uid, metab64str = toks[0], toks[1], toks[2]
+            if toks[3] == 'FORCE':
+                force = True
+        elif len(toks) == 3:
+            hello, uid, metab64str = toks[0], toks[1], toks[2]
         else:
-            hello, uid = toks
+            hello, uid = toks[0], toks[1]
         if hello != 'HELLO':
             await ws.close(code=1002, reason='invalid protocol')
             raise Exception("Invalid hello from {!r}".format(raddr))
-        if not uid or uid in self.peers or uid.split() != [uid]: # no whitespace
+        if not uid or uid.split() != [uid]: # no whitespace
             await ws.close(code=1002, reason='invalid peer uid')
             raise Exception("Invalid uid {!r} from {!r}".format(uid, raddr))
         meta = None
         if metab64str:
             meta = json.loads(base64.b64decode(metab64str))
+
+        # uid 冲突处理：绝不调用 remove_peer，保护 Peer 会话
+        if uid in self.peers:
+            if force:
+                # 带 FORCE 标记：向旧用户发送 KICKED（只在视频通道 uid=1 时发）
+                logger.info("Peer {!r} conflict with FORCE from {!r}, sending KICKED to old peer".format(uid, raddr))
+                old_ws, old_raddr, _, _ = self.peers[uid]
+                try:
+                    await old_ws.send('KICKED')
+                except Exception:
+                    pass
+                # 告诉新用户等着
+                await ws.send('PEER_BUSY')
+                # 轮询等待旧连接清理完成，每 200ms 检查一次，最多 10 秒
+                for i in range(50):
+                    await asyncio.sleep(0.2)
+                    if uid not in self.peers:
+                        logger.info("Peer {!r} slot freed after {}ms, sending PEER_READY to {!r}".format(uid, (i+1)*200, raddr))
+                        try:
+                            await ws.send('PEER_READY')
+                        except Exception:
+                            pass
+                        break
+                else:
+                    logger.info("Peer {!r} wait timeout (10s) for {!r}".format(uid, raddr))
+                await ws.close(code=1000, reason='peer busy force wait done')
+                raise Exception("Peer {!r} busy (force), connection from {!r} closed after wait".format(uid, raddr))
+            else:
+                logger.info("Peer {!r} conflict from {!r}, sending PEER_BUSY to new peer".format(uid, raddr))
+                await ws.send('PEER_BUSY')
+                await ws.close(code=1000, reason='peer busy')
+                raise Exception("Peer {!r} busy, rejected new connection from {!r}".format(uid, raddr))
+
         # Send back a HELLO
         await ws.send('HELLO')
         return uid, meta
@@ -461,7 +499,11 @@ class WebRTCSimpleServer(object):
             '''
             raddr = ws.remote_address
             logger.info("Connected to {!r}".format(raddr))
-            peer_id, meta = await self.hello_peer(ws)
+            try:
+                peer_id, meta = await self.hello_peer(ws)
+            except Exception as e:
+                logger.info("hello_peer failed for {!r}: {}".format(raddr, str(e)))
+                return
             try:
                 await self.connection_handler(ws, peer_id, meta)
             except websockets.ConnectionClosed:

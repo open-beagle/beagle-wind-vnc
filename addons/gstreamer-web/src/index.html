@@ -19,7 +19,7 @@
     }
 
     body {
-      background-color: #000000;
+      background-color: #F5F5F5;
     }
 
     .scrolly textarea {
@@ -57,22 +57,194 @@
       transform: translate(-50%, -50%);
     }
 
-    .loading {
-      position: absolute;
-      top: 50%;
+    /* 四行布局系统 - 全屏覆盖层 */
+    .overlay-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
+      height: 100%;
+      background-color: #F5F5F5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .overlay-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* 第一行：Logo + 主题 */
+    .row-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .row-logo img {
+      height: 60px;
+      width: auto;
+    }
+
+    /* 第二行：信息内容 A */
+    .row-content-a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
       text-align: center;
-      /* color: #E0E0E0; */
+    }
+
+    /* Loading 动画 */
+    .loading-bars {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .loading-bars .bar {
+      width: 4px;
+      background-color: #CCCCCC;
+      animation: loading-pulse 1s ease-in-out infinite;
+    }
+
+    .loading-bars .bar:nth-child(1) { height: 16px; animation-delay: 0s; }
+    .loading-bars .bar:nth-child(2) { height: 24px; animation-delay: 0.2s; }
+    .loading-bars .bar:nth-child(3) { height: 32px; animation-delay: 0.4s; }
+    .loading-bars .bar:nth-child(4) { height: 24px; animation-delay: 0.6s; }
+    .loading-bars .bar:nth-child(5) { height: 16px; animation-delay: 0.8s; }
+
+    @keyframes loading-pulse {
+      0%, 100% { 
+        opacity: 0.3;
+        transform: scaleY(0.6);
+      }
+      50% { 
+        opacity: 1;
+        transform: scaleY(1);
+      }
+    }
+
+    /* 倒计时数字 */
+    .countdown-number {
+      font-size: 42px;
+      font-weight: bold;
+      color: #ff9800;
+      line-height: 1;
+    }
+
+    .countdown-number.urgent {
+      color: #f44336;
+      animation: countdown-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes countdown-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* 标题文字 */
+    .title-text {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333333;
+    }
+
+    /* 第三行：信息内容 B */
+    .row-content-b {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .message-text {
+      font-size: 16px;
+      color: #666666;
+      line-height: 1.6;
+    }
+
+    .message-text.hint {
+      color: #999999;
+    }
+
+    /* 第四行：按钮 */
+    .row-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .btn-portal {
+      padding: 12px 32px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-portal:hover {
+      opacity: 0.8;
+    }
+
+    .btn-portal.btn-start {
+      background-color: #D0D0D0;
+      color: #666666;
+      font-size: 18px;
+    }
+
+    .btn-portal.btn-normal {
+      background-color: #E0E0E0;
       color: #000000;
     }
 
-    .loading-text {
-      margin-top: 1em;
+    .btn-portal.btn-danger {
+      background-color: #D32F2F;
+      color: #FFFFFF;
     }
 
-    canvas {
-      /* background: black; */
+    .btn-portal.btn-danger:hover {
+      background-color: #C62828;
+      opacity: 1;
     }
+
+    .btn-portal.btn-danger:active {
+      background-color: #B71C1C;
+    }
+
+    .btn-portal:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-portal.btn-secondary {
+      background-color: #757575;
+      color: #FFFFFF;
+    }
+
+    .btn-portal.btn-secondary:hover {
+      background-color: #616161;
+      opacity: 1;
+    }
+
+    .btn-portal.btn-secondary:active {
+      background-color: #424242;
+    }
+
+
 
     @font-face {
       font-family: 'Material Icons';
@@ -139,6 +311,19 @@
 
     [v-cloak] {
       display: none;
+    }
+
+    .idle-countdown {
+      font-size: 48px;
+      font-weight: bold;
+      color: #ff9800;
+      line-height: 1.2;
+    }
+    .idle-countdown.urgent {
+      color: #f44336;
+    }
+    .session-dialog {
+      text-align: center;
     }
   </style>
   <title>BDWind - VNC</title>
@@ -492,6 +677,55 @@
         </v-container>
       </v-navigation-drawer>
 
+      <!-- 空闲警告对话框 -->
+      <v-dialog :value="idleState === 'warning'" persistent max-width="400" content-class="session-dialog">
+        <v-card>
+          <v-card-text style="text-align:center; padding:32px;">
+            <v-icon size="48" color="orange">timer</v-icon>
+            <div style="font-size:18px; margin:16px 0 8px;">您似乎已离开</div>
+            <div :class="['idle-countdown', idleCountdown <= 10 ? 'urgent' : '']">{{ idleCountdown }}</div>
+            <div style="color:#666; margin-bottom:24px;">秒后将自动断开连接</div>
+            <v-btn color="orange" dark v-on:click="resetIdleTimer()">我还在</v-btn>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+
+      <!-- 桌面被占用对话框 -->
+      <v-dialog :value="peerBusy" persistent max-width="400" content-class="session-dialog">
+        <v-card>
+          <v-card-text style="text-align:center; padding:32px;">
+            <v-icon size="48" :color="peerBusyForced ? 'orange' : 'grey'">
+              {{ peerBusyForced ? 'hourglass_empty' : 'people' }}
+            </v-icon>
+            <div style="font-size:18px; margin:16px 0 8px;">
+              {{ peerBusyForced ? '正在等待旧连接清理...' : '当前桌面正在被其他用户使用' }}
+            </div>
+            <div v-if="!peerBusyForced" style="color:#666; margin-bottom:24px;">是否强制接管此桌面？</div>
+            <div style="display:flex; gap:12px; justify-content:center;">
+              <v-btn color="red" dark v-on:click="forceTakeover()" :disabled="peerBusyForced">
+                {{ peerBusyForced ? '接管中...' : '强制接管' }}
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+
+      <!-- 断连提示对话框（空闲超时 / 被踢 共用） -->
+      <v-dialog :value="idleState === 'disconnected' && disconnectReason !== ''" persistent max-width="400" content-class="session-dialog">
+        <v-card>
+          <v-card-text style="text-align:center; padding:32px;">
+            <v-icon size="48" color="grey">link_off</v-icon>
+            <div style="font-size:18px; margin:16px 0 8px;">
+              {{ disconnectReason === 'idle' ? '连接已断开' : '桌面已被接管' }}
+            </div>
+            <div style="color:#666; margin-bottom:24px;">
+              {{ disconnectReason === 'idle' ? '因长时间无操作，桌面连接已自动断开。' : '其他用户已接管此桌面，您的连接已断开。' }}
+            </div>
+            <v-btn color="primary" v-on:click="location.reload()">重新连接</v-btn>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+
       <div id="audio_container"
            class="audio-container">
         <audio id="audio_stream"
@@ -524,25 +758,117 @@
              right>
       </v-btn>
 
-      <div class="loading">
-        <div v-if="status === 'failed'">
-          <v-btn v-on:click="location.reload()"
-                 color="#E0E0E0">
-            重新加载</v-btn>
-          <div class="loading-text">连接失败.</div>
-        </div>
-        <div v-else>
-          <scale-loader size="200px"
-                        :loading="(status !== 'connected')"
-                        color="#E0E0E0"></scale-loader>
-          <div v-if="(status !== 'connected')"
-               class="loading-text">{{ loadingText }}</div>
-          <v-btn v-if="(status === 'connected' && showStart)"
-                 v-on:click="playStream()"
-                 color="#E0E0E0">
-            开启</v-btn>
+      <!-- Loading / 开启界面 -->
+      <div v-if="status !== 'connected' || showStart" class="overlay-screen">
+        <div class="overlay-content">
+          <!-- 第一行：Logo + 主题（使用完整的SVG） -->
+          <div class="row-logo">
+            <img src="images/winddesktop.svg" alt="BDWind Desktop">
+          </div>
+
+          <!-- 第二行：Loading动画 或 空 -->
+          <div class="row-content-a">
+            <div v-if="status !== 'connected'" class="loading-bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </div>
+
+          <!-- 第三行：提示文字 -->
+          <div class="row-content-b">
+            <div v-if="status === 'failed'" class="message-text">连接失败</div>
+            <div v-else-if="status !== 'connected'" class="message-text hint">{{ loadingText || '正在连接服务器' }}</div>
+          </div>
+
+          <!-- 第四行：按钮 -->
+          <div class="row-buttons">
+            <button v-if="status === 'failed'" class="btn-portal btn-normal" v-on:click="location.reload()">
+              重新加载
+            </button>
+            <button v-else-if="status === 'connected' && showStart" class="btn-portal btn-start" v-on:click="playStream()">
+              开启
+            </button>
+          </div>
         </div>
       </div>
+
+      <!-- 空闲警告界面 -->
+      <div v-if="idleState === 'warning'" class="overlay-screen">
+        <div class="overlay-content">
+          <div class="row-logo">
+            <img src="images/winddesktop.svg" alt="BDWind Desktop">
+          </div>
+          <div class="row-content-a">
+            <div class="countdown-number" :class="{ urgent: idleCountdown <= 10 }">
+              {{ idleCountdown }}
+            </div>
+          </div>
+          <div class="row-content-b">
+            <div class="message-text">秒后将因空闲自动断开连接</div>
+          </div>
+          <div class="row-buttons">
+            <button class="btn-portal btn-normal" v-on:click="resetIdleTimer()">
+              我还在
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 断连界面（空闲超时 / 被踢） -->
+      <div v-if="idleState === 'disconnected' && disconnectReason !== ''" class="overlay-screen">
+        <div class="overlay-content">
+          <div class="row-logo">
+            <img src="images/winddesktop.svg" alt="BDWind Desktop">
+          </div>
+          <div class="row-content-a">
+            <div class="title-text">
+              {{ disconnectReason === 'idle' ? '连接已断开' : '桌面已被接管' }}
+            </div>
+          </div>
+          <div class="row-content-b">
+            <div class="message-text">
+              {{ disconnectReason === 'idle' ? '因长时间无操作，桌面连接已自动断开。' : '其他用户已接管此桌面，您的连接已断开。' }}
+            </div>
+          </div>
+          <div class="row-buttons">
+            <button class="btn-portal btn-normal" v-on:click="location.reload()">
+              重新连接
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 桌面被占用界面 -->
+      <div v-if="peerBusy" class="overlay-screen">
+        <div class="overlay-content">
+          <div class="row-logo">
+            <img src="images/winddesktop.svg" alt="BDWind Desktop">
+          </div>
+          <div class="row-content-a">
+            <div v-if="peerBusyForced" class="loading-bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+            <div v-else class="title-text">桌面已被占用</div>
+          </div>
+          <div class="row-content-b">
+            <div v-if="peerBusyForced" class="message-text">正在等待旧连接清理...</div>
+            <div v-else class="message-text">当前桌面正在被其他用户使用，是否强制接管？</div>
+          </div>
+          <div class="row-buttons">
+            <button class="btn-portal btn-danger" v-on:click="forceTakeover()" :disabled="peerBusyForced">
+              {{ peerBusyForced ? '接管中...' : '强制接管' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </v-app>
   </div>
 </body>
@@ -574,10 +900,10 @@
 <script src="lib/vue-spinner-v1.0.4.min.js?ts=1"></script>
 <script src="lib/guacamole-keyboard-selkies.js?ts=1"></script>
 <script src="gamepad.js?ts=1"></script>
-<script src="input.js?ts=1"></script>
+<script src="input.js?ts=11"></script>
 <script src="util.js?ts=1"></script>
-<script src="signalling.js?ts=1"></script>
+<script src="signalling.js?ts=11"></script>
 <script src="webrtc.js?ts=1"></script>
-<script src="app.js?ts=1"></script>
+<script src="app.js?ts=11"></script>
 
 </html>

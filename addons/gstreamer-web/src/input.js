@@ -105,6 +105,9 @@ class Input {
 
         // variable used to scale cursor speed
         this.cursorScaleFactor = null;
+
+        // 最后活跃时间，用于空闲超时检测
+        this.lastActivityTime = Date.now();
     }
 
     /**
@@ -134,12 +137,19 @@ class Input {
 
         this.cursorScaleFactor = Math.sqrt((serverWidth ** 2) + (serverHeight ** 2)) / Math.sqrt((clientResolution[0] ** 2) + (clientResolution[1] ** 2));
     }
+    /**
+     * 更新最后活跃时间，用于空闲超时检测
+     */
+    _updateActivity() {
+        this.lastActivityTime = Date.now();
+    }
 
     /**
      * Handles mouse button and motion events and sends them to WebRTC app.
      * @param {MouseEvent} event
      */
     _mouseButtonMovement(event) {
+        this._updateActivity();
         const down = (event.type === 'mousedown' ? 1 : 0);
         var mtype = "m";
 
@@ -214,6 +224,7 @@ class Input {
      * @param {TouchEvent} event
      */
     _touch(event) {
+        this._updateActivity();
         var mtype = "m";
         var mask = 1;
 
@@ -269,6 +280,7 @@ class Input {
      * @param {MouseWheelEvent} event
      */
     _mouseWheelWrapper(event) {
+        this._updateActivity();
         var deltaY = Math.trunc(Math.abs(event.deltaY));
         
         if (this._queue.size() < 4) {
@@ -356,6 +368,7 @@ class Input {
      * @param {KeyboardEvent} event
      */
     _key(event) {
+        this._updateActivity();
 
         // disable problematic browser shortcuts
         if (event.code === 'F5' && event.ctrlKey ||
@@ -510,6 +523,7 @@ class Input {
      * @param {number} val - the button value, 1 or 0 for pressed or not-pressed.
      */
     _gamepadButton(gp_num, btn_num, val) {
+        this._updateActivity();
         this.send("js,b," + gp_num + "," + btn_num + "," + val);
     }
 
@@ -521,6 +535,7 @@ class Input {
      * @param {number} val - the normalize value between [0, 255]
      */
     _gamepadAxis(gp_num, axis_num, val) {
+        this._updateActivity();
         this.send("js,a," + gp_num + "," + axis_num + "," + val)
     }
 

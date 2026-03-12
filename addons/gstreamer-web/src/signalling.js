@@ -255,18 +255,19 @@ class WebRTCDemoSignalling {
             return;
         }
 
-        // PEER_BUSY: 桌面已被占用
+        // PEER_BUSY: 桌面已被占用，保持连接等待用户操作
         if (event.data === "PEER_BUSY") {
-            this._setStatus("桌面已被占用.");
+            this._setStatus("桌面已被占用，等待用户操作.");
             if (this.onpeerbusy !== null) this.onpeerbusy();
+            // 不关闭连接，等待用户点击"强制接管"
             return;
         }
 
-        // PEER_READY: 旧连接已清理，可以重连
+        // PEER_READY: 旧连接已清理，继续握手
         if (event.data === "PEER_READY") {
-            this._setStatus("旧连接已清理，正在重连...");
-            this._peerReady = true;
+            this._setStatus("旧连接已清理，继续握手...");
             if (this.onpeerready !== null) this.onpeerready();
+            // 不重连，后端会继续发送 HELLO
             return;
         }
 
@@ -314,11 +315,6 @@ class WebRTCDemoSignalling {
                 this._kicked = false;
                 return;
             }
-            if (this._peerReady) {
-                // PEER_READY 后 ws 被关闭：不触发 ondisconnect，让 onpeerready 处理重连
-                this._peerReady = false;
-                return;
-            }
             this._setError("Server closed connection.");
             if (this.ondisconnect !== null) this.ondisconnect();
         }
@@ -349,6 +345,19 @@ class WebRTCDemoSignalling {
     connectForce() {
         this._force = true;
         this.connect();
+    }
+
+    /**
+     * Send FORCE_TAKEOVER message to kick existing peer.
+     * Used when connection is already established and user clicks "Force Takeover".
+     */
+    sendForceTakeover() {
+        if (this._ws_conn && this._ws_conn.readyState === WebSocket.OPEN) {
+            console.log('[SIGNALLING] Sending FORCE_TAKEOVER');
+            this._ws_conn.send('FORCE_TAKEOVER');
+        } else {
+            console.error('[SIGNALLING] Cannot send FORCE_TAKEOVER, WebSocket not open');
+        }
     }
 
     /**

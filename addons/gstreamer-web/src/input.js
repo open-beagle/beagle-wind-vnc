@@ -221,6 +221,7 @@ class Input {
 
     /**
      * Handles touch events and sends them to WebRTC app.
+     * Simulates mouse left-button press/release for tap, and mouse move for drag.
      * @param {TouchEvent} event
      */
     _touch(event) {
@@ -230,11 +231,15 @@ class Input {
 
         if (event.type === 'touchstart') {
             this.buttonMask |= mask;
-        } else if (event.type === 'touchend') {
+        } else if (event.type === 'touchend' || event.type === 'touchcancel') {
             this.buttonMask &= ~mask;
-        } else if (event.type === 'touchmove') {
-            event.preventDefault();
         }
+
+        // Prevent default browser behavior (scroll, zoom, 300ms click delay)
+        // to ensure touch events are reliably forwarded as mouse events.
+        event.preventDefault();
+
+        if (!event.changedTouches || event.changedTouches.length === 0) return;
 
         this.x = this._clientToServerX(event.changedTouches[0].clientX);
         this.y = this._clientToServerY(event.changedTouches[0].clientY);
@@ -621,9 +626,17 @@ class Input {
         this.listeners_context.push(addListener(window, 'keyup', this._key, this));
 
         if ('ontouchstart' in window) {
-            this.listeners_context.push(addListener(window, 'touchstart', this._touch, this));
-            this.listeners_context.push(addListener(this.element, 'touchend', this._touch, this));
-            this.listeners_context.push(addListener(this.element, 'touchmove', this._touch, this));
+            // All touch events bound to the video element with { passive: false }
+            // so that preventDefault() works on mobile Chrome (which defaults touch to passive).
+            var touchHandler = this._touch.bind(this);
+            this.element.addEventListener('touchstart', touchHandler, { passive: false });
+            this.listeners_context.push([this.element, 'touchstart', touchHandler]);
+            this.element.addEventListener('touchend', touchHandler, { passive: false });
+            this.listeners_context.push([this.element, 'touchend', touchHandler]);
+            this.element.addEventListener('touchmove', touchHandler, { passive: false });
+            this.listeners_context.push([this.element, 'touchmove', touchHandler]);
+            this.element.addEventListener('touchcancel', touchHandler, { passive: false });
+            this.listeners_context.push([this.element, 'touchcancel', touchHandler]);
 
             console.log("Enabling mouse pointer display for touch devices.");
             this.send("p,1");

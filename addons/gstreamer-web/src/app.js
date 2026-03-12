@@ -269,8 +269,9 @@ var app = new Vue({
     // 强制接管
     forceTakeover() {
       this.peerBusyForced = true;
-      signalling.connectForce();
-      audio_signalling.connectForce();
+      this.peerBusyCountdown = -1;
+      signalling.sendForceTakeover();
+      audio_signalling.sendForceTakeover();
     },
     publish() {
       var data = {
@@ -446,22 +447,23 @@ signalling.onkicked = () => {
 
 // 会话冲突回调 — 桌面被占用
 signalling.onpeerbusy = () => {
-  // 不管是第一次还是 FORCE 后，都显示对话框
+  // 显示对话框
   app.peerBusy = true;
   if (app.peerBusyForced) {
     // 已点过强制接管，显示等待中状态
     app.peerBusyCountdown = -1; // -1 表示等待中（不是倒计时）
+  } else {
+    // 第一次收到，显示对话框
+    app.peerBusyCountdown = 0;
   }
 };
 
-// 旧连接已清理，立即重连
+// 旧连接已清理，继续握手（不需要重连）
 signalling.onpeerready = () => {
+  // 清理 UI 状态，后端会继续发送 HELLO
+  app.peerBusy = false;
+  app.peerBusyForced = false;
   app.peerBusyCountdown = 0;
-  // 短暂延迟确保后端完全清理
-  setTimeout(() => {
-    webrtc.connect();
-    audio_webrtc.connect();
-  }, 500);
 };
 
 signalling.ondisconnect = () => {

@@ -413,21 +413,100 @@ class WebRTCSimpleServer(object):
         '''
         raddr = ws.remote_address
         hello = await ws.recv()
-        toks = hello.split(maxsplit=2)
+        toks = hello.split(maxsplit=3)
         metab64str = None
-        if len(toks) > 2:
-            hello, uid, metab64str = toks
+        force = False
+        if len(toks) >= 4:
+            hello, uid, metab64str = toks[0], toks[1], toks[2]
+            if toks[3] == 'FORCE':
+                force = True
+        elif len(toks) == 3:
+            hello, uid, metab64str = toks[0], toks[1], toks[2]
         else:
-            hello, uid = toks
+            hello, uid = toks[0], toks[1]
         if hello != 'HELLO':
             await ws.close(code=1002, reason='invalid protocol')
             raise Exception("Invalid hello from {!r}".format(raddr))
-        if not uid or uid in self.peers or uid.split() != [uid]: # no whitespace
+        if not uid or uid.split() != [uid]: # no whitespace
             await ws.close(code=1002, reason='invalid peer uid')
             raise Exception("Invalid uid {!r} from {!r}".format(uid, raddr))
         meta = None
         if metab64str:
             meta = json.loads(base64.b64decode(metab64str))
+
+        # uid 冲突处理：保持连接，等待 FORCE_TAKEOVER 或正常注册
+        if uid in self.peers:
+            # 音频通道（uid=3）自动接管，不需要用户确认
+            if uid == '3':
+                logger.info("Audio peer {!r} conflict from {!r}, auto takeover".format(uid, raddr))
+                old_ws, old_raddr, _, _ = self.peers[uid]
+                try:
+                    await old_ws.send('KICKED')
+                    await old_ws.close()
+                except Exception:
+                    pass
+                # 等待清理
+                for i in range(50):
+                    await asyncio.sleep(0.2)
+                    if uid not in self.peers:
+                        break
+                # 继续正常注册
+            else:
+                # 视频通道（uid=1）需要用户确认
+                if not force:
+                    # 第一次冲突：发送 PEER_BUSY，保持连接，等待 FORCE_TAKEOVER
+                    logger.info("Peer {!r} conflict from {!r}, sending PEER_BUSY and waiting for FORCE_TAKEOVER".format(uid, raddr))
+                    await ws.send('PEER_BUSY')
+                    
+                    # 等待 FORCE_TAKEOVER 消息或超时（30秒）
+                    start_time = time.time()
+                    while time.time() - start_time < 30:
+                        try:
+                            msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                            if msg == 'FORCE_TAKEOVER':
+                                logger.info("Received FORCE_TAKEOVER from {!r}".format(raddr))
+                                force = True
+                                break
+                            elif msg.startswith('HELLO'):
+                                # 用户重新发送 HELLO（可能带 FORCE）
+                                logger.info("Received new HELLO from {!r}, reprocessing".format(raddr))
+                                return await self.hello_peer(ws)
+                            else:
+                                logger.info("Ignoring message {!r} while waiting for FORCE_TAKEOVER".format(msg))
+                        except asyncio.TimeoutError:
+                            continue  # 继续等待
+                        except Exception as e:
+                            logger.info("Connection closed while waiting for FORCE_TAKEOVER: {}".format(e))
+                            raise Exception("Peer {!r} busy, connection from {!r} closed".format(uid, raddr))
+                    
+                    if not force:
+                        # 超时，关闭连接
+                        logger.info("Peer {!r} wait timeout (30s) for {!r}".format(uid, raddr))
+                        await ws.send('TIMEOUT')
+                        await ws.close(code=1000, reason='peer busy timeout')
+                        raise Exception("Peer {!r} busy, timeout waiting for FORCE_TAKEOVER from {!r}".format(uid, raddr))
+                
+                # 收到 FORCE_TAKEOVER，踢旧用户
+                logger.info("Peer {!r} force takeover from {!r}, sending KICKED to old peer".format(uid, raddr))
+                old_ws, old_raddr, _, _ = self.peers[uid]
+                try:
+                    await old_ws.send('KICKED')
+                except Exception:
+                    pass
+                
+                # 轮询等待旧连接清理完成，每 200ms 检查一次，最多 10 秒
+                for i in range(50):
+                    await asyncio.sleep(0.2)
+                    if uid not in self.peers:
+                        logger.info("Peer {!r} slot freed after {}ms".format(uid, (i+1)*200))
+                        await ws.send('PEER_READY')
+                        break
+                else:
+                    logger.info("Peer {!r} wait timeout (10s) for cleanup".format(uid))
+                    await ws.send('TIMEOUT')
+                    await ws.close(code=1000, reason='peer cleanup timeout')
+                    raise Exception("Peer {!r} cleanup timeout".format(uid))
+
         # Send back a HELLO
         await ws.send('HELLO')
         return uid, meta
@@ -461,7 +540,11 @@ class WebRTCSimpleServer(object):
             '''
             raddr = ws.remote_address
             logger.info("Connected to {!r}".format(raddr))
-            peer_id, meta = await self.hello_peer(ws)
+            try:
+                peer_id, meta = await self.hello_peer(ws)
+            except Exception as e:
+                logger.info("hello_peer failed for {!r}: {}".format(raddr, str(e)))
+                return
             try:
                 await self.connection_handler(ws, peer_id, meta)
             except websockets.ConnectionClosed:

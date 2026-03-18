@@ -126,18 +126,6 @@ RUN chmod 755 /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/supervisord.conf \
     /etc/start-turnserver.sh
 
-# Switch to non-root user for remaining operations
-USER 1000
-# Use standard shell for remaining operations
-SHELL ["/bin/sh", "-c"]
-
-COPY ./addons/gstreamer-web/src/. /opt/gst-web/
-
-# Copy selkies_gstreamer
-COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
-
-SHELL ["/bin/sh", "-c"]
-
 USER 0
 # Enable sudo through sudo-root with uid 0
 RUN /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh

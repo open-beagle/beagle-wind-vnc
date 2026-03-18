@@ -1,6 +1,5 @@
-ARG BASE_IMAGE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
-FROM ${BASE_IMAGE}
-ARG BASE_IMAGE
+ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-latest
+FROM ${BASE}
 
 LABEL maintainer="https://github.com/open-beagle"
 

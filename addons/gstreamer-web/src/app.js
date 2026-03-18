@@ -561,6 +561,7 @@ var videoConnected = "";
 var audioConnected = "";
 var statWatchEnabled = false;
 var connectionStat = {};
+var audioFallbackTimer = null;
 // Bind vue status to connection state.
 function enableStatWatch() {
   // Start watching stats
@@ -718,6 +719,22 @@ function enableStatWatch() {
     // Stats refresh interval (1000 ms)
   }, 1000);
 }
+// 标记连接完成（video+audio 都 connected，或 video connected + audio 超时）
+function markConnected() {
+  app.status = "connected";
+  // 连接成功，清理 peerBusy 状态
+  app.peerBusy = false;
+  app.peerBusyForced = false;
+  app.peerBusyCountdown = 0;
+  if (audioFallbackTimer) {
+    clearTimeout(audioFallbackTimer);
+    audioFallbackTimer = null;
+  }
+  if (!statWatchEnabled) {
+    enableStatWatch();
+  }
+}
+
 webrtc.onconnectionstatechange = (state) => {
   videoConnected = state;
   if (videoConnected === "connected") {
@@ -740,14 +757,20 @@ webrtc.onconnectionstatechange = (state) => {
     });
   }
   if (videoConnected === "connected" && audioConnected === "connected") {
-    app.status = state;
-    // 连接成功，清理 peerBusy 状态
-    app.peerBusy = false;
-    app.peerBusyForced = false;
-    app.peerBusyCountdown = 0;
-    if (!statWatchEnabled) {
-      enableStatWatch();
+    markConnected();
+  } else if (videoConnected === "connected" && audioConnected !== "connected") {
+    // video 已连接但 audio 还没连上，启动 5 秒超时容错
+    if (!audioFallbackTimer) {
+      console.log("[app] Video connected, waiting up to 5s for audio...");
+      audioFallbackTimer = setTimeout(() => {
+        audioFallbackTimer = null;
+        if (videoConnected === "connected" && audioConnected !== "connected") {
+          console.log("[app] Audio timeout, proceeding without audio WebRTC connection");
+          markConnected();
+        }
+      }, 5000);
     }
+    app.status = videoConnected;
   } else {
     app.status = state === "connected" ? audioConnected : videoConnected;
   }
@@ -774,10 +797,7 @@ audio_webrtc.onconnectionstatechange = (state) => {
     });
   }
   if (audioConnected === "connected" && videoConnected === "connected") {
-    app.status = state;
-    if (!statWatchEnabled) {
-      enableStatWatch();
-    }
+    markConnected();
   } else {
     app.status = state === "connected" ? videoConnected : audioConnected;
   }

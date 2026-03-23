@@ -4,7 +4,7 @@
 
 # Supported base images: Ubuntu 24.04, 22.04, 20.04
 ARG BASE=ubuntu:24.04
-FROM ${BASE_IMAGE}
+FROM ${BASE}
 
 LABEL maintainer="https://github.com/open-beagle"
 

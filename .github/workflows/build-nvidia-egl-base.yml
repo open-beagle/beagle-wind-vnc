@@ -43,7 +43,7 @@ jobs:
             ghcr.io/${{ github.repository }}:nvidia-egl-latest
           platforms: linux/amd64
           build-args: |
-            BASE_IMAGE=ubuntu:24.04
+            BASE=ubuntu:24.04
           no-cache: true
 
       - name: Image push success - nvidia-egl

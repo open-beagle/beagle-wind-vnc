@@ -95,7 +95,7 @@ fi
 
 # Remove existing Xorg configuration
 if [ -f "/etc/X11/xorg.conf" ]; then
-  rm -f "/etc/X11/xorg.conf"
+  sudo rm -f "/etc/X11/xorg.conf"
 fi
 
 # Get first GPU device of specified visible devices when `NVIDIA_VISIBLE_DEVICES` devices are specified
@@ -130,24 +130,24 @@ BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]})@$(printf '%u' 0x${ARR_ID[0]}):$(printf
 # A custom modeline should be generated because there is no monitor to fetch this information normally
 export MODELINE="$(cvt -r ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
 # Generate /etc/X11/xorg.conf with nvidia-xconfig
-nvidia-xconfig --virtual="${DISPLAY_SIZEW}x${DISPLAY_SIZEH}" --depth="${DISPLAY_CDEPTH}" --mode="$(echo ${MODELINE} | awk '{print $2; exit}' | tr -d '\"')" --allow-empty-initial-configuration --no-probe-all-gpus --busid="${BUS_ID}" --include-implicit-metamodes --mode-debug --no-sli --no-base-mosaic --only-one-x-screen ${CONNECTED_MONITOR}
+sudo nvidia-xconfig --virtual="${DISPLAY_SIZEW}x${DISPLAY_SIZEH}" --depth="${DISPLAY_CDEPTH}" --mode="$(echo ${MODELINE} | awk '{print $2; exit}' | tr -d '\"')" --allow-empty-initial-configuration --no-probe-all-gpus --busid="${BUS_ID}" --include-implicit-metamodes --mode-debug --no-sli --no-base-mosaic --only-one-x-screen ${CONNECTED_MONITOR}
 # Guarantee that the X server starts without a monitor by adding more options to the configuration
-sed -i '/Driver\s\+"nvidia"/a\    Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"' /etc/X11/xorg.conf
+sudo sed -i '/Driver\s\+"nvidia"/a\    Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"' /etc/X11/xorg.conf
 # Support external GPUs
-sed -i '/Driver\s\+"nvidia"/a\    Option         "AllowExternalGpus" "True"' /etc/X11/xorg.conf
+sudo sed -i '/Driver\s\+"nvidia"/a\    Option         "AllowExternalGpus" "True"' /etc/X11/xorg.conf
 # Add custom generated modeline to the configuration
-sed -i '/Section\s\+"Monitor"/a\    '"${MODELINE}" /etc/X11/xorg.conf
+sudo sed -i '/Section\s\+"Monitor"/a\    '"${MODELINE}" /etc/X11/xorg.conf
 # Disable screen blanking in X11
-sed -i '/"DPMS"/d' /etc/X11/xorg.conf
-sed -i '/Section\s\+"Monitor"/a\    Option         "DPMS" "False"' /etc/X11/xorg.conf
+sudo sed -i '/"DPMS"/d' /etc/X11/xorg.conf
+sudo sed -i '/Section\s\+"Monitor"/a\    Option         "DPMS" "False"' /etc/X11/xorg.conf
 # Prevent interference between GPUs, add this to the host or other containers running Xorg as well
-echo -e "Section \"ServerFlags\"\n    Option         \"DontVTSwitch\" \"True\"\n    Option         \"DontZap\" \"True\"\n    Option         \"AllowMouseOpenFail\" \"True\"\n    Option         \"AutoAddGPU\" \"False\"\nEndSection" | tee -a /etc/X11/xorg.conf >/dev/null
+echo -e "Section \"ServerFlags\"\n    Option         \"DontVTSwitch\" \"True\"\n    Option         \"DontZap\" \"True\"\n    Option         \"AllowMouseOpenFail\" \"True\"\n    Option         \"AutoAddGPU\" \"False\"\nEndSection" | sudo tee -a /etc/X11/xorg.conf >/dev/null
 
-# Real sudo (sudo-root) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
-ln -snf /dev/ptmx /dev/tty7 || sudo-root ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
+# Real sudo (sudo) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
+ln -snf /dev/ptmx /dev/tty7 || sudo ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
 
 # Run Xorg server with required extensions
-/usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" &
+sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'

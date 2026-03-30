@@ -1,5 +1,5 @@
 # Start from the base GLX image built directly from vnc/nvidia/glx/Dockerfile
-FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-glx-base-latest
+FROM ghcr.io/open-beagle/beagle-wind-vnc:nvidia-glx-latest
 
 LABEL maintainer="https://github.com/open-beagle"
 

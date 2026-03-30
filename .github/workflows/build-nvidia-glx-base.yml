@@ -13,6 +13,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.20"
+
+      - name: Build joystick-server
+        run: bash .beagle/build.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -23,16 +31,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image - nvidia-glx-base
+      - name: Build and push Docker image - nvidia-glx
         uses: docker/build-push-action@v4
         with:
-          context: ./nvidia/glx
-          file: ./nvidia/glx/Dockerfile
+          context: .
+          file: ./.beagle/nvidia-glx-base.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-glx-base-2404
-            ghcr.io/${{ github.repository }}:nvidia-glx-base-latest
+            ghcr.io/${{ github.repository }}:nvidia-glx-2404
+            ghcr.io/${{ github.repository }}:nvidia-glx-latest
           platforms: linux/amd64
+          build-args: |
+            BASE=ubuntu:24.04
+          no-cache: true
 
-      - name: Image push success - nvidia-glx-base
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-glx-base-latest"
+      - name: Image push success - nvidia-glx
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-glx-2404"

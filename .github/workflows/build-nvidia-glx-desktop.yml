@@ -41,7 +41,7 @@ jobs:
             ghcr.io/${{ github.repository }}:nvidia-glx-desktop-latest
           platforms: linux/amd64
           build-args: |
-             BASE=ghcr.io/${{ github.repository }}:nvidia-glx-base-latest
+             BASE=ghcr.io/${{ github.repository }}:nvidia-glx-latest
 
       - name: Image push success
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-glx-desktop-latest"

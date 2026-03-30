@@ -48,7 +48,7 @@ steps:
         from_secret: REGISTRY_USER_ALIYUN
       registry_password:
         from_secret: REGISTRY_PASSWORD_ALIYUN
-        
+
 ---
 kind: pipeline
 name: nvidia-egl-desktop-isaac

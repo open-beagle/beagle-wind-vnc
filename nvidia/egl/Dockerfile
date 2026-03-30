@@ -624,6 +624,8 @@ ENV PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-
 
 # dbus-daemon to the below address is required during startup
 ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-system-bus"
+# Shared D-Bus session bus for all services (Steam CEF/Chromium requires this)
+ENV DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-session-bus"
 
 USER 1000
 ENV SHELL=/bin/bash

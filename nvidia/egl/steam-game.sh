@@ -5,9 +5,9 @@ until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do
   sleep 0.5
 done
 
-# 等待Fcitx进程启动
+# 等待Fcitx进程启动（兼容fcitx和fcitx5）
 echo "Waiting for Fcitx to start..."
-until pgrep -x "fcitx" > /dev/null; do
+until pgrep -x "fcitx" > /dev/null || pgrep -x "fcitx5" > /dev/null; do
   sleep 1
 done
 echo "Fcitx is running."

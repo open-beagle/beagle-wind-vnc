@@ -89,11 +89,11 @@ echo "Installing custom bdwind_gstreamer Python environment..."
 # 1. 暂时移出预置的含有 GitHub URL 强制要求的主引擎包，以避免 pip 批量检查带来的本地包与URL匹配冲突
 mv /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer*.whl /tmp/bdwind_gstreamer_tmp.whl
 
-# 2. 从本地依赖预置目录全集安装（这步将顺利读取并安装预打包的魔改 python_xlib 及其它各项核心依赖）
-pip3 install --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
+# 2. 从本地依赖预置目录全集安装（引入 --ignore-installed 防止 Debian 系统级别包缺失 RECORD 导致卸载失败）
+pip3 install --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
 # 3. 此时所有依赖环境实际上都已完全满足，我们使用 --no-deps 跳过严格的流式底层校验包，单独安装主引擎
-pip3 install --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp.whl
+pip3 install --ignore-installed --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp.whl
 
 # 4. 清扫刚刚的临时安装主包提取出物
 rm -f /tmp/bdwind_gstreamer_tmp.whl

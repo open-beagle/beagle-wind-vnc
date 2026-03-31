@@ -58,6 +58,9 @@ RUN apt update && \
   libgbm1:amd64 libgbm1:i386 \
   libgl1-mesa-dri:amd64 libgl1-mesa-dri:i386 \
   libgl1:amd64 libgl1:i386 \
+  libvulkan1:amd64 libvulkan1:i386 \
+  mesa-vulkan-drivers:amd64 mesa-vulkan-drivers:i386 \
+  vulkan-tools \
   steam-libs-amd64:amd64 steam-libs-i386:i386 \
   xdg-desktop-portal xdg-desktop-portal-kde xterm && \
   curl -o /tmp/vscode.deb -fsSL "https://update.code.visualstudio.com/latest/linux-deb-x64/stable" && \

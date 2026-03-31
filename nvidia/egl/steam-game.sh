@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Force SDL to use X11, preventing Wayland detection issues which cause "The selected graphics queue does not support presenting a swapchain image"
+export SDL_VIDEODRIVER=x11
+
 # 等待X服务器启动
 until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do
   sleep 0.5

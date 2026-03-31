@@ -2,11 +2,8 @@ name: Build GStreamer Base Image
 
 on:
   push:
-    paths:
-      - 'vnc/.beagle/nvidia-gstreamer.Dockerfile'
     branches:
-      - dev
-  workflow_dispatch:
+      - nvidia-gstreamer
 
 jobs:
   build:

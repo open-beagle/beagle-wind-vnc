@@ -42,7 +42,6 @@ if [ -z "${SELKIES_TURN_REST_URI}" ] && { { [ -z "${SELKIES_TURN_USERNAME}" ] ||
   export SELKIES_TURN_PROTOCOL="${SELKIES_TURN_PROTOCOL:-tcp}"
   export SELKIES_STUN_HOST="${SELKIES_STUN_HOST:-stun.l.google.com}"
   export SELKIES_STUN_PORT="${SELKIES_STUN_PORT:-19302}"
-  /etc/start-turnserver.sh &
 fi
 
 # Wait for X server to start
@@ -86,7 +85,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${SELKIES_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${SELKIES_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:8083;
     }
 
     location /ws {
@@ -151,7 +150,7 @@ server {
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 # Start the Selkies-GStreamer WebRTC HTML5 remote desktop application
-selkies-gstreamer \
+bdwind-gstreamer \
     --addr="localhost" \
     --port="${SELKIES_PORT:-8081}" \
     --enable_basic_auth="false" \

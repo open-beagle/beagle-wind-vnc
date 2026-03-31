@@ -98,7 +98,7 @@ ENV XMODIFIERS="@im=fcitx"
 
 # Install latest Selkies-GStreamer
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
-RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-install.sh
+RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-glx-install.sh
 
 # Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
 

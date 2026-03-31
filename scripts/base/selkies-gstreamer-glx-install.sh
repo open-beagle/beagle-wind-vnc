@@ -86,7 +86,7 @@ tar -xzf bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz -C /opt
 
 # 安装 Python 控制端（四大魔改补丁已预打包在 tarball 的 dist-packages 中）
 echo "Installing custom bdwind_gstreamer Python environment..."
-pip3 install --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl "websockets<14.0"
+pip3 install --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl "websockets"
 
 # 获取官方 Web 页面静态资产 (这部分不需要重编译，直接借用官方 1.6.2 的静态资源)
 SELKIES_VERSION="1.6.2"

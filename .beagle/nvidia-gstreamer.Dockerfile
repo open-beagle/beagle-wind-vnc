@@ -48,7 +48,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 # --- Step 6 (partial): Pre-clone GStreamer source to save bandwidth ---
 ENV GSTREAMER_VERSION="1.24.6"
 RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
-        "https://github.com/GStreamer/gstreamer.git" /tmp/gst-src
+        "https://github.com/GStreamer/gstreamer.git" /opt/gst-src
 
 # Marker file so build.sh can detect the pre-built environment
 RUN touch /etc/bdwind-build-ready

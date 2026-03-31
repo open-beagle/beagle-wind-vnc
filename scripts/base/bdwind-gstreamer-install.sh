@@ -98,11 +98,11 @@ pip3 install --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp.whl
 # 4. 清扫刚刚的临时安装主包提取出物
 rm -f /tmp/bdwind_gstreamer_tmp.whl
 
-# 获取官方 Web 页面静态资产 (这部分不需要重编译，直接借用官方 1.6.2 的静态资源)
-BDWIND_VERSION="1.6.2"
-cd /opt
-echo "Downloading upstream 1.6.2 Web Frontend..."
-curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies-gstreamer-web_v${BDWIND_VERSION}.tar.gz" | tar -xzf -
+# 获取自研风洞前端 (webrtc 子模块打包的静态资源)
+BDWIND_WEBRTC_VERSION="1.24.6"
+mkdir -p /opt/bdwind/webrtc
+echo "Downloading custom bdwind-webrtc ${BDWIND_WEBRTC_VERSION} Web Frontend..."
+curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-${BDWIND_WEBRTC_VERSION}.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc
 
 # 清理解压包、系统缓存和临时文件
 rm -f /tmp/bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz

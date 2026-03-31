@@ -60,7 +60,7 @@ server {
     $(if [ \"$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"; fi)
 
     location / {
-        root /opt/gst-web/;
+        root /opt/bdwind/webrtc/;
         index  index.html index.htm;
     }
 
@@ -142,7 +142,7 @@ server {
 
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /opt/gst-web/;
+        root /opt/bdwind/webrtc/;
     }
 }" | tee /etc/nginx/sites-available/default > /dev/null
 

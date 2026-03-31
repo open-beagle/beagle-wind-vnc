@@ -26,11 +26,7 @@ RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/bgctl.sh \
     /etc/supervisord.conf
 
-# Copy frontend files
-USER 1000
-SHELL ["/bin/sh", "-c"]
 
-COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
 USER 1000
 

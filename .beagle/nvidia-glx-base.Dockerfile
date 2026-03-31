@@ -16,12 +16,9 @@ ENV PASSWD=mypasswd
 # Ensure we use standard shell for root operations (not fakeroot)
 SHELL ["/bin/sh", "-c"]
 
-# Copy scripts to container
-COPY scripts/base/ /etc/beagle-wind-vnc/scripts/
-RUN chmod +x /etc/beagle-wind-vnc/scripts/*.sh
-
-# Run base system setup
-RUN /etc/beagle-wind-vnc/scripts/base-system-setup.sh
+# Run base system setup via BuildKit ephemeral bind mount (zero image layers trace)
+RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
+    bash /etc/beagle-wind-vnc/scripts/base-system-setup.sh
 
 # Set locales
 ENV LANG="zh_CN.UTF-8"
@@ -29,7 +26,8 @@ ENV LANGUAGE="zh_CN:zh"
 ENV LC_ALL="zh_CN.UTF-8"
 
 # Install operating system libraries or packages (must run as root before switching user)
-RUN /etc/beagle-wind-vnc/scripts/os-libraries-install.sh && \
+RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
+    bash /etc/beagle-wind-vnc/scripts/os-libraries-install.sh && \
   # Allow non-root user to write nginx site config at runtime
   chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled && \
   # Create nginx runtime directories with proper permissions for non-root user
@@ -58,13 +56,14 @@ ENV DISPLAY_REFRESH=60
 ENV DISPLAY_DPI=96
 ENV DISPLAY_CDEPTH=24
 ENV VIDEO_PORT=DFP
-ENV SELKIES_ENCODER=nvh264enc
-ENV SELKIES_ENABLE_RESIZE=false
-ENV SELKIES_ENABLE_BASIC_AUTH=true
+ENV BDWIND_ENCODER=nvh264enc
+ENV BDWIND_ENABLE_RESIZE=false
+ENV BDWIND_ENABLE_BASIC_AUTH=true
 
 # ========== GLX-specific: Install X.Org (NOT Xvfb) ==========
 # GLX uses a real hardware X.Org server bound to the GPU, instead of EGL's virtual framebuffer
-RUN /etc/beagle-wind-vnc/scripts/xorg-install.sh
+RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
+    bash /etc/beagle-wind-vnc/scripts/xorg-install.sh
 
 # ========== GLX-specific: NO VirtualGL needed ==========
 # GLX renders natively on GPU hardware via X.Org, so VirtualGL interception is unnecessary
@@ -72,7 +71,8 @@ RUN /etc/beagle-wind-vnc/scripts/xorg-install.sh
 # Anything below this line should always be kept the same between docker-nvidia-glx-desktop and docker-nvidia-egl-desktop
 
 # Install KDE and other GUI packages
-RUN /etc/beagle-wind-vnc/scripts/kde-install.sh
+RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
+    bash /etc/beagle-wind-vnc/scripts/kde-install.sh
 
 # KDE environment variables
 ENV DESKTOP_SESSION=plasma
@@ -96,57 +96,9 @@ ENV QT_IM_MODULE=fcitx
 ENV XIM=fcitx
 ENV XMODIFIERS="@im=fcitx"
 
-# Install latest Selkies-GStreamer
-ARG PIP_BREAK_SYSTEM_PACKAGES=1
-RUN /etc/beagle-wind-vnc/scripts/selkies-gstreamer-glx-install.sh
-
-# Add custom packages right below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf, and set ENTRYPOINT to /usr/bin/supervisord
-
-# Copy files that need root permissions before switching to non-root user
-COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-RUN chmod 755 /usr/bin/joystick-server
-
-# ========== GLX-specific: Use GLX entrypoint and supervisord ==========
-COPY ./nvidia/glx/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./nvidia/glx/selkies-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh
-COPY ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-COPY ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
-COPY ./nvidia/glx/supervisord.conf /etc/supervisord.conf
-COPY ./scripts/base/start-turnserver.sh /etc/start-turnserver.sh
-RUN chmod 755 /etc/beagle-wind-vnc/entrypoint.sh \
-    /etc/beagle-wind-vnc/selkies-gstreamer-entrypoint.sh \
-    /etc/beagle-wind-vnc/steam-game.sh \
-    /etc/beagle-wind-vnc/bgctl.sh \
-    /etc/supervisord.conf \
-    /etc/start-turnserver.sh
-
 USER 0
 # Enable sudo through sudo-root with uid 0
-RUN /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
-
-# Clean up temporary scripts (must be done as root since scripts are owned by root)
-RUN rm -rf /etc/beagle-wind-vnc/scripts/
+RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
+    bash /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
 
 USER 1000
-
-ENV PIPEWIRE_LATENCY="128/48000"
-ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
-ENV PIPEWIRE_RUNTIME_DIR="${PIPEWIRE_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}}"
-ENV PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}"
-ENV PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}/native}"
-
-# dbus-daemon to the below address is required during startup
-ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-system-bus"
-# Shared D-Bus session bus for all services (Steam CEF/Chromium requires this)
-ENV DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-session-bus"
-
-USER 1000
-ENV SHELL=/bin/bash
-ENV USER=ubuntu
-ENV HOME=/home/ubuntu
-WORKDIR /home/ubuntu
-
-EXPOSE 8080
-
-ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
-ENTRYPOINT ["/usr/bin/supervisord"]

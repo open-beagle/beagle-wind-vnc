@@ -86,13 +86,23 @@ tar -xzf bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz -C /opt
 
 # 安装 Python 控制端（四大魔改补丁已预打包在 tarball 的 dist-packages 中）
 echo "Installing custom bdwind_gstreamer Python environment..."
+# 1. 暂时移出预置的含有 GitHub URL 强制要求的主引擎包，以避免 pip 批量检查带来的本地包与URL匹配冲突
+mv /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer*.whl /tmp/bdwind_gstreamer_tmp.whl
+
+# 2. 从本地依赖预置目录全集安装（这步将顺利读取并安装预打包的魔改 python_xlib 及其它各项核心依赖）
 pip3 install --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
+# 3. 此时所有依赖环境实际上都已完全满足，我们使用 --no-deps 跳过严格的流式底层校验包，单独安装主引擎
+pip3 install --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp.whl
+
+# 4. 清扫刚刚的临时安装主包提取出物
+rm -f /tmp/bdwind_gstreamer_tmp.whl
+
 # 获取官方 Web 页面静态资产 (这部分不需要重编译，直接借用官方 1.6.2 的静态资源)
-SELKIES_VERSION="1.6.2"
+BDWIND_VERSION="1.6.2"
 cd /opt
 echo "Downloading upstream 1.6.2 Web Frontend..."
-curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-gstreamer-web_v${SELKIES_VERSION}.tar.gz" | tar -xzf -
+curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies-gstreamer-web_v${BDWIND_VERSION}.tar.gz" | tar -xzf -
 
 # 清理解压包、系统缓存和临时文件
 rm -f /tmp/bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz

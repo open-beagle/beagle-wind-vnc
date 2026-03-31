@@ -78,17 +78,17 @@ fi
 # =============================================================================
 
 # 获取最新版本号
-SELKIES_VERSION="$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies-gstreamer/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')"
+BDWIND_VERSION="$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies-gstreamer/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')"
 # 下载并安装GStreamer核心组件
 cd /opt
-curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/gstreamer-selkies_gpl_v${SELKIES_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).tar.gz" | tar -xzf -
+curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/gstreamer-selkies_gpl_v${BDWIND_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).tar.gz" | tar -xzf -
 # 下载并安装Python包
 cd /tmp
-curl -O -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl"
-pip3 install --no-cache-dir --force-reinstall "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" "websockets<14.0"
-rm -f "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl"
+curl -O -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl"
+pip3 install --no-cache-dir --force-reinstall "selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl" "websockets<14.0"
+rm -f "selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl"
 # 下载并安装Web应用程序
 cd /opt
-curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-gstreamer-web_v${SELKIES_VERSION}.tar.gz" | tar -xzf -
+curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies-gstreamer-web_v${BDWIND_VERSION}.tar.gz" | tar -xzf -
 # 清理系统缓存和临时文件
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*

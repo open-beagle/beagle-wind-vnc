@@ -285,9 +285,9 @@ ENV DISPLAY_DPI=96
 ENV DISPLAY_CDEPTH=24
 ENV VIDEO_PORT=DFP
 ENV KASMVNC_ENABLE=false
-ENV SELKIES_ENCODER=nvh264enc
-ENV SELKIES_ENABLE_RESIZE=false
-ENV SELKIES_ENABLE_BASIC_AUTH=true
+ENV BDWIND_ENCODER=nvh264enc
+ENV BDWIND_ENABLE_RESIZE=false
+ENV BDWIND_ENABLE_BASIC_AUTH=true
 
 # Install Xorg
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -545,11 +545,11 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         libxext6 && \
     if [ "$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')" \> "20.04" ]; then apt-get install --no-install-recommends -y xcvt libopenh264-dev svt-av1 aom-tools; else apt-get install --no-install-recommends -y mesa-utils-extra; fi && \
     # Automatically fetch the latest Selkies-GStreamer version and install the components
-    SELKIES_VERSION="$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies-gstreamer/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \
-    cd /opt && curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/gstreamer-selkies_gpl_v${SELKIES_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).tar.gz" | tar -xzf - && \
-    cd /tmp && curl -O -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && pip3 install --no-cache-dir --force-reinstall "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && rm -f "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && \
-    cd /opt && curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-gstreamer-web_v${SELKIES_VERSION}.tar.gz" | tar -xzf - && \
-    cd /tmp && curl -o selkies-js-interposer.deb -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-js-interposer_v${SELKIES_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).deb" && apt-get update && apt-get install --no-install-recommends -y ./selkies-js-interposer.deb && rm -f selkies-js-interposer.deb && \
+    BDWIND_VERSION="$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies-gstreamer/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \
+    cd /opt && curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/gstreamer-selkies_gpl_v${BDWIND_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).tar.gz" | tar -xzf - && \
+    cd /tmp && curl -O -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl" && pip3 install --no-cache-dir --force-reinstall "selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl" && rm -f "selkies_gstreamer-${BDWIND_VERSION}-py3-none-any.whl" && \
+    cd /opt && curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies-gstreamer-web_v${BDWIND_VERSION}.tar.gz" | tar -xzf - && \
+    cd /tmp && curl -o selkies-js-interposer.deb -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${BDWIND_VERSION}/selkies-js-interposer_v${BDWIND_VERSION}_ubuntu$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '\"')_$(dpkg --print-architecture).deb" && apt-get update && apt-get install --no-install-recommends -y ./selkies-js-interposer.deb && rm -f selkies-js-interposer.deb && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 
 # Install the KasmVNC web interface and RustDesk for fallback
@@ -582,7 +582,7 @@ turnserver \
     --verbose \
     --listening-ip=\"0.0.0.0\" \
     --listening-ip=\"::\" \
-    --listening-port=\"\${SELKIES_TURN_PORT:-3478}\" \
+    --listening-port=\"\${BDWIND_TURN_PORT:-3478}\" \
     --realm=\"\${TURN_REALM:-example.com}\" \
     --external-ip=\"\${TURN_EXTERNAL_IP:-\$(dig -4 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z \"\$output\" ] || echo \"\$output\" | grep -q '^;;'; then exit 1; else echo \"\$(echo \$output | sed 's,\\\",,g')\"; fi } || dig -6 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z \"\$output\" ] || echo \"\$output\" | grep -q '^;;'; then exit 1; else echo \"[\$(echo \$output | sed 's,\\\",,g')]\"; fi } || hostname -I 2>/dev/null | awk '{print \$1; exit}' || echo '127.0.0.1')}\" \
     --min-port=\"\${TURN_MIN_PORT:-49152}\" \

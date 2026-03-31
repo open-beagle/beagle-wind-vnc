@@ -86,17 +86,18 @@ tar -xzf bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz -C /opt
 
 # 安装 Python 控制端（四大魔改补丁已预打包在 tarball 的 dist-packages 中）
 echo "Installing custom bdwind_gstreamer Python environment..."
-# 1. 暂时移出预置的含有 GitHub URL 强制要求的主引擎包，以避免 pip 批量检查带来的本地包与URL匹配冲突
-mv /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer*.whl /tmp/bdwind_gstreamer_tmp.whl
+# 1. 暂时移出预置的含有 GitHub URL 强制要求的主引擎包（改为移至隔离目录以保持其合法的 .whl 格式命名）
+mkdir -p /tmp/bdwind_gstreamer_tmp
+mv /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer*.whl /tmp/bdwind_gstreamer_tmp/
 
 # 2. 从本地依赖预置目录全集安装（引入 --ignore-installed 防止 Debian 系统级别包缺失 RECORD 导致卸载失败）
 pip3 install --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
 # 3. 此时所有依赖环境实际上都已完全满足，我们使用 --no-deps 跳过严格的流式底层校验包，单独安装主引擎
-pip3 install --ignore-installed --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp.whl
+pip3 install --ignore-installed --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp/*.whl
 
 # 4. 清扫刚刚的临时安装主包提取出物
-rm -f /tmp/bdwind_gstreamer_tmp.whl
+rm -rf /tmp/bdwind_gstreamer_tmp
 
 # 获取自研风洞前端 (webrtc 子模块打包的静态资源)
 BDWIND_WEBRTC_VERSION="1.24.6"

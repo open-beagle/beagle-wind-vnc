@@ -45,13 +45,13 @@ jobs:
           file: ./.beagle/nvidia-glx-app.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:1.0.10-glx
+            ghcr.io/${{ github.repository }}:1.0.11-glx
             ghcr.io/${{ github.repository }}:latest-glx
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.10-glx
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.11-glx
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest-glx
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/${{ github.repository }}:nvidia-glx-desktop-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.10-glx"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.11-glx"

@@ -8,8 +8,14 @@ LABEL maintainer="https://github.com/open-beagle"
 # Run business layer installation (GStreamer engine, custom Python environment & Web UI assets)
 USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
+
+# Step 1: Install self-compiled GStreamer 1.24.6 + BDWIND Python environment + Web UI
 RUN --mount=type=bind,source=scripts/base/bdwind-gstreamer-install.sh,target=/tmp/bdwind-gstreamer-install.sh \
     bash /tmp/bdwind-gstreamer-install.sh
+
+# Step 2: Build nvidia-vaapi-driver using self-compiled GStreamer (no system GStreamer dependency)
+RUN --mount=type=bind,source=scripts/base/bdwind-nvidia-vaapi-driver-install.sh,target=/tmp/bdwind-nvidia-vaapi-driver-install.sh \
+    bash /tmp/bdwind-nvidia-vaapi-driver-install.sh
 
 # Copy files that need root permissions before switching to non-root user
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
@@ -25,8 +31,6 @@ RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/steam-game.sh \
     /etc/beagle-wind-vnc/bgctl.sh \
     /etc/supervisord.conf
-
-
 
 USER 1000
 

@@ -26,8 +26,9 @@ ENV LANGUAGE="zh_CN:zh"
 ENV LC_ALL="zh_CN.UTF-8"
 
 # Install operating system libraries or packages (must run as root before switching user)
+# [BDWIND] Use bdwind version that skips system GStreamer / NVIDIA VAAPI driver installation
 RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/os-libraries-install.sh && \
+    bash /etc/beagle-wind-vnc/scripts/bdwind-os-libraries-install.sh && \
   # Allow non-root user to write nginx site config at runtime
   chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled && \
   # Create nginx runtime directories with proper permissions for non-root user

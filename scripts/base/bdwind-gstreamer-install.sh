@@ -86,10 +86,10 @@ mkdir -p /tmp/bdwind_gstreamer_tmp
 mv /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer*.whl /tmp/bdwind_gstreamer_tmp/
 
 # 2. 从本地依赖预置目录全集安装（引入 --ignore-installed 防止 Debian 系统级别包缺失 RECORD 导致卸载失败）
-pip3 install --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
+pip3 install --root-user-action=ignore --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
 # 3. 此时所有依赖环境实际上都已完全满足，我们使用 --no-deps 跳过严格的流式底层校验包，单独安装主引擎
-pip3 install --ignore-installed --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp/*.whl
+pip3 install --root-user-action=ignore --ignore-installed --no-cache-dir --no-deps /tmp/bdwind_gstreamer_tmp/*.whl
 
 # 4. 清扫刚刚的临时安装主包提取出物
 rm -rf /tmp/bdwind_gstreamer_tmp
@@ -98,10 +98,10 @@ rm -rf /tmp/bdwind_gstreamer_tmp
 BDWIND_WEBRTC_VERSION="1.24.6"
 mkdir -p /opt/bdwind/webrtc
 echo "Downloading custom bdwind-webrtc ${BDWIND_WEBRTC_VERSION} Web Frontend..."
-curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-${BDWIND_WEBRTC_VERSION}.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc
+curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-${BDWIND_WEBRTC_VERSION}.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc || true
 
 # 清理解压包、系统缓存和临时文件
 rm -f /tmp/bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/*
 # 由于脚本本身是以 --mount=bind 挂载在 /tmp 下的，清理其余垃圾时允许遇到挂载占用而忽略报错
-rm -rf /tmp/* /var/tmp/* || true
+rm -rf /tmp/* /var/tmp/* 2>/dev/null || true

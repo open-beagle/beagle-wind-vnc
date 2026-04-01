@@ -67,6 +67,10 @@ apt-get update && apt-get install --no-install-recommends -y \
   libxtst6 \
   libxext6
 
+# 为 NVENC 和 cudanvrtc 构建默认的 libnvrtc.so 动态软链接
+# 由于通过 APT 安装的 libnvrtc12 只提供 libnvrtc.so.12，GStreamer cudanvrtc 加载模块底层强制需要去 dlopen(libnvrtc.so)
+ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvrtc.so || true
+
 # =============================================================================
 # 自动获取并安装私有化定制 Beagle-Wind (GLX) 组件
 # =============================================================================

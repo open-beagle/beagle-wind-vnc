@@ -77,6 +77,7 @@ echo "Downloading custom bdwind-gstreamer 1.24.6 tarball..."
 curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz"
 echo "Extracting GStreamer Custom Engines into /opt..."
 tar -xzf bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz -C /opt
+rm -f bdwind-gstreamer-1.24.6-ubuntu24.04.tar.gz
 
 # 安装 Python 控制端（四大魔改补丁已预打包在 tarball 的 dist-packages 中）
 echo "Installing custom bdwind_gstreamer Python environment..."

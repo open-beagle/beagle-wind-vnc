@@ -149,6 +149,13 @@ server {
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
+# Prepare BDWIND NVENC Multi-GPU Workaround Hook
+if [ -f "/opt/gstreamer/lib/nvenc_ioctl_hook.so" ]; then
+    export LD_PRELOAD="/opt/gstreamer/lib/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+    # By default, use index 0 if not provided
+    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-0}"
+fi
+
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
 bdwind-gstreamer \
     --addr="localhost" \

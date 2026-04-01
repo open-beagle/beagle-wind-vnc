@@ -153,8 +153,6 @@ apt-get install --no-install-recommends -y \
   pipewire-v4l2 \
   pipewire-vulkan \
   pipewire-libcamera \
-  gstreamer1.0-libcamera \
-  gstreamer1.0-pipewire \
   libpipewire-0.3-modules \
   libpipewire-module-x11-bell \
   libspa-0.2-bluetooth \

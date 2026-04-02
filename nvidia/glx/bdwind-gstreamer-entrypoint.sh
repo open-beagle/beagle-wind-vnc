@@ -32,7 +32,7 @@ export GSTREAMER_PATH=/opt/gstreamer
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
-if [ "${BDWIND_DISABLE_TURN}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
+if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
   export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
   export BDWIND_TURN_HOST="${BDWIND_TURN_HOST:-$(dig -4 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "$(echo $output | sed 's,\",,g')"; fi } || dig -6 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "[$(echo $output | sed 's,\",,g')]"; fi } || hostname -I 2>/dev/null | awk '{print $1; exit}' || echo '127.0.0.1')}"
   export TURN_EXTERNAL_IP="${TURN_EXTERNAL_IP:-$(getent ahostsv4 $(echo ${BDWIND_TURN_HOST} | tr -d '[]') 2>/dev/null | awk '{print $1; exit}' || getent ahostsv6 $(echo ${BDWIND_TURN_HOST} | tr -d '[]') 2>/dev/null | awk '{print "[" $1 "]"; exit}')}"
@@ -66,13 +66,13 @@ server {
 
     location ~* \.html$ {
         root /opt/bdwind/webrtc/dist/;
-        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Cache-Control \"no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0\";
         expires off;
     }
 
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         root /opt/bdwind/webrtc/dist/;
-        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header Cache-Control \"public, max-age=31536000, immutable\";
         expires 1y;
     }
 
@@ -172,6 +172,13 @@ if [ -f "/opt/gstreamer/lib/nvenc_ioctl_hook.so" ]; then
     export LD_PRELOAD="/opt/gstreamer/lib/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
     # By default, use index 0 if not provided
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-0}"
+fi
+
+# Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
+if [ -n "${BDWIND_ICE_IP}" ]; then
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
+    export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
+    echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
 fi
 
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application

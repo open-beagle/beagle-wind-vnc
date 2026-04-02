@@ -73,7 +73,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
     }
 
     location /turn {
@@ -85,7 +85,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
     }
 
     location /ws {
@@ -105,7 +105,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
     }
 
     location /webrtc/signalling {
@@ -125,7 +125,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
     }
 
     location /metrics {
@@ -137,7 +137,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://localhost:${BDWIND_METRICS_HTTP_PORT:-9081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_METRICS_HTTP_PORT:-9081};
     }
 
     error_page 500 502 503 504 /50x.html;
@@ -149,6 +149,12 @@ server {
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
+# Inject Frontend Idle Timeout if defined
+if [ -n "${BDWIND_IDLE_TIMEOUT}" ]; then
+    echo "Injecting BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT} to frontend configuration..."
+    sed -i -E "s/window\.BDWIND_IDLE_TIMEOUT \|\| [0-9]+/window.BDWIND_IDLE_TIMEOUT || ${BDWIND_IDLE_TIMEOUT}/g" /opt/bdwind/webrtc/app.js 2>/dev/null || true
+fi
+
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/lib/nvenc_ioctl_hook.so" ]; then
     export LD_PRELOAD="/opt/gstreamer/lib/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
@@ -158,7 +164,7 @@ fi
 
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
 bdwind-gstreamer \
-    --addr="localhost" \
+    --addr="127.0.0.1" \
     --port="${BDWIND_PORT:-8081}" \
     --enable_basic_auth="false" \
     --enable_metrics_http="true" \

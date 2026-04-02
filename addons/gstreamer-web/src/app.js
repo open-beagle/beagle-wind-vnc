@@ -819,9 +819,9 @@ webrtc.ondatachannelopen = () => {
   // Bind input handlers.
   webrtc.input.attach();
 
-  // 空闲检测 — 每 10 秒检查一次
-  var idleWarningSeconds = 240; // 4 分钟
-  var idleDisconnectSeconds = 300; // 5 分钟
+  // 空闲检测 — 支持通过环境变量/全局变量调整超时时间，默认 300 秒 (5分钟)
+  var idleDisconnectSeconds = window.BDWIND_IDLE_TIMEOUT || 300;
+  var idleWarningSeconds = Math.max(0, idleDisconnectSeconds - 60); // 提前60秒警告
   var idleCheckInterval = setInterval(() => {
     if (app.idleState === 'disconnected') {
       clearInterval(idleCheckInterval);

@@ -60,18 +60,18 @@ server {
     $(if [ \"$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"; fi)
 
     location / {
-        root /opt/bdwind/webrtc/dist/;
+        root /opt/bdwind/webrtc/;
         index  index.html index.htm;
     }
 
     location ~* \.html$ {
-        root /opt/bdwind/webrtc/dist/;
+        root /opt/bdwind/webrtc/;
         add_header Cache-Control \"no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0\";
         expires off;
     }
 
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        root /opt/bdwind/webrtc/dist/;
+        root /opt/bdwind/webrtc/;
         add_header Cache-Control \"public, max-age=31536000, immutable\";
         expires 1y;
     }
@@ -154,7 +154,7 @@ server {
 
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /opt/bdwind/webrtc/dist/;
+        root /opt/bdwind/webrtc/;
     }
 }" | tee /etc/nginx/sites-available/default > /dev/null
 
@@ -164,7 +164,7 @@ rm -rf "${HOME}/.cache/gstreamer-1.0"
 # Inject Frontend Idle Timeout if defined
 if [ -n "${BDWIND_IDLE_TIMEOUT}" ]; then
     echo "Injecting BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT} to frontend configuration..."
-    sed -i "s|<script id=\"idle_timeout_env\"></script>|<script>window.BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT};</script>|g" /opt/bdwind/webrtc/dist/index.html 2>/dev/null || true
+    sed -i "s|<script id=\"idle_timeout_env\"></script>|<script>window.BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT};</script>|g" /opt/bdwind/webrtc/index.html 2>/dev/null || true
 fi
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook

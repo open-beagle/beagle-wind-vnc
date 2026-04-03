@@ -49,6 +49,44 @@ COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 # =============================================================================
 # Beagle-Wind WebRTC & Streaming Engine Setup
 # =============================================================================
+# 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
+RUN apt update && apt install --no-install-recommends -y \
+  libnvrtc12 \
+  libnvrtc-builtins12.0 \
+  python3-pip \
+  python3-dev \
+  python3-gi \
+  python3-setuptools \
+  python3-wheel \
+  libgcrypt20 \
+  libgirepository-1.0-1 \
+  glib-networking \
+  libglib2.0-0 \
+  libgudev-1.0-0 \
+  libasound2t64 \
+  jackd2 \
+  libjack-jackd2-0 \
+  libpulse0 \
+  libopus0 \
+  libvpx9 \
+  libx264-164 \
+  libx265-199 \
+  libaom3 \
+  libsvtav1enc1d1 \
+  libopenh264-7 \
+  libnice10 \
+  libsoup-3.0-0 \
+  libwebrtc-audio-processing1 \
+  liborc-0.4-0t64 \
+  libsrtp2-1 \
+  libgraphene-1.0-0 \
+  libgssdp-1.6-0 \
+  libgupnp-1.6-0 \
+  libgupnp-igd-1.6-0 \
+  libbrotli1 && \
+  ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvrtc.so || true && \
+  apt clean && rm -rf /var/lib/apt/lists/*
+
 # 从 Aliyun OSS 取得编译好的 GStreamer 1.28.1 容器引擎压缩包
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.1-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
 

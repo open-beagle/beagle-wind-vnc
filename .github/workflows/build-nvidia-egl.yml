@@ -37,13 +37,13 @@ jobs:
           file: ./.beagle/nvidia.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:1.0.10
+            ghcr.io/${{ github.repository }}:1.0.12
             ghcr.io/${{ github.repository }}:latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.10
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.12
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest
           platforms: linux/amd64
           build-args: |
             RENDER_ENGINE=egl
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.10"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.12"

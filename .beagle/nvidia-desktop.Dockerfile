@@ -8,7 +8,6 @@ LABEL maintainer="https://github.com/open-beagle"
 USER 0
 SHELL ["/bin/sh", "-c"]
 
-
 ARG DEBIAN_FRONTEND=noninteractive
 # Install Steam and extra packages missing from base
 RUN apt update && \

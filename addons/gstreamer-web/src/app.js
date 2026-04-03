@@ -165,6 +165,12 @@ var app = new Vue({
         },
       },
       disabled: true,
+      idleState: 'active',
+      idleCountdown: 60,
+      disconnectReason: '',
+      peerBusy: false,
+      peerBusyForced: false,
+      peerBusyCountdown: 0,
     };
   },
 
@@ -223,9 +229,9 @@ var app = new Vue({
     },
     // 处理键盘按下事件
     handleKeyDown(event) {
-      // 检查是否按下 Enter 键
-      if (event.key === "Enter") {
-        console.log(`handleKeyDown: key Down: ${event.key}`);
+      // 只在显示"开启"按钮时响应回车键
+      if (event.key === "Enter" && this.showStart === true && !event.repeat) {
+        console.log(`handleKeyDown: Starting stream`);
         this.playStream();
       }
     },
@@ -244,6 +250,28 @@ var app = new Vue({
         .catch((err) => {
           webrtc._setError("Failed to read clipboard contents: " + err);
         });
+    },
+    // 重置空闲计时
+    resetIdleTimer() {
+      if (this.idleState === 'warning') {
+        this.idleState = 'active';
+        this.idleCountdown = 60;
+      }
+      // 用户点击了按钮，算作交互，自动播放视频流
+      if (this.showStart) {
+        this.playStream();
+      }
+    },
+    // 取消接管
+    cancelTakeover() {
+      window.location.reload();
+    },
+    // 强制接管
+    forceTakeover() {
+      this.peerBusyForced = true;
+      this.peerBusyCountdown = -1;
+      signalling.sendForceTakeover();
+      audio_signalling.sendForceTakeover();
     },
     publish() {
       var data = {
@@ -357,9 +385,6 @@ app.debug = app.getBoolParam("debug", false);
 // Fetch turn setting
 app.turnSwitch = app.getBoolParam("turnSwitch", false);
 
-// Fetch scale local settings
-app.scaleLocal = app.getBoolParam("scaleLocal", !app.resizeRemote);
-
 var videoElement = document.getElementById("stream");
 if (videoElement === null) {
   throw "videoElement not found on page";
@@ -392,6 +417,9 @@ var audio_signalling = new WebRTCDemoSignalling(
 );
 var audio_webrtc = new WebRTCDemo(audio_signalling, audioElement, 3);
 
+// Fetch scale local settings AFTER webrtc is created to avoid triggering watcher before webrtc.element exists
+app.scaleLocal = app.getBoolParam("scaleLocal", !app.resizeRemote);
+
 // Function to add timestamp to logs.
 var applyTimestamp = (msg) => {
   var now = new Date();
@@ -408,9 +436,47 @@ signalling.onerror = (message) => {
   app.logEntries.push(applyTimestamp("[signalling] [ERROR] " + message));
 };
 
+// 会话冲突回调 — 被踢
+signalling.onkicked = () => {
+  app.disconnectReason = 'kicked';
+  app.idleState = 'disconnected';
+  // 主动关闭所有 WS，让后端自然触发 remove_peer
+  try { signalling.disconnect(); } catch(e) {}
+  try { audio_signalling.disconnect(); } catch(e) {}
+};
+
+// 会话冲突回调 — 桌面被占用
+signalling.onpeerbusy = () => {
+  // 显示对话框
+  app.peerBusy = true;
+  if (app.peerBusyForced) {
+    // 已点过强制接管，显示等待中状态
+    app.peerBusyCountdown = -1; // -1 表示等待中（不是倒计时）
+  } else {
+    // 第一次收到，显示对话框
+    app.peerBusyCountdown = 0;
+  }
+};
+
+// 旧连接已清理，继续握手（不需要重连）
+signalling.onpeerready = () => {
+  // 清理 UI 状态，后端会继续发送 HELLO
+  app.peerBusy = false;
+  app.peerBusyForced = false;
+  app.peerBusyCountdown = 0;
+};
+
 signalling.ondisconnect = () => {
-  var checkconnect = app.status == checkconnect;
-  // if (app.status !== "connected") return;
+  // 被踢或空闲超时，不自动重连
+  if (app.disconnectReason === 'kicked' || app.disconnectReason === 'idle') {
+    console.log("disconnected due to: " + app.disconnectReason);
+    return;
+  }
+  // PEER_BUSY 场景，不触发断线重连
+  if (app.peerBusy || app.peerBusyForced) {
+    return;
+  }
+  var checkconnect = (app.status === "checkconnect");
   console.log("signalling disconnected");
   app.status = "connecting";
   videoElement.style.cursor = "auto";
@@ -427,9 +493,22 @@ audio_signalling.onerror = (message) => {
   app.logEntries.push(applyTimestamp("[audio signalling] [ERROR] " + message));
 };
 
+// audio 通道静默处理被踢和桌面占用
+audio_signalling.onkicked = () => {};
+audio_signalling.onpeerbusy = () => {};
+audio_signalling.onpeerready = () => {};
+
 audio_signalling.ondisconnect = () => {
-  var checkconnect = app.status == checkconnect;
-  // if (app.status !== "connected") return;
+  // 被踢或空闲超时，不自动重连
+  if (app.disconnectReason === 'kicked' || app.disconnectReason === 'idle') {
+    console.log("audio disconnected due to: " + app.disconnectReason);
+    return;
+  }
+  // PEER_BUSY 场景，不触发断线重连
+  if (app.peerBusy || app.peerBusyForced) {
+    return;
+  }
+  var checkconnect = (app.status === "checkconnect");
   console.log("audio signalling disconnected");
   app.status = "connecting";
   videoElement.style.cursor = "auto";
@@ -482,6 +561,7 @@ var videoConnected = "";
 var audioConnected = "";
 var statWatchEnabled = false;
 var connectionStat = {};
+var audioFallbackTimer = null;
 // Bind vue status to connection state.
 function enableStatWatch() {
   // Start watching stats
@@ -639,6 +719,22 @@ function enableStatWatch() {
     // Stats refresh interval (1000 ms)
   }, 1000);
 }
+// 标记连接完成（video+audio 都 connected，或 video connected + audio 超时）
+function markConnected() {
+  app.status = "connected";
+  // 连接成功，清理 peerBusy 状态
+  app.peerBusy = false;
+  app.peerBusyForced = false;
+  app.peerBusyCountdown = 0;
+  if (audioFallbackTimer) {
+    clearTimeout(audioFallbackTimer);
+    audioFallbackTimer = null;
+  }
+  if (!statWatchEnabled) {
+    enableStatWatch();
+  }
+}
+
 webrtc.onconnectionstatechange = (state) => {
   videoConnected = state;
   if (videoConnected === "connected") {
@@ -661,10 +757,20 @@ webrtc.onconnectionstatechange = (state) => {
     });
   }
   if (videoConnected === "connected" && audioConnected === "connected") {
-    app.status = state;
-    if (!statWatchEnabled) {
-      enableStatWatch();
+    markConnected();
+  } else if (videoConnected === "connected" && audioConnected !== "connected") {
+    // video 已连接但 audio 还没连上，启动 5 秒超时容错
+    if (!audioFallbackTimer) {
+      console.log("[app] Video connected, waiting up to 5s for audio...");
+      audioFallbackTimer = setTimeout(() => {
+        audioFallbackTimer = null;
+        if (videoConnected === "connected" && audioConnected !== "connected") {
+          console.log("[app] Audio timeout, proceeding without audio WebRTC connection");
+          markConnected();
+        }
+      }, 5000);
     }
+    app.status = videoConnected;
   } else {
     app.status = state === "connected" ? audioConnected : videoConnected;
   }
@@ -691,10 +797,7 @@ audio_webrtc.onconnectionstatechange = (state) => {
     });
   }
   if (audioConnected === "connected" && videoConnected === "connected") {
-    app.status = state;
-    if (!statWatchEnabled) {
-      enableStatWatch();
-    }
+    markConnected();
   } else {
     app.status = state === "connected" ? videoConnected : audioConnected;
   }
@@ -715,6 +818,49 @@ webrtc.ondatachannelopen = () => {
 
   // Bind input handlers.
   webrtc.input.attach();
+
+  // 空闲检测 — 支持通过环境变量/全局变量调整超时时间，默认 300 秒 (5分钟)
+  var idleDisconnectSeconds = window.BDWIND_IDLE_TIMEOUT || 300;
+  var idleWarningSeconds = Math.max(0, idleDisconnectSeconds - 60); // 提前60秒警告
+  var idleCheckInterval = setInterval(() => {
+    if (app.idleState === 'disconnected') {
+      clearInterval(idleCheckInterval);
+      return;
+    }
+    var idleTime = (Date.now() - webrtc.input.lastActivityTime) / 1000;
+
+    if (idleTime >= idleDisconnectSeconds && app.idleState === 'warning') {
+      // 超时断连
+      app.idleState = 'disconnected';
+      app.disconnectReason = 'idle';
+      clearInterval(idleCheckInterval);
+      signalling.disconnect();
+    } else if (idleTime >= idleWarningSeconds && app.idleState === 'active') {
+      // 进入警告
+      app.idleState = 'warning';
+      app.idleCountdown = idleDisconnectSeconds - Math.floor(idleTime);
+    }
+  }, 10000);
+
+  // 警告倒计时 — 每秒更新
+  var countdownInterval = setInterval(() => {
+    if (app.idleState === 'warning') {
+      var remaining = idleDisconnectSeconds - (Date.now() - webrtc.input.lastActivityTime) / 1000;
+      app.idleCountdown = Math.max(0, Math.ceil(remaining));
+      if (app.idleCountdown <= 0) {
+        app.idleState = 'disconnected';
+        app.disconnectReason = 'idle';
+        clearInterval(countdownInterval);
+        clearInterval(idleCheckInterval);
+        signalling.disconnect();
+      }
+    } else if (app.idleState === 'disconnected') {
+      clearInterval(countdownInterval);
+    } else if (app.idleState === 'active') {
+      // 用户操作后自动从 warning 恢复到 active，重置倒计时
+      app.idleCountdown = 60;
+    }
+  }, 1000);
 
   // Send client-side metrics over data channel every 5 seconds
   setInterval(async () => {

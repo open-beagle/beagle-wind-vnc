@@ -6,12 +6,15 @@
 
 set -e
 
+# Force SDL to use X11, preventing Wayland detection issues which cause swapchain errors
+export SDL_VIDEODRIVER=x11
+
 trap "echo TRAPed signal" HUP INT QUIT TERM
 
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # Make user directory owned by the default user
-chown -f "$(id -nu):$(id -ng)" ~ || sudo-root chown -f "$(id -nu):$(id -ng)" ~ || chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || sudo-root chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || echo 'Failed to change user directory permissions, there may be permission issues'
+chown -f "$(id -nu):$(id -ng)" ~ || sudo chown -f "$(id -nu):$(id -ng)" ~ || chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || sudo chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || echo 'Failed to change user directory permissions, there may be permission issues'
 # Change operating system password to environment variable
 (
   echo "${PASSWD}"
@@ -21,22 +24,46 @@ chown -f "$(id -nu):$(id -ng)" ~ || sudo-root chown -f "$(id -nu):$(id -ng)" ~ |
   echo "${PASSWD}"
   echo "${PASSWD}"
 ) | passwd "$(id -nu)" || echo 'Password change failed, using default password'
+
+# Inject Polkit rule to allow passwordless pkexec for Steam dependencies
+sudo mkdir -pm 755 /etc/polkit-1/rules.d/ || true
+sudo bash -c "cat <<'EOF' > /etc/polkit-1/rules.d/99-nopasswd.rules
+polkit.addRule(function(action, subject) {
+    if (action.id == \"org.freedesktop.policykit.exec\" &&
+        subject.user == \"$(id -nu)\") {
+        return polkit.Result.YES;
+    }
+});
+EOF"
+sudo chmod 644 /etc/polkit-1/rules.d/99-nopasswd.rules || true
 # Remove directories to make sure the desktop environment starts
 rm -rf /tmp/.X* ~/.cache || echo 'Failed to clean X11 paths'
+
+# Fix NVENC Error Code 2 (OOM) by symlinking isolated NVIDIA devices to index 0 interfaces
+if [ ! -e /dev/nvidia0 ]; then
+    REAL_NVD=$(ls /dev/nvidia[0-9]* 2>/dev/null | head -n 1)
+    if [ -n "$REAL_NVD" ]; then
+        sudo ln -snf "$REAL_NVD" /dev/nvidia0 || echo "Failed to symlink $REAL_NVD to /dev/nvidia0"
+    fi
+fi
+if [ ! -e /dev/dri/renderD128 ]; then
+    REAL_REND=$(ls /dev/dri/renderD* 2>/dev/null | grep -v 128 | head -n 1)
+    if [ -n "$REAL_REND" ]; then
+        sudo ln -snf "$REAL_REND" /dev/dri/renderD128 || echo "Failed to symlink $REAL_REND to /dev/dri/renderD128"
+    fi
+fi
+if [ ! -e /dev/dri/card0 ]; then
+    REAL_CARD=$(ls /dev/dri/card* 2>/dev/null | grep -E '/dev/dri/card[0-9]+' | grep -v card0 | head -n 1)
+    if [ -n "$REAL_CARD" ]; then
+        sudo ln -snf "$REAL_CARD" /dev/dri/card0 || echo "Failed to symlink $REAL_CARD to /dev/dri/card0"
+    fi
+fi
 # Change time zone from environment variable
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || echo 'Failed to set timezone'
 # Add Lutris directories to path
 export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"
 # Add LibreOffice to library path
 export LD_LIBRARY_PATH="/usr/lib/libreoffice/program${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-
-# Configure joystick interposer
-export SELKIES_INTERPOSER='/usr/$LIB/selkies_joystick_interposer.so'
-export LD_PRELOAD="${SELKIES_INTERPOSER}${LD_PRELOAD:+:${LD_PRELOAD}}"
-export SDL_JOYSTICK_DEVICE=/dev/input/js0
-mkdir -pm1777 /dev/input || sudo-root mkdir -pm1777 /dev/input || echo 'Failed to create joystick interposer directory'
-touch /dev/input/js0 /dev/input/js1 /dev/input/js2 /dev/input/js3 || sudo-root touch /dev/input/js0 /dev/input/js1 /dev/input/js2 /dev/input/js3 || echo 'Failed to create joystick interposer devices'
-chmod 777 /dev/input/js* || sudo-root chmod 777 /dev/input/js* || echo 'Failed to change permission for joystick interposer devices'
 
 # Set default display
 export DISPLAY="${DISPLAY:-:20}"
@@ -47,79 +74,46 @@ export PIPEWIRE_RUNTIME_DIR="${PIPEWIRE_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}}"
 export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}"
 export PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}/native}"
 
+# The NVIDIA-Linux driver installer has been removed.
+# Host drivers must be mapped correctly via NVIDIA Container Toolkit.
 if ! command -v nvidia-xconfig >/dev/null 2>&1; then
-  # Install NVIDIA userspace driver components including X graphic libraries, keep contents same between docker-nvidia-glx-desktop and docker-nvidia-egl-desktop
-  export NVIDIA_DRIVER_ARCH="$(dpkg --print-architecture | sed -e 's/arm64/aarch64/' -e 's/armhf/32bit-ARM/' -e 's/i.*86/x86/' -e 's/amd64/x86_64/' -e 's/unknown/x86_64/')"
-  if [ -z "${NVIDIA_DRIVER_VERSION}" ]; then
-    # Driver version is provided by the kernel through the container toolkit, prioritize kernel driver version if available
-    if [ -f "/proc/driver/nvidia/version" ]; then
-      export NVIDIA_DRIVER_VERSION="$(head -n1 </proc/driver/nvidia/version | awk '{for(i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.[0-9\.]+/) {print $i; exit}}')"
-    elif command -v nvidia-smi >/dev/null 2>&1; then
-      # Use NVIDIA-SMI when not available
-      export NVIDIA_DRIVER_VERSION="$(nvidia-smi --version | grep 'DRIVER version' | cut -d: -f2 | tr -d ' ')"
-    else
-      echo 'Failed to find NVIDIA GPU driver version, container will likely not start because of no NVIDIA container toolkit or NVIDIA GPU driver present'
-    fi
-  fi
-  cd /tmp
-
-  if [ -f "/data/nvidia/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" ]; then
-    cp /data/nvidia/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run /tmp/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run
-  fi
-
-  # If version is different, new installer will overwrite the existing components
-  if [ ! -f "/tmp/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" ]; then
-    # Check multiple sources in order to probe both consumer and datacenter driver versions
-    curl -fsSL -O "https://international.download.nvidia.com/XFree86/Linux-${NVIDIA_DRIVER_ARCH}/${NVIDIA_DRIVER_VERSION}/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" || curl -fsSL -O "https://international.download.nvidia.com/tesla/${NVIDIA_DRIVER_VERSION}/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" || echo 'Failed NVIDIA GPU driver download'
-  fi
-  if [ -f "/tmp/NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" ]; then
-    # Extract installer before installing
-    rm -rf "NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}"
-    sh "NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}.run" -x
-    cd "NVIDIA-Linux-${NVIDIA_DRIVER_ARCH}-${NVIDIA_DRIVER_VERSION}"
-    # Run NVIDIA driver installation without the kernel modules and host components
-    sudo ./nvidia-installer --silent \
-      --no-kernel-module \
-      --install-compat32-libs \
-      --no-nouveau-check \
-      --no-nvidia-modprobe \
-      --no-systemd \
-      --no-rpms \
-      --no-backup \
-      --no-check-for-alternate-installs
-    rm -rf /tmp/NVIDIA* && cd ~
-  else
-    echo 'Unless using non-NVIDIA GPUs, container will likely not work correctly'
-  fi
+    echo "WARNING: nvidia-xconfig not found! The NVIDIA container runtime is likely not passing correct utilities."
 fi
-
 # Remove existing Xorg configuration
 if [ -f "/etc/X11/xorg.conf" ]; then
-  rm -f "/etc/X11/xorg.conf"
+  sudo rm -f "/etc/X11/xorg.conf"
 fi
 
-# Get first GPU device of specified visible devices when `NVIDIA_VISIBLE_DEVICES` devices are specified
-if [ "${NVIDIA_VISIBLE_DEVICES}" != "all" ] && [ "${NVIDIA_VISIBLE_DEVICES}" != "none" ] && [ "${NVIDIA_VISIBLE_DEVICES}" != "void" ] && [ -n "${NVIDIA_VISIBLE_DEVICES}" ]; then
-  export GPU_SELECT="$(nvidia-smi --id=$(echo ${NVIDIA_VISIBLE_DEVICES} | cut -d ',' -f1) --query-gpu=uuid --format=csv,noheader | head -n1)"
-# Get first GPU device out of all visible devices in other situations
-else
-  export GPU_SELECT="$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)"
-fi
+# When using --gpus all, we need to select the specific GPU to bind Xorg and Vulkan to.
+# Default to GPU 0 if GPU_INDEX is not passed by the run command.
+export GPU_INDEX="${GPU_INDEX:-0}"
+export GPU_SELECT="$(nvidia-smi --query-gpu=uuid --id="${GPU_INDEX}" --format=csv,noheader | head -n1)"
 
 if [ -z "${GPU_SELECT}" ]; then
-  export GPU_SELECT="$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)"
-  if [ -z "${GPU_SELECT}" ]; then
-    echo "No NVIDIA GPUs detected or NVIDIA Container Toolkit not configured. Exiting."
-    exit 1
-  fi
+  echo "No NVIDIA GPUs detected or NVIDIA Container Toolkit not configured. Exiting."
+  exit 1
 fi
+
+# Limit CUDA to THIS specific GPU so nvenc (selkies-gstreamer) and applications
+# only see this specific GPU as their CUDA device 0.
+export CUDA_VISIBLE_DEVICES="${GPU_SELECT}"
+
+
+# Force Vulkan to only use the GPU bound to Xorg in multi-GPU --privileged containers.
+# Uses Mesa's device selection layer instead of chmod on /dev nodes to avoid polluting
+# the host or other containers sharing the same device namespace.
+export MESA_VK_DEVICE_SELECT="$(nvidia-smi --query-gpu=pci.bus_id --id=${GPU_SELECT} --format=csv,noheader | head -n1 | sed 's/00000000://' | tr '[:upper:]' '[:lower:]')"
+export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
+
 
 # Setting `VIDEO_PORT` to none disables RANDR/XRANDR, causing potential compatibility issues, set to DFP if using datacenter GPUs
 if [ "$(echo ${VIDEO_PORT} | tr '[:upper:]' '[:lower:]')" = "none" ]; then
-  export CONNECTED_MONITOR="--use-display-device=None"
+  export CONNECTED_MONITOR="None"
+  export USE_DISPLAY_DEVICE="None"
 # The X server is otherwise deliberately set to a specific video port despite not being plugged to enable RANDR/XRANDR, monitor will display the screen if plugged to the specific port
 else
-  export CONNECTED_MONITOR="--connected-monitor=${VIDEO_PORT:-DFP}"
+  export CONNECTED_MONITOR="${VIDEO_PORT:-DFP}"
+  export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DFP}"
 fi
 
 # Bus ID from nvidia-smi is in hexadecimal format and should be converted to decimal format (including the domain) which Xorg understands, required because nvidia-xconfig doesn't work as intended in a container
@@ -129,36 +123,98 @@ unset IFS
 BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]})@$(printf '%u' 0x${ARR_ID[0]}):$(printf '%u' 0x${ARR_ID[2]}):$(printf '%u' 0x${ARR_ID[3]})"
 # A custom modeline should be generated because there is no monitor to fetch this information normally
 export MODELINE="$(cvt -r ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
-# Generate /etc/X11/xorg.conf with nvidia-xconfig
-nvidia-xconfig --virtual="${DISPLAY_SIZEW}x${DISPLAY_SIZEH}" --depth="${DISPLAY_CDEPTH}" --mode="$(echo ${MODELINE} | awk '{print $2; exit}' | tr -d '\"')" --allow-empty-initial-configuration --no-probe-all-gpus --busid="${BUS_ID}" --include-implicit-metamodes --mode-debug --no-sli --no-base-mosaic --only-one-x-screen ${CONNECTED_MONITOR}
-# Guarantee that the X server starts without a monitor by adding more options to the configuration
-sed -i '/Driver\s\+"nvidia"/a\    Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"' /etc/X11/xorg.conf
-# Support external GPUs
-sed -i '/Driver\s\+"nvidia"/a\    Option         "AllowExternalGpus" "True"' /etc/X11/xorg.conf
-# Add custom generated modeline to the configuration
-sed -i '/Section\s\+"Monitor"/a\    '"${MODELINE}" /etc/X11/xorg.conf
-# Disable screen blanking in X11
-sed -i '/"DPMS"/d' /etc/X11/xorg.conf
-sed -i '/Section\s\+"Monitor"/a\    Option         "DPMS" "False"' /etc/X11/xorg.conf
-# Prevent interference between GPUs, add this to the host or other containers running Xorg as well
-echo -e "Section \"ServerFlags\"\n    Option         \"DontVTSwitch\" \"True\"\n    Option         \"DontZap\" \"True\"\n    Option         \"AllowMouseOpenFail\" \"True\"\n    Option         \"AutoAddGPU\" \"False\"\nEndSection" | tee -a /etc/X11/xorg.conf >/dev/null
+# Generate /etc/X11/xorg.conf manually instead of relying on nvidia-xconfig
+cat <<EOF | sudo tee /etc/X11/xorg.conf >/dev/null
+Section "ServerLayout"
+    Identifier     "Layout0"
+    Screen      0  "Screen0"
+    InputDevice    "Keyboard0" "CoreKeyboard"
+    InputDevice    "Mouse0" "CorePointer"
+EndSection
 
-# Real sudo (sudo-root) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
-ln -snf /dev/ptmx /dev/tty7 || sudo-root ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
+Section "Files"
+EndSection
+
+Section "InputDevice"
+    # generated from default
+    Identifier     "Mouse0"
+    Driver         "mouse"
+    Option         "Protocol" "auto"
+    Option         "Device" "/dev/input/mice"
+    Option         "Emulate3Buttons" "no"
+    Option         "ZAxisMapping" "4 5"
+EndSection
+
+Section "InputDevice"
+    # generated from default
+    Identifier     "Keyboard0"
+    Driver         "kbd"
+EndSection
+
+Section "Monitor"
+    Identifier     "Monitor0"
+    VendorName     "Unknown"
+    ModelName      "Unknown"
+    Option         "DPMS" "False"
+    ${MODELINE}
+EndSection
+
+Section "Device"
+    Identifier     "Device0"
+    Driver         "nvidia"
+    VendorName     "NVIDIA Corporation"
+    BusID          "${BUS_ID}"
+    Option         "AllowEmptyInitialConfiguration" "True"
+    Option         "ProbeAllGpus" "False"
+    Option         "IncludeImplicitMetaModes" "True"
+    Option         "ModeDebug" "True"
+    Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"
+    Option         "AllowExternalGpus" "True"
+    Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
+    Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
+EndSection
+
+Section "Screen"
+    Identifier     "Screen0"
+    Device         "Device0"
+    Monitor        "Monitor0"
+    DefaultDepth    ${DISPLAY_CDEPTH}
+    SubSection     "Display"
+        Depth       ${DISPLAY_CDEPTH}
+        Virtual     ${DISPLAY_SIZEW} ${DISPLAY_SIZEH}
+        Modes      "$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
+    EndSubSection
+EndSection
+
+Section "ServerFlags"
+    Option         "DontVTSwitch" "True"
+    Option         "DontZap" "True"
+    Option         "AllowMouseOpenFail" "True"
+    Option         "AutoAddGPU" "False"
+EndSection
+EOF
+
+
+# Real sudo (sudo) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
+ln -snf /dev/ptmx /dev/tty7 || sudo ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
 
 # Run Xorg server with required extensions
-/usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" &
+sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "DRI3" &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
 
+# Ensure user config directories exist with correct permissions
+mkdir -p ~/.config ~/.local/share ~/.cache
+chmod 700 ~/.config ~/.local ~/.cache
+
 # Start KDE desktop environment
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
-/usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+/usr/bin/startplasma-x11 &
 
-# Start Fcitx input method framework
-/usr/bin/fcitx &
+# Start Fcitx input method framework (will be auto-started by KDE autostart)
+# /usr/bin/fcitx &
 
 # Add custom processes right below this line, or within `supervisord.conf` to perform service management similar to systemd
 

@@ -3,3 +3,4 @@
 vendor/
 ComfyUI-*
 Dockerfile
+__pycache__/

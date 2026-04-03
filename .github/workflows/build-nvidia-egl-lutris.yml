@@ -45,13 +45,13 @@ jobs:
           file: ./.beagle/nvidia-egl-lutris.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-egl-lutris-v0.5.18
+            ghcr.io/${{ github.repository }}:nvidia-egl-lutris-v0.5.20
             ghcr.io/${{ github.repository }}:nvidia-egl-lutris-latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-v0.5.18
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-v0.5.20
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-egl-lutris-latest
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-egl-desktop-latest
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-lutris-v0.5.18"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-lutris-v0.5.20"

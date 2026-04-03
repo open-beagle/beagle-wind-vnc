@@ -11,7 +11,6 @@ apt-get clean && apt-get update && apt-get dist-upgrade -y
 apt-get install --no-install-recommends -y \
   apt-utils \
   dbus-user-session \
-  fakeroot \
   fuse \
   kmod \
   locales \
@@ -31,11 +30,9 @@ update-locale LANG=zh_CN.UTF-8
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezone
 # =============================================================================
 # 配置sudo权限系统
-# 仅对root拥有的目录(/dev, /proc, /sys)或用户/组权限操作使用sudo-root
-# 不用于apt-get安装或文件/目录操作
+# ubuntu用户可以使用sudo执行需要root权限的操作
 # =============================================================================
-mv -f /usr/bin/sudo /usr/bin/sudo-root
-ln -snf /usr/bin/fakeroot /usr/bin/sudo
+# 不再使用fakeroot，保持标准sudo功能
 # =============================================================================
 # 创建ubuntu用户和组
 # =============================================================================
@@ -50,12 +47,22 @@ echo "ubuntu:${PASSWD}" | chpasswd
 # =============================================================================
 # 设置文件系统所有权
 # =============================================================================
-# 将整个文件系统的所有权更改为ubuntu用户（保留root权限）
-chown -R -f -h --no-preserve-root ubuntu:ubuntu / || echo 'Failed to set filesystem ownership in some paths to ubuntu user'
+# 只对必要的目录更改所有权为ubuntu用户，保持系统目录为root所有者
+# 用户主目录
+chown -R -f ubuntu:ubuntu /home/ubuntu || echo 'Failed to set /home/ubuntu ownership'
+# 应用程序目录（存放 gstreamer、selkies-gstreamer-web 等）
+chown -R -f ubuntu:ubuntu /opt || echo 'Failed to set /opt ownership'
+# 本地安装目录（存放 Python 包、NVIDIA 库、工具等）
+chown -R -f ubuntu:ubuntu /usr/local || echo 'Failed to set /usr/local ownership'
+# 运行时目录
+mkdir -p /run/user/1000
+chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
+# 临时目录
+chown -R -f ubuntu:ubuntu /tmp /var/tmp || echo 'Failed to set /tmp ownership'
 # =============================================================================
 # 恢复被chown移除的setuid/setgid权限
 # =============================================================================
 # 设置setuid权限（4755）
-chmod -f 4755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/bin/chfn /usr/bin/chsh /usr/bin/mount /usr/bin/gpasswd /usr/bin/passwd /usr/bin/newgrp /usr/bin/umount /usr/bin/su /usr/bin/sudo-root /usr/bin/fusermount || echo 'Failed to set chmod setuid for some paths'
+chmod -f 4755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/bin/chfn /usr/bin/chsh /usr/bin/mount /usr/bin/gpasswd /usr/bin/passwd /usr/bin/newgrp /usr/bin/umount /usr/bin/su /usr/bin/sudo /usr/bin/fusermount || echo 'Failed to set chmod setuid for some paths'
 # 设置setgid权限（2755）
 chmod -f 2755 /var/local /var/mail /usr/sbin/unix_chkpwd /usr/sbin/pam_extrausers_chkpwd /usr/bin/expiry /usr/bin/chage || echo 'Failed to set chmod setgid for some paths'

@@ -102,14 +102,18 @@ echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do 
 # Resize the screen to the provided size
 /usr/local/bin/selkies-gstreamer-resize "${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
 
+# Ensure user config directories exist with correct permissions
+mkdir -p ~/.config ~/.local/share ~/.cache
+chmod 700 ~/.config ~/.local ~/.cache
+
 # Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
 if [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)" ] || [ -n "$(ls -A /dev/dri 2>/dev/null)" ]; then
   export VGL_FPS="${DISPLAY_REFRESH}"
-  /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+  /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/startplasma-x11 &
 else
-  /usr/bin/dbus-launch --exit-with-session /usr/bin/startplasma-x11 &
+  /usr/bin/startplasma-x11 &
 fi
 
 # Start Fcitx5 input method framework (will be auto-started by KDE autostart)

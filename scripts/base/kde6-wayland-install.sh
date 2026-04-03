@@ -27,6 +27,7 @@ OpenGLIsUnsafe=false
 EOF
 
 # Fcitx5 Wayland configuration
+mkdir -p /etc/environment.d
 cat >/etc/environment.d/fcitx5-wayland.conf <<EOF
 GTK_IM_MODULE=fcitx5
 QT_IM_MODULE=fcitx5

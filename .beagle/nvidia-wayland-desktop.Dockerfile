@@ -53,8 +53,8 @@ COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 # =============================================================================
 # Beagle-Wind WebRTC & Streaming Engine Setup
 # =============================================================================
-# 从编译好的 GStreamer 容器偷取编译成果 (GStreamer 1.28.1)
-COPY --from=registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1 /opt/gstreamer /opt/gstreamer
+# 从 Aliyun OSS 取得编译好的 GStreamer 1.28.1 容器引擎压缩包
+RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.1-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
 
 # 拷贝 WebRTC 前端与 Python 启动脚本至指定层
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/ && \

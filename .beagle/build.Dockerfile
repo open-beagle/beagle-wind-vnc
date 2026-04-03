@@ -13,9 +13,9 @@ RUN sudo sed -i 's/ppa.launchpadcontent.net/launchpad.proxy.ustclug.org/g' /etc/
 # Copy gstreamer-web
 COPY ./addons/gstreamer-web/src/. /opt/gst-web/
 
-# Copy joystick-server
-COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-RUN sudo chmod +x /usr/bin/joystick-server
+# Download and install joystick-server
+RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | sudo tar -xzf - -C /usr/bin/ && \
+    sudo chmod +x /usr/bin/joystick-server
 
 # Copy selkies_gstreamer
 COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/

@@ -22,7 +22,7 @@ RUN --mount=type=bind,source=scripts/app/bdwind-nvidia-vaapi-driver-install.sh,t
     bash /tmp/bdwind-nvidia-vaapi-driver-install.sh
 
 # Copy files that need root permissions before switching to non-root user
-COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
+RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/
 
 # Use dynamic backend copy based on RENDER_ENGINE
 COPY ./nvidia/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh

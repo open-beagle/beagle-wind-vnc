@@ -52,38 +52,35 @@ COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 # 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
 RUN apt update && apt install --no-install-recommends -y \
   libnvrtc12 \
-  libnvrtc-builtins12.0 \
   python3-pip \
   python3-dev \
   python3-gi \
   python3-setuptools \
   python3-wheel \
-  libgcrypt20 \
-  libgirepository-1.0-1 \
+  libgcrypt20-dev \
+  libgirepository1.0-dev \
   glib-networking \
-  libglib2.0-0 \
-  libgudev-1.0-0 \
-  libasound2t64 \
+  libglib2.0-dev \
+  libgudev-1.0-dev \
+  libasound2-dev \
   jackd2 \
-  libjack-jackd2-0 \
-  libpulse0 \
-  libopus0 \
-  libvpx9 \
-  libx264-164 \
-  libx265-199 \
-  libaom3 \
-  libsvtav1enc1d1 \
-  libopenh264-7 \
+  libjack-jackd2-dev \
+  libpulse-dev \
+  libopus-dev \
+  libvpx-dev \
+  libx264-dev \
+  libx265-dev \
+  libaom-dev \
+  libsvtav1enc-dev \
+  libopenh264-dev \
   libnice10 \
   libsoup-3.0-0 \
-  libwebrtc-audio-processing1 \
-  liborc-0.4-0t64 \
   libsrtp2-1 \
   libgraphene-1.0-0 \
   libgssdp-1.6-0 \
   libgupnp-1.6-0 \
   libgupnp-igd-1.6-0 \
-  libbrotli1 && \
+  libbrotli-dev && \
   ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvrtc.so || true && \
   apt clean && rm -rf /var/lib/apt/lists/*
 

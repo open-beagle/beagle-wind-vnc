@@ -143,17 +143,13 @@ apt-get install --no-install-recommends -y \
   pipewire-alsa \
   pipewire-audio-client-libraries \
   pipewire-jack \
-  pipewire-locales \
   pipewire-v4l2 \
-  pipewire-vulkan \
   pipewire-libcamera \
   libpipewire-0.3-modules \
-  libpipewire-module-x11-bell \
   libspa-0.2-bluetooth \
   libspa-0.2-jack \
   libspa-0.2-modules \
   wireplumber \
-  wireplumber-locales \
   gir1.2-wp-0.5
 
 # =============================================================================

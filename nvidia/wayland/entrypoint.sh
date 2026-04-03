@@ -17,6 +17,8 @@ ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/ti
 export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"
 export WAYLAND_DISPLAY="wayland-0"
 export DISPLAY="${DISPLAY:-:20}"
+export KWIN_DRM_DEVICES="${KWIN_DRM_DEVICES:-/dev/dri/card2}"
+export KWIN_DRM_NO_AMS=1
 
 mkdir -p ~/.config ~/.local/share ~/.cache
 chmod 700 ~/.config ~/.local ~/.cache

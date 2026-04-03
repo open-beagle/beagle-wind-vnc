@@ -129,8 +129,14 @@ ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/ubuntu/.local/share}/gstreame
 ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu/girepository-1.0:/usr/lib/x86_64-linux-gnu/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
-ENV SYSTEM_DBUS_ADDRESS="unix:path=/tmp/dbus-system-bus"
-ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/dbus-session-bus"
+ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
+ENV USER=ubuntu
+ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-ubuntu"
+ENV PULSE_RUNTIME_PATH="/tmp/runtime-ubuntu/pulse"
+ENV PULSE_SERVER="unix:/tmp/runtime-ubuntu/pulse/native"
+
+ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-system-bus"
+ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 ENTRYPOINT ["/usr/bin/supervisord"]

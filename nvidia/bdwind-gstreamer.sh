@@ -49,8 +49,8 @@ if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] &&
   export BDWIND_STUN_PORT="${BDWIND_STUN_PORT:-19302}"
 fi
 
-# Wait for X server to start
-echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
+# Wait for Wayland server to start
+echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
 
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"; fi
@@ -187,7 +187,9 @@ if [ -n "${BDWIND_ICE_IP}" ]; then
 fi
 
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
-bdwind-gstreamer \
+# 使用 python3 -m 直接启动模块，等效于 pip 安装的 bdwind-gstreamer 入口脚本，
+# 但不依赖 pip console_scripts，兼容 volume 热挂载调试场景。
+python3 -m bdwind_gstreamer \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT:-8081}" \
     --enable_basic_auth="false" \

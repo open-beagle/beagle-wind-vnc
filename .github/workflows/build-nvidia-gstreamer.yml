@@ -30,8 +30,8 @@ jobs:
           file: ./.beagle/nvidia-gstreamer.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.24.6
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1
           platforms: linux/amd64
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.24.6"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1"

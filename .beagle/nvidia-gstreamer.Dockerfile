@@ -1,5 +1,5 @@
 # ==============================================================================
-# GStreamer 1.24.6 Build Base Image
+# GStreamer 1.28.1 Build Base Image
 #
 # This image pre-installs ALL build dependencies (apt, pip, rust, cargo-c)
 # and pre-clones GStreamer source so that scripts/build.sh only patches and compiles.
@@ -8,11 +8,11 @@
 #   docker run --rm -it \
 #     -v $(pwd)/gstreamer:/workspace \
 #     -w /workspace \
-#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.24.6 \
+#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1 \
 #     bash scripts/build.sh
 # ==============================================================================
 
-FROM ubuntu:24.04
+FROM ubuntu:25.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libglvnd-dev libglx-dev wayland-protocols libwayland-dev \
     libwayland-egl-backend-dev libx11-xcb-dev libxcb-dri3-dev \
     libxdamage-dev libxfixes-dev libxv-dev libxtst-dev libxext-dev \
+    libpipewire-0.3-dev libspa-0.2-dev \
     libopenh264-dev svt-av1 libsvtav1enc-dev libsvtav1dec-dev aom-tools libaom-dev \
     python3-pip python3-dev python-gi-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -46,7 +47,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     cargo install cargo-c
 
 # --- Step 6 (partial): Pre-clone GStreamer source to save bandwidth ---
-ENV GSTREAMER_VERSION="1.24.6"
+ENV GSTREAMER_VERSION="1.28.1"
 RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
         "https://github.com/GStreamer/gstreamer.git" /opt/gst-src
 

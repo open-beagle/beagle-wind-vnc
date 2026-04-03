@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libwayland-egl-backend-dev libx11-xcb-dev libxcb-dri3-dev \
     libxdamage-dev libxfixes-dev libxv-dev libxtst-dev libxext-dev \
     libpipewire-0.3-dev libspa-0.2-dev \
-    libopenh264-dev svt-av1 libsvtav1-dev aom-tools libaom-dev \
+    libopenh264-dev svt-av1 libsvtav1enc-dev aom-tools libaom-dev \
     python3-pip python3-dev python-gi-dev && \
     rm -rf /var/lib/apt/lists/*
 

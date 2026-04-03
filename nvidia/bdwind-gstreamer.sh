@@ -30,6 +30,11 @@ export GSTREAMER_PATH=/opt/gstreamer
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
 
+# Apply dynamic encoder config if it exists
+if [ -f "/etc/beagle-wind-vnc/bdwind_encoder.conf" ]; then
+    . /etc/beagle-wind-vnc/bdwind_encoder.conf
+fi
+
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then

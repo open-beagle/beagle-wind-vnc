@@ -16,7 +16,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && \
   # 1. 安装 Wine 体系 (跑 Windows 游戏必备)
   mkdir -pm755 /etc/apt/keyrings && \
-  curl -o /etc/apt/keyrings/winehq-archive.key -fsSL "https://dl.winehq.org/wine-builds/winehq.key" && \
+  curl -fsSL "https://dl.winehq.org/wine-builds/winehq.key" | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key && \
   curl -o /etc/apt/sources.list.d/winehq-noble.sources -fsSL "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources" && \
   apt update && \
   apt install --install-recommends -y winehq-staging && \

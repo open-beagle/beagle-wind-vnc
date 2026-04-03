@@ -9,16 +9,14 @@ apt-get update
 # Install KDE Plasma 6, KWin Wayland, and Portals
 apt-get install -y --no-install-recommends \
     plasma-desktop \
-    plasma-workspace-wayland \
+    plasma-workspace \
     kwin-wayland \
-    kwin-wayland-backend-drm \
     kwayland-integration \
     xdg-desktop-portal-kde \
     xdg-desktop-portal-wlr \
     dolphin \
     konsole \
     fcitx5 \
-    fcitx5-wayland \
     fcitx5-chinese-addons
 
 # Default Wayland behavior for KWin

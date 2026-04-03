@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libxdamage-dev libxfixes-dev libxv-dev libxtst-dev libxext-dev \
     libpipewire-0.3-dev libspa-0.2-dev \
     libopenh264-dev svt-av1 libsvtav1enc-dev aom-tools libaom-dev \
-    python3-pip python3-dev python-gi-dev && \
+    python3-pip python3-dev python-gi-dev python3-pil && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Step 4: Meson / Ninja / Python tools ---

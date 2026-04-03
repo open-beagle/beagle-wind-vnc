@@ -1,12 +1,12 @@
-name: Build Nvidia EGL Base Image
+name: Build Nvidia Desktop Image
 
 on:
   push:
     branches:
-      - nvidia-egl
+      - nvidia-desktop
 
 jobs:
-  build-nvidia-egl:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,20 +31,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image - nvidia-egl
+      - name: Build and push Docker image - nvidia-desktop
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-egl-base.Dockerfile
+          file: ./.beagle/nvidia-desktop.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-egl-2404-20260218
-            ghcr.io/${{ github.repository }}:nvidia-egl-2404
-            ghcr.io/${{ github.repository }}:nvidia-egl-latest
+            ghcr.io/${{ github.repository }}:nvidia-desktop-latest
           platforms: linux/amd64
-          build-args: |
-            BASE=ubuntu:24.04
-          no-cache: true
 
-      - name: Image push success - nvidia-egl
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-egl-2404-20260218"
+      - name: Image push success
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-desktop-latest"

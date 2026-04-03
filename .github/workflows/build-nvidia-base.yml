@@ -1,12 +1,12 @@
-name: Build Nvidia GLX Desktop Image
+name: Build Nvidia Base Image
 
 on:
   push:
     branches:
-      - nvidia-glx-desktop
+      - nvidia-base
 
 jobs:
-  build:
+  build-nvidia-base:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,17 +31,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image - nvidia-glx-desktop
+      - name: Build and push Docker image - nvidia-base
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-glx-desktop.Dockerfile
+          file: ./.beagle/nvidia-base.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-glx-desktop-latest
+            ghcr.io/${{ github.repository }}:nvidia-base-2404
+            ghcr.io/${{ github.repository }}:nvidia-base-latest
           platforms: linux/amd64
           build-args: |
-             BASE=ghcr.io/${{ github.repository }}:nvidia-glx-latest
+            BASE=ubuntu:24.04
+          no-cache: true
 
-      - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-glx-desktop-latest"
+      - name: Image push success - nvidia-base
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-base-2404"

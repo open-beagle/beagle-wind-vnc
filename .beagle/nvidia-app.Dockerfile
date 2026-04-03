@@ -1,7 +1,11 @@
 # Business application layer - frontend (HTML/JS) and backend (Python) code
 # This layer changes frequently and builds fast (just COPY operations)
-ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-glx-desktop-latest
+ARG RENDER_ENGINE=glx
+ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-desktop-latest
 FROM ${BASE}
+
+# Redeclare ARG so it's available after FROM
+ARG RENDER_ENGINE
 
 LABEL maintainer="https://github.com/open-beagle"
 
@@ -10,21 +14,22 @@ USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Step 1: Install self-compiled GStreamer 1.24.6 + BDWIND Python environment + Web UI
-RUN --mount=type=bind,source=scripts/base/bdwind-gstreamer-install.sh,target=/tmp/bdwind-gstreamer-install.sh \
+RUN --mount=type=bind,source=scripts/app/bdwind-gstreamer-install.sh,target=/tmp/bdwind-gstreamer-install.sh \
     bash /tmp/bdwind-gstreamer-install.sh
 
 # Step 2: Build nvidia-vaapi-driver using self-compiled GStreamer (no system GStreamer dependency)
-RUN --mount=type=bind,source=scripts/base/bdwind-nvidia-vaapi-driver-install.sh,target=/tmp/bdwind-nvidia-vaapi-driver-install.sh \
+RUN --mount=type=bind,source=scripts/app/bdwind-nvidia-vaapi-driver-install.sh,target=/tmp/bdwind-nvidia-vaapi-driver-install.sh \
     bash /tmp/bdwind-nvidia-vaapi-driver-install.sh
 
 # Copy files that need root permissions before switching to non-root user
 COPY ./addons/js-interposer/.tmp/joystick-server /usr/bin/joystick-server
-# ========== GLX-specific: Use GLX entrypoint and supervisord ==========
-COPY ./nvidia/glx/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./nvidia/glx/bdwind-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh
-COPY ./nvidia/egl/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-COPY ./nvidia/egl/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
-COPY ./nvidia/glx/supervisord.conf /etc/supervisord.conf
+
+# Use dynamic backend copy based on RENDER_ENGINE
+COPY ./nvidia/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
+COPY ./nvidia/bdwind-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh
+COPY ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
+COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
+COPY ./nvidia/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh \

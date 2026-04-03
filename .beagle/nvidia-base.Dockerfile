@@ -48,8 +48,6 @@ ENV __GL_SYNC_TO_VBLANK=0
 # Set default DISPLAY environment
 ENV DISPLAY=":20"
 
-# Anything above this line should always be kept the same between docker-nvidia-glx-desktop and docker-nvidia-egl-desktop
-
 # Default environment variables (default password is "mypasswd")
 ENV DISPLAY_SIZEW=1920
 ENV DISPLAY_SIZEH=1080
@@ -57,17 +55,16 @@ ENV DISPLAY_REFRESH=60
 ENV DISPLAY_DPI=96
 ENV DISPLAY_CDEPTH=24
 ENV VIDEO_PORT=DFP
+ENV VGL_DISPLAY=egl
 ENV BDWIND_ENCODER=nvh264enc
 ENV BDWIND_ENABLE_RESIZE=false
 ENV BDWIND_ENABLE_BASIC_AUTH=true
 
-# ========== GLX-specific: Install X.Org (NOT Xvfb) ==========
-# GLX uses a real hardware X.Org server bound to the GPU, instead of EGL's virtual framebuffer
+# Install ALL display backends (X.Org natively for GLX, Xvfb and VirtualGL for EGL)
 RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/xorg-install.sh
-
-# ========== GLX-specific: NO VirtualGL needed ==========
-# GLX renders natively on GPU hardware via X.Org, so VirtualGL interception is unnecessary
+    bash /etc/beagle-wind-vnc/scripts/xorg-install.sh && \
+    bash /etc/beagle-wind-vnc/scripts/xvfb-install.sh && \
+    bash /etc/beagle-wind-vnc/scripts/virtualgl-install.sh
 
 # Anything below this line should always be kept the same between docker-nvidia-glx-desktop and docker-nvidia-egl-desktop
 

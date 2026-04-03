@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-egl-app.Dockerfile
+          file: ./.beagle/nvidia-app.Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:1.0.10
@@ -43,7 +43,7 @@ jobs:
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest
           platforms: linux/amd64
           build-args: |
-            BASE=ghcr.io/${{ github.repository }}:nvidia-egl-desktop-latest
+            RENDER_ENGINE=egl
 
       - name: Image push success
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.10"

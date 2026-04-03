@@ -30,6 +30,7 @@ COPY ./nvidia/bdwind-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/bdwind-gstream
 COPY ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
 COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
 COPY ./nvidia/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
+COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh \

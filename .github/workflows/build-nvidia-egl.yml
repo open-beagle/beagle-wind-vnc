@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia.Dockerfile
+          file: ./.beagle/nvidia-app.Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:1.0.12

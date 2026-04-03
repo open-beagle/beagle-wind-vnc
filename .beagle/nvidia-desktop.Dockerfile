@@ -8,14 +8,6 @@ LABEL maintainer="https://github.com/open-beagle"
 USER 0
 SHELL ["/bin/sh", "-c"]
 
-# Copy custom scripts needed for steam and install joystick
-RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/
-COPY --chown=1000:1000 ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
-
-# Copy required services for supervisord conf.d
-COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
-RUN chmod 755 /usr/bin/joystick-server /etc/beagle-wind-vnc/steam-game.sh /etc/beagle-wind-vnc/bgctl.sh
 
 ARG DEBIAN_FRONTEND=noninteractive
 # Install Steam and extra packages missing from base

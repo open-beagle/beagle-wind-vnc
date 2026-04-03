@@ -15,11 +15,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # =============================================================================
 RUN apt update && \
   # 1. 安装 Wine 体系 (跑 Windows 游戏必备)
-  mkdir -pm755 /etc/apt/keyrings && \
-  curl -fsSL "https://dl.winehq.org/wine-builds/winehq.key" | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key && \
-  curl -o /etc/apt/sources.list.d/winehq-noble.sources -fsSL "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources" && \
-  apt update && \
-  apt install --install-recommends -y winehq-staging && \
+  apt install --install-recommends -y wine wine32:i386 wine64 && \
   apt install --no-install-recommends -y q4wine playonlinux && \
   # 2. 安装 Winetricks 与环境依赖
   curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \

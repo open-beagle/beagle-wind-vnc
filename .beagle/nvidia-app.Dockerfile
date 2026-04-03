@@ -26,16 +26,18 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.
 
 # Use dynamic backend copy based on RENDER_ENGINE
 COPY ./nvidia/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./nvidia/bdwind-gstreamer-entrypoint.sh /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh
+COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
 COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
+COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
 COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
-    /etc/beagle-wind-vnc/bdwind-gstreamer-entrypoint.sh \
+    /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/steam-game.sh \
     /etc/beagle-wind-vnc/bgctl.sh \
+    /etc/beagle-wind-vnc/bdwind-gamepad.sh \
     /etc/supervisord.conf
 
 USER 1000

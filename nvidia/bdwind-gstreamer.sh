@@ -15,6 +15,7 @@ until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # export SDL_JOYSTICK_DEVICE=/dev/input/js0
 
 # Set default display
+export XDG_SESSION_TYPE=x11
 export DISPLAY="${DISPLAY:-:20}"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
@@ -28,7 +29,7 @@ export GST_DEBUG="${GST_DEBUG:-*:2}"
 export GSTREAMER_PATH=/opt/gstreamer
 
 # Force exact display variable since Wayland allocates X0
-export DISPLAY=":0"
+# export DISPLAY=":0"
 
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
@@ -65,8 +66,13 @@ if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] &&
   export BDWIND_STUN_PORT="${BDWIND_STUN_PORT:-19302}"
 fi
 
-# Wait for Wayland server to start
-echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
+# Wait for Display server to start
+export DISPLAY="${DISPLAY:-:20}"
+if [ ! -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; then
+    echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
+else
+    echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
+fi
 
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"; fi

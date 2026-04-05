@@ -51,6 +51,14 @@ COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 # =============================================================================
 # 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
 RUN apt update && apt install --no-install-recommends -y \
+  labwc \
+  wlr-randr \
+  xdg-desktop-portal-wlr \
+  libcairo2-dev \
+  libwayland-dev \
+  wayland-protocols \
+  build-essential \
+  git \
   libnvrtc12 \
   libnvidia-egl-wayland1 \
   libnvidia-egl-gbm1 \
@@ -97,6 +105,19 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.
 
 # 创建 KWin GBM 劫持补丁链接 (由原生 GStreamer 包内附带提供)
 RUN ln -sf /opt/gstreamer/lib/kwin_drm_hook.so /opt/kwin_drm_hook.so || true
+
+# 编译 selkies-desktop (保留轻量级桌面面板与壁纸)
+RUN git clone https://github.com/selkies-project/selkies-desktop.git /tmp/selkies-desktop && \
+    cd /tmp/selkies-desktop && make && \
+    cp selkies-desktop /usr/local/bin/ && \
+    rm -rf /tmp/selkies-desktop
+
+# 注入 xdg-desktop-portal-wlr 静态授权配门 (彻底跳过交互弹窗)
+RUN mkdir -p /etc/xdg/xdg-desktop-portal-wlr && \
+    echo "[screencast]\n\
+output_name = HEADLESS-1\n\
+max_fps = 60\n\
+chooser_type = none\n" > /etc/xdg/xdg-desktop-portal-wlr/config.ini
 
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh

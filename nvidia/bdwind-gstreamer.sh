@@ -27,6 +27,9 @@ export PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DI
 export GST_DEBUG="${GST_DEBUG:-*:2}"
 export GSTREAMER_PATH=/opt/gstreamer
 
+# Force exact display variable since Wayland allocates X0
+export DISPLAY=":0"
+
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
 
@@ -34,6 +37,19 @@ export GSTREAMER_PATH=/opt/gstreamer
 if [ -f "/etc/beagle-wind-vnc/bdwind_encoder.conf" ]; then
     . /etc/beagle-wind-vnc/bdwind_encoder.conf
 fi
+
+# Unzip provided python wheels if they haven't been extracted yet
+mkdir -p /tmp/pydeps
+if [ ! -d "/tmp/pydeps/prometheus_client" ]; then
+    echo "Extracting Python .whl dependencies..."
+    cd /tmp/pydeps && for f in /opt/gstreamer/lib/python3/dist-packages/*.whl; do unzip -qo $f; done
+    # Delete bdwind_gstreamer to avoid shadowing the live host mount in /opt/gstreamer
+    rm -rf /tmp/pydeps/bdwind_gstreamer
+    cd - >/dev/null
+fi
+export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
+
+
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
@@ -175,8 +191,9 @@ fi
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/lib/nvenc_ioctl_hook.so" ]; then
     export LD_PRELOAD="/opt/gstreamer/lib/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
-    # By default, use index 0 if not provided
-    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-0}"
+    # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
+    DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
+    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
@@ -189,6 +206,8 @@ fi
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
 # 使用 python3 -m 直接启动模块，等效于 pip 安装的 bdwind-gstreamer 入口脚本，
 # 但不依赖 pip console_scripts，兼容 volume 热挂载调试场景。
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
+
 python3 -m bdwind_gstreamer \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT:-8081}" \

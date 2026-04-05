@@ -93,13 +93,10 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.
 # 拷贝 WebRTC 前端与 Python 启动脚本至指定层
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/ && \
     mkdir -p /opt/bdwind/webrtc && \
-    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.24.6.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
+    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.1.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
-# 编译并灌入 KWin GBM 劫持补丁 (NVIDIA Allocator 核心解法)
-COPY ./nvidia/wayland/kwin_drm_hook.c /tmp/kwin_drm_hook.c
-RUN apt install -y gcc && \
-    gcc -shared -fPIC -ldl /tmp/kwin_drm_hook.c -o /opt/kwin_drm_hook.so && \
-    rm /tmp/kwin_drm_hook.c && apt remove -y gcc && apt autoremove -y
+# 创建 KWin GBM 劫持补丁链接 (由原生 GStreamer 包内附带提供)
+RUN ln -sf /opt/gstreamer/lib/kwin_drm_hook.so /opt/kwin_drm_hook.so || true
 
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh

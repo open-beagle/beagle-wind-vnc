@@ -116,7 +116,7 @@ RUN chmod 755 /usr/bin/joystick-server \
     /etc/supervisord.conf
 
 # 安装 GStreamer Python 打包出的 Wheel (bdwind-gstreamer 引擎)
-RUN pip3 install --break-system-packages --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl || true
+RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程
 USER 1000

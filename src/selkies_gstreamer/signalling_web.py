@@ -52,8 +52,8 @@ def generate_rtc_config(turn_host, turn_port, shared_secret, user, protocol='udp
     # Sanitize user for credential compatibility
     user = user.replace(":", "-")
 
-    # Credential expires in 24 hours
-    expiry_hour = 24
+    # Credential expires in 720 hours (30 days)
+    expiry_hour = 720
 
     exp = int(time.time()) + expiry_hour * 3600
     username = "{}:{}".format(exp, user)

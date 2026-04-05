@@ -35,6 +35,24 @@ sleep 3
 
 echo "Starting Native KDE Plasma Wayland Compositor..."
 
+# =============================================================================
+# NVIDIA Allocator 原生硬件加速配置 (P4 Wayland 零拷贝核心)
+# =============================================================================
+
+# 1. GBM 链接对齐：引导 Mesa Loader 找到 nvidia-allocator.so
+sudo mkdir -p /usr/lib/x86_64-linux-gnu/gbm || true
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1 \
+       /usr/lib/x86_64-linux-gnu/gbm/nvidia-drm_gbm.so || true
+
+# 2. 强制 KWin 驱动后端向 EGL 与 NVIDIA 生态靠拢
+export KWIN_OPENGL_INTERFACE=egl
+export GBM_BACKEND=nvidia-drm
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export KWIN_DRM_NO_DIRECT_SCANOUT=1
+
+# 3. 剥离 KWin 的特权 capabilities 保证 LD_PRELOAD 生效
+sudo setcap -r /usr/bin/kwin_wayland 2>/dev/null || true
+
 # Export DBus session bus address so KWin joins the global container session
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
 export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
@@ -71,8 +89,9 @@ if command -v nvidia-smi >/dev/null; then
     fi
 fi
 
-# Start KWin Wayland Standalone on the unified dbus session with root privileges (DRM Master)
-sudo -E kwin_wayland --virtual --xwayland &
+# Start KWin Wayland Standalone on the unified dbus session.
+# 使用 LD_PRELOAD 搭载 kwin_drm_hook.so 通过 renderD128() 替身骗过 DRM Master 创建过程
+sudo -E sh -c "LD_PRELOAD=/opt/kwin_drm_hook.so kwin_wayland --virtual --xwayland" &
 KWIN_PID=$!
 
 echo "Session Running. Wait for KWin to spin up..."

@@ -52,6 +52,9 @@ COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 # 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
 RUN apt update && apt install --no-install-recommends -y \
   libnvrtc12 \
+  libnvidia-egl-wayland1 \
+  libnvidia-egl-gbm1 \
+  wl-clipboard \
   python3-pip \
   python3-dev \
   python3-gi \
@@ -91,6 +94,12 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/ && \
     mkdir -p /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.24.6.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
+
+# 编译并灌入 KWin GBM 劫持补丁 (NVIDIA Allocator 核心解法)
+COPY ./nvidia/wayland/kwin_drm_hook.c /tmp/kwin_drm_hook.c
+RUN apt install -y gcc && \
+    gcc -shared -fPIC -ldl /tmp/kwin_drm_hook.c -o /opt/kwin_drm_hook.so && \
+    rm /tmp/kwin_drm_hook.c && apt remove -y gcc && apt autoremove -y
 
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh

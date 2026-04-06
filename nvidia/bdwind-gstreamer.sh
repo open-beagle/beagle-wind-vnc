@@ -210,6 +210,14 @@ if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
 
+# Apply NVFBC GeForce unlock patch (requires root for binary patching)
+# libnvidia-fbc.so is injected by nvidia-container-toolkit at runtime,
+# so the patch must be applied at startup, not during image build.
+if [ -f "/opt/gstreamer/patches/patch-nvfbc.sh" ]; then
+    echo "Applying NVFBC GeForce unlock patch..."
+    sudo bash /opt/gstreamer/patches/patch-nvfbc.sh || echo "WARNING: NVFBC patch failed, falling back to ximagesrc"
+fi
+
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then
     LOCAL_IP=$(hostname -I | awk '{print $1}')

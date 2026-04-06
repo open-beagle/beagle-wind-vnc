@@ -32,13 +32,17 @@ COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
 COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
 COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
+# P7: Patches directory (NVFBC GeForce unlock, nvenc hooks, etc.)
+RUN mkdir -p /opt/gstreamer/patches
+COPY ./nvidia/${RENDER_ENGINE}/patch-nvfbc.sh /opt/gstreamer/patches/patch-nvfbc.sh
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/steam-game.sh \
     /etc/beagle-wind-vnc/bgctl.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
-    /etc/supervisord.conf
+    /etc/supervisord.conf \
+    /opt/gstreamer/patches/patch-nvfbc.sh
 
 USER 1000
 

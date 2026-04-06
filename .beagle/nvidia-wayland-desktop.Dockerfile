@@ -42,9 +42,9 @@ RUN apt update && \
   rm -rf /usr/share/vulkan/icd.d/*.json && \
   rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 
-# 向桌面灌入默认背景图 (这里可依据产品定制)
-# 向桌面灌入默认背景图 (这里可依据产品定制)
-COPY src/img/ /usr/share/wallpapers/Next/contents/images/
+# 向桌面灌入默认背景图，适配 selkies-desktop 的多分辨率读取特性
+COPY src/img/ /usr/share/backgrounds/selkies/
+RUN ln -sf /usr/share/backgrounds/selkies/1920x1080.png /usr/share/backgrounds/selkies/default.png
 
 # =============================================================================
 # Beagle-Wind WebRTC & Streaming Engine Setup
@@ -99,18 +99,9 @@ RUN apt update && apt install --no-install-recommends -y \
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.1-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
 
 # 拷贝 WebRTC 前端与 Python 启动脚本至指定层
-RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/ && \
-    mkdir -p /opt/bdwind/webrtc && \
+RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
+    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /opt/gstreamer/patches/ && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.1.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
-
-# 创建 KWin GBM 劫持补丁链接 (由原生 GStreamer 包内附带提供)
-RUN ln -sf /opt/gstreamer/lib/kwin_drm_hook.so /opt/kwin_drm_hook.so || true
-
-# 编译 selkies-desktop (保留轻量级桌面面板与壁纸)
-RUN git clone https://github.com/selkies-project/selkies-desktop.git /tmp/selkies-desktop && \
-    cd /tmp/selkies-desktop && make && \
-    cp selkies-desktop /usr/local/bin/ && \
-    rm -rf /tmp/selkies-desktop
 
 # 注入 xdg-desktop-portal-wlr 静态授权配门 (彻底跳过交互弹窗)
 RUN mkdir -p /etc/xdg/xdg-desktop-portal-wlr && \
@@ -122,17 +113,12 @@ chooser_type = none\n" > /etc/xdg/xdg-desktop-portal-wlr/config.ini
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
-COPY ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
 COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/supervisord.conf
-COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
 
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
-    /etc/beagle-wind-vnc/steam-game.sh \
-    /etc/beagle-wind-vnc/bgctl.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
     /etc/supervisord.conf
 

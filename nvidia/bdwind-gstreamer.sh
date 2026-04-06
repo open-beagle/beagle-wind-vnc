@@ -203,8 +203,8 @@ if [ -n "${BDWIND_IDLE_TIMEOUT}" ]; then
 fi
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
-if [ -f "/opt/gstreamer/lib/nvenc_ioctl_hook.so" ]; then
-    export LD_PRELOAD="/opt/gstreamer/lib/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
+    export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
     # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
     DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"

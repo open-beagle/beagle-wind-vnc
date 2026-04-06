@@ -42,18 +42,22 @@ ENV DISPLAY=":20"
 ENV DISPLAY_SIZEW=1920
 ENV DISPLAY_SIZEH=1080
 ENV DISPLAY_REFRESH=60
+ENV DISPLAY_DPI=96
+ENV DISPLAY_CDEPTH=24
 
 # Install Wayland and PipeWire essentials (Replacing X.Org, Xvfb, VirtualGL)
 RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
     bash /etc/beagle-wind-vnc/scripts/wayland-install.sh
 
-# Install KDE 6 and Plasma Wayland Shell
-RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/kde6-wayland-install.sh
-
-# Desktop session 变量不再硬编码 KDE —— entrypoint.sh 会根据实际路线设置：
-#   - labwc 路线: XDG_CURRENT_DESKTOP=wlroots, XDG_SESSION_DESKTOP=wlroots
-#   - KDE 路线:   XDG_CURRENT_DESKTOP=KDE, DESKTOP_SESSION=plasma, etc.
+# Install Essential Utilities (Input Method, File Manager, Terminal) for Labwc
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fcitx5 \
+    fcitx5-chinese-addons \
+    dolphin \
+    konsole && \
+    mkdir -p /etc/environment.d && \
+    echo "GTK_IM_MODULE=fcitx5\nQT_IM_MODULE=fcitx5\nXMODIFIERS=@im=fcitx5\nSDL_IM_MODULE=fcitx\nGLFW_IM_MODULE=ibus" > /etc/environment.d/fcitx5-wayland.conf && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set input to fcitx5 (Wayland Native)
 ENV GTK_IM_MODULE=fcitx

@@ -15,7 +15,7 @@ until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # export SDL_JOYSTICK_DEVICE=/dev/input/js0
 
 # Set default display
-export XDG_SESSION_TYPE=x11
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export DISPLAY="${DISPLAY:-:20}"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
@@ -35,8 +35,14 @@ export GSTREAMER_PATH=/opt/gstreamer
 . /opt/gstreamer/gst-env
 
 # Apply dynamic encoder config if it exists
-if [ -f "/etc/beagle-wind-vnc/bdwind_encoder.conf" ]; then
-    . /etc/beagle-wind-vnc/bdwind_encoder.conf
+# Apply dynamic encoder config if it exists
+if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
+    . "${HOME}/.config/bdwind_encoder.conf"
+fi
+
+# Apply dynamic display config if it exists
+if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
+    . "${HOME}/.config/bdwind_display.conf"
 fi
 
 # Unzip provided python wheels if they haven't been extracted yet
@@ -68,10 +74,12 @@ fi
 
 # Wait for Display server to start
 export DISPLAY="${DISPLAY:-:20}"
-if [ ! -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; then
-    echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
+    export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+    echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
 else
-    echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
+    echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
 fi
 
 # Configure NGINX

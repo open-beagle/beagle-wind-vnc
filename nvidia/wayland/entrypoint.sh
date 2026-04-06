@@ -30,14 +30,7 @@ chmod 700 ~/.config ~/.local ~/.cache
 sudo chmod 0666 /dev/uinput || true
 sudo mkdir -p /var/run/dbus || true
 
-# 2. 启动原生 KDE Plasma Wayland 引擎
-echo "Waiting for PipeWire socket before starting KWin..."
-until [ -S "${XDG_RUNTIME_DIR}/pipewire-0" ]; do sleep 0.5; done
-
-echo "Waiting extra 3 seconds for PipeWire & Wireplumber internals to stabilize..."
-sleep 3
-
-echo "Starting Native KDE Plasma Wayland Compositor..."
+# 2. 启动原生 Wayland / X11 引擎
 
 # =============================================================================
 # NVIDIA Allocator 原生硬件加速配置 (P4 Wayland 零拷贝核心)
@@ -101,7 +94,26 @@ if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
     echo "Starting Native wlroots Wayland Compositor (labwc)..."
 
     export XDG_CURRENT_DESKTOP=wlroots
+    export XDG_SESSION_DESKTOP=wlroots
     export SLURP_COMMAND="echo HEADLESS-1"
+    
+    # 热更新自动补齐依赖 (兼容基础旧镜像直起)
+    if ! command -v labwc >/dev/null; then
+        echo "Installing labwc & portal hot-reload dependencies..."
+        sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y labwc wlr-randr xdg-desktop-portal-wlr
+    fi
+
+    # ⚡ 每次启动都强制写入 Portal 配置（文件名必须是 config 而非 config.ini）
+    # xdg-desktop-portal-wlr 使用 GLib g_key_file 只查找 "config"，不认 "config.ini"
+    sudo mkdir -p /etc/xdg/xdg-desktop-portal-wlr
+    printf '[screencast]\noutput_name=HEADLESS-1\nmax_fps=60\nchooser_type=none\n' | sudo tee /etc/xdg/xdg-desktop-portal-wlr/config >/dev/null
+    # 同时写入用户级配置作为双重保障
+    mkdir -p ~/.config/xdg-desktop-portal-wlr
+    printf '[screencast]\noutput_name=HEADLESS-1\nmax_fps=60\nchooser_type=none\n' > ~/.config/xdg-desktop-portal-wlr/config
+
+    # 强制 Portal 路由：ScreenCast 走 wlr 后端，阻止 KDE portal 抢占
+    sudo mkdir -p /usr/share/xdg-desktop-portal
+    printf '[preferred]\ndefault=gtk\norg.freedesktop.impl.portal.ScreenCast=wlr\norg.freedesktop.impl.portal.Screenshot=wlr\n' | sudo tee /usr/share/xdg-desktop-portal/portals.conf >/dev/null
     
     # 授权 render node 确保 GLES2 渲染器可用
     sudo chmod 666 /dev/dri/renderD130 || true
@@ -112,8 +124,17 @@ if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
     
     # 等待 wayland-0 socket
     echo 'Waiting for Wayland Socket...'
-    until [ -S "${XDG_RUNTIME_DIR}/wayland-0" ]; do sleep 0.5; done
+    export WAYLAND_DISPLAY=wayland-0
+    until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]; do sleep 0.5; done
     echo 'wayland-0 Server is ready!'
+    
+    # 将环境变量注入 DBus，让后续按需启动的所有服务（如 PipeWire, Portal）能感知 Wayland
+    export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
+    if command -v dbus-update-activation-environment >/dev/null; then
+        dbus-update-activation-environment --systemd \
+            WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP \
+            XDG_SESSION_TYPE DISPLAY PIPEWIRE_RUNTIME_DIR SLURP_COMMAND
+    fi
     
     # 设置初始分辨率
     wlr-randr --output HEADLESS-1 --custom-mode ${DISPLAY_SIZEW:-1920}x${DISPLAY_SIZEH:-1080}@60 || true
@@ -124,9 +145,21 @@ if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
     # 启动轻量级面板与壁纸
     selkies-desktop &
     
+    # 稍微给点时间让 Xwayland 等基础服务完成建立
+    echo "Waiting for Pipewire..."
+    until [ -S "${XDG_RUNTIME_DIR}/pipewire-0" ]; do sleep 0.5; done
+    echo "Pipewire is ready!"
+
+    # 杀掉任何 DBus 自动激活的旧 portal 进程（防止配置未生效的僵尸）
+    pkill -f 'xdg-desktop-portal-wlr' 2>/dev/null || true
+    pkill -f 'xdg-desktop-portal-kde' 2>/dev/null || true
+    pkill -f 'xdg-desktop-portal$' 2>/dev/null || true
+    sleep 1
+
     # 启动 D-Bus ScreenCast Portals (完全静默、免交互)
     /usr/libexec/xdg-desktop-portal &
-    /usr/libexec/xdg-desktop-portal-wlr -r &
+    sleep 2
+    WAYLAND_DISPLAY=wayland-0 /usr/libexec/xdg-desktop-portal-wlr -r &
     
     # 阻塞挂起守护进程
     wait $LABWC_PID

@@ -29,18 +29,19 @@ ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/nvidia/li
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
 
-# XDG & Wayland Core Environments
+# XDG & Session Core Environments
+# XDG_SESSION_TYPE 决定 entrypoint.sh 走 Wayland (labwc) 还是 X11 (KDE) 路线
 ENV XDG_SESSION_TYPE=wayland
-ENV QT_QPA_PLATFORM=wayland
-ENV EGL_PLATFORM=wayland
+# WAYLAND_DISPLAY 和 DISPLAY 供 entrypoint.sh 和子进程继承
 ENV WAYLAND_DISPLAY=wayland-0
-# Keep DISPLAY for XWayland fallback apps (like old Steam games)
 ENV DISPLAY=":20"
+# QT_QPA_PLATFORM / EGL_PLATFORM 不在此硬编码：
+#   - Wayland 路线: entrypoint.sh 不设置 (QT 自动检测), XWayland 应用走 X11
+#   - X11 路线: entrypoint.sh 主动 unset WAYLAND_DISPLAY, QT 回退 xcb
 
 ENV DISPLAY_SIZEW=1920
 ENV DISPLAY_SIZEH=1080
 ENV DISPLAY_REFRESH=60
-# No VGL_DISPLAY anymore due to Zero-copy Wayland
 
 # Install Wayland and PipeWire essentials (Replacing X.Org, Xvfb, VirtualGL)
 RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
@@ -50,12 +51,9 @@ RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ 
 RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
     bash /etc/beagle-wind-vnc/scripts/kde6-wayland-install.sh
 
-# KDE 6 Environment variables
-ENV DESKTOP_SESSION=plasma
-ENV XDG_SESSION_DESKTOP=KDE
-ENV XDG_CURRENT_DESKTOP=KDE
-ENV KDE_FULL_SESSION=true
-ENV KDE_SESSION_VERSION=6
+# Desktop session 变量不再硬编码 KDE —— entrypoint.sh 会根据实际路线设置：
+#   - labwc 路线: XDG_CURRENT_DESKTOP=wlroots, XDG_SESSION_DESKTOP=wlroots
+#   - KDE 路线:   XDG_CURRENT_DESKTOP=KDE, DESKTOP_SESSION=plasma, etc.
 
 # Set input to fcitx5 (Wayland Native)
 ENV GTK_IM_MODULE=fcitx

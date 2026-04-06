@@ -171,7 +171,7 @@ export WAYLAND_DISPLAY=wayland-0
     Xwayland "${DISPLAY}" &
     
     # 启动轻量级面板与壁纸
-    /opt/gstreamer/patches/selkies-desktop &
+    # /opt/gstreamer/patches/selkies-desktop &
     
     # 稍微给点时间让 Xwayland 等基础服务完成建立
     echo "Waiting for Pipewire..."

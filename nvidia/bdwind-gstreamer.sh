@@ -15,7 +15,7 @@ until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # export SDL_JOYSTICK_DEVICE=/dev/input/js0
 
 # Set default display
-export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
 export DISPLAY="${DISPLAY:-:20}"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
@@ -58,7 +58,7 @@ export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
 
 
 
-export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
+export BDWIND_ENCODER="${BDWIND_ENCODER:-nvh264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
   export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
@@ -74,7 +74,7 @@ fi
 
 # Wait for Display server to start
 export DISPLAY="${DISPLAY:-:20}"
-export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
 if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
     export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
     echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'

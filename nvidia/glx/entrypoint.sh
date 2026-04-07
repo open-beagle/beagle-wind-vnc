@@ -122,7 +122,7 @@ IFS=":." ARR_ID=(${HEX_ID})
 unset IFS
 BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]})@$(printf '%u' 0x${ARR_ID[0]}):$(printf '%u' 0x${ARR_ID[2]}):$(printf '%u' 0x${ARR_ID[3]})"
 # A custom modeline should be generated because there is no monitor to fetch this information normally
-export MODELINE="$(cvt -r ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
+export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
 # Generate /etc/X11/xorg.conf manually instead of relying on nvidia-xconfig
 cat <<EOF | sudo tee /etc/X11/xorg.conf >/dev/null
 Section "ServerLayout"

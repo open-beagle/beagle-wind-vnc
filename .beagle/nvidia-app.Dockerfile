@@ -7,6 +7,12 @@ FROM ${BASE}
 # Redeclare ARG so it's available after FROM
 ARG RENDER_ENGINE
 
+# NOTE for runtime:
+# To enable NVFBC zero-copy screen capture on consumer GeForce GPUs (e.g. RTX 4090),
+# you must mount the proprietary `libnvidia-fbc.so` from the host directly into the container.
+# Example: -v /usr/lib/x86_64-linux-gnu/libnvidia-fbc.so.595.58.03:/usr/lib/x86_64-linux-gnu/libnvidia-fbc.so.1:ro
+# The Docker Nvidia Toolkit does not mount this automatically on unprivileged containers.
+
 LABEL maintainer="https://github.com/open-beagle"
 
 # Run business layer installation (GStreamer engine, custom Python environment & Web UI assets)

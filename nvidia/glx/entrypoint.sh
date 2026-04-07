@@ -172,6 +172,7 @@ Section "Device"
     Option         "AllowExternalGpus" "True"
     Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
     Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
+    Option         "AllowFlipping" "False"
 EndSection
 
 Section "Screen"
@@ -211,6 +212,15 @@ chmod 700 ~/.config ~/.local ~/.cache
 # Start KDE desktop environment
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
+export __GL_THREADED_OPTIMIZATIONS=0
+
+# 彻底禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)
+# 在无头的 NVIDIA 云推流环境内，KWin Compositing 会导致严重的画面延迟、与 ximagesrc/NVENC 争抢显存，
+# 更会导致浏览器引擎（如 Steam CEF）在软件回落时发生严重的 XWindow 销毁冲突和彻底黑屏！
+# 必须使用硬切断方式保证所有层在原生 Xorg 驱动直接被画出来，再配合 AllowFlipping=False 根治所有撕裂。
+sudo -u ubuntu bash -c "mkdir -p ~/.config && kwriteconfig5 --file kwinrc --group Compositing --key Enabled false || true"
+sudo -u ubuntu bash -c "mkdir -p ~/.config && kwriteconfig6 --file kwinrc --group Compositing --key Enabled false || true"
+
 /usr/bin/startplasma-x11 &
 
 # Start Fcitx input method framework (will be auto-started by KDE autostart)

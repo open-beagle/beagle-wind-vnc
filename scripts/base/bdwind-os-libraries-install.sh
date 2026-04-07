@@ -140,6 +140,7 @@ echo "error_log /dev/stderr;" >>/etc/nginx/nginx.conf
 apt-get update
 apt-get install --no-install-recommends -y \
   pipewire \
+  pipewire-pulse \
   pipewire-alsa \
   pipewire-audio-client-libraries \
   pipewire-jack \

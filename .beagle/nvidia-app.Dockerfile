@@ -38,8 +38,6 @@ COPY ./nvidia/${RENDER_ENGINE}/patch-nvfbc.sh /opt/gstreamer/patches/patch-nvfbc
 RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
-    /etc/beagle-wind-vnc/steam-game.sh \
-    /etc/beagle-wind-vnc/bgctl.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
     /etc/supervisord.conf \
     /opt/gstreamer/patches/patch-nvfbc.sh

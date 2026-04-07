@@ -13,13 +13,11 @@ LABEL maintainer="https://github.com/open-beagle"
 USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Step 1: Install self-compiled GStreamer 1.24.6 + BDWIND Python environment + Web UI
+# Step 1: Install self-compiled GStreamer 1.28.1 + BDWIND Python environment + Web UI
 RUN --mount=type=bind,source=scripts/app/bdwind-gstreamer-install.sh,target=/tmp/bdwind-gstreamer-install.sh \
     bash /tmp/bdwind-gstreamer-install.sh
 
-# Step 2: Build nvidia-vaapi-driver using self-compiled GStreamer (no system GStreamer dependency)
-RUN --mount=type=bind,source=scripts/app/bdwind-nvidia-vaapi-driver-install.sh,target=/tmp/bdwind-nvidia-vaapi-driver-install.sh \
-    bash /tmp/bdwind-nvidia-vaapi-driver-install.sh
+# [P7] nvidia-vaapi-driver removed — we use direct CUDA/NVENC path, not VA-API
 
 # Copy files that need root permissions before switching to non-root user
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/

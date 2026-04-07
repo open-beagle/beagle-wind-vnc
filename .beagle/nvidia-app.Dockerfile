@@ -27,11 +27,8 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.
 # Use dynamic backend copy based on RENDER_ENGINE
 COPY ./nvidia/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
-COPY ./nvidia/steam-game.sh /etc/beagle-wind-vnc/steam-game.sh
-COPY ./nvidia/bgctl.sh /etc/beagle-wind-vnc/bgctl.sh
 COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
-COPY ./nvidia/desktop-services.conf /etc/supervisor/conf.d/desktop-services.conf
 # P7: Patches directory (NVFBC GeForce unlock, nvenc hooks, etc.)
 RUN mkdir -p /opt/gstreamer/patches
 COPY ./nvidia/${RENDER_ENGINE}/patch-nvfbc.sh /opt/gstreamer/patches/patch-nvfbc.sh

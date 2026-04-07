@@ -219,6 +219,12 @@ if [ -f "/opt/gstreamer/patches/patch-nvfbc.sh" ]; then
     sudo bash /opt/gstreamer/patches/patch-nvfbc.sh || echo "WARNING: NVFBC patch failed, falling back to ximagesrc"
 fi
 
+# Hot-load custom compiled GStreamer C plugins (e.g. nvfbcsrc) if provided via volume mount
+if [ -f "/opt/gstreamer/patches/libgstnvfbcsrc.so" ]; then
+    echo "Hot-loading custom libgstnvfbcsrc.so plugin..."
+    sudo cp /opt/gstreamer/patches/libgstnvfbcsrc.so /opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0/
+fi
+
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then
     LOCAL_IP=$(hostname -I | awk '{print $1}')

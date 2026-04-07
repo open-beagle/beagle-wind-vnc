@@ -150,7 +150,7 @@ apt-get install --no-install-recommends -y \
   libspa-0.2-jack \
   libspa-0.2-modules \
   wireplumber \
-  gir1.2-wp-0.5
+  gir1.2-wp-0.4
 
 # =============================================================================
 # 仅适用于x86_64架构的包

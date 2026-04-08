@@ -88,8 +88,8 @@ echo "# BDWIND-GStreamer NGINX Configuration
 server {
     access_log /dev/stdout;
     error_log /dev/stderr;
-    listen ${NGINX_PORT:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
-    listen [::]:${NGINX_PORT:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
+    listen ${BDWIND_PORT_NGINX:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
+    listen [::]:${BDWIND_PORT_NGINX:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
     ssl_certificate ${BDWIND_HTTPS_CERT-/etc/ssl/certs/ssl-cert-snakeoil.pem};
     ssl_certificate_key ${BDWIND_HTTPS_KEY-/etc/ssl/private/ssl-cert-snakeoil.key};
     $(if [ \"$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"; fi)
@@ -120,7 +120,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
     }
 
     location /turn {
@@ -132,7 +132,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
     }
 
     location /ws {
@@ -152,7 +152,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
     }
 
     location /webrtc/signalling {
@@ -172,7 +172,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT:-8081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
     }
 
     location /metrics {
@@ -184,7 +184,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_METRICS_HTTP_PORT:-9081};
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_METRICS:-9081};
     }
 
     error_page 500 502 503 504 /50x.html;
@@ -196,16 +196,17 @@ server {
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
-# Inject Frontend Idle Timeout if defined
-if [ -n "${BDWIND_IDLE_TIMEOUT}" ]; then
-    echo "Injecting BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT} to frontend configuration..."
-    sed -i "s|<script id=\"idle_timeout_env\"></script>|<script>window.BDWIND_IDLE_TIMEOUT=${BDWIND_IDLE_TIMEOUT};</script>|g" /opt/bdwind/webrtc/index.html 2>/dev/null || true
-fi
+
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     # In X11/GLX explicitly disable the nvenc DRM hook which causes NvFBC GLX context creation to fail with BadValue
     # export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+    
+    # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
+    nvidia-smi -L >/dev/null 2>&1 || true
+
+    # export NVENC_HOOK_DEBUG=1
     # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
     DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
@@ -240,8 +241,8 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
 python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-nvh264enc}" \
     --addr="127.0.0.1" \
-    --port="${BDWIND_PORT:-8081}" \
+    --port="${BDWIND_PORT_GSTREAMER:-8081}" \
     --enable_basic_auth="false" \
     --enable_metrics_http="true" \
-    --metrics_http_port="${BDWIND_METRICS_HTTP_PORT:-9081}" \
+    --metrics_http_port="${BDWIND_PORT_METRICS:-9081}" \
     $@

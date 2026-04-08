@@ -238,6 +238,7 @@ fi
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
 
 python3 -m bdwind_gstreamer \
+    --encoder="${BDWIND_ENCODER:-nvh264enc}" \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT:-8081}" \
     --enable_basic_auth="false" \

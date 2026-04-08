@@ -135,6 +135,18 @@ server {
         proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
     }
 
+    location /settings {
+        proxy_http_version      1.1;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_connect_timeout   3600s;
+        proxy_buffering         off;
+
+        client_max_body_size    10M;
+
+        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+    }
+
     location /ws {
         proxy_set_header        Upgrade \$http_upgrade;
         proxy_set_header        Connection \"upgrade\";

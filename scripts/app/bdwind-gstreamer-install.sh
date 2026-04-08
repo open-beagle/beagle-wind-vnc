@@ -13,6 +13,7 @@ set -e
 # 注意：许多基础显示库 (libdrm2, libegl1 等) 已经在 bdwind-os-libraries-install.sh 预先安装，此处理仅补充 GStreamer 独有库。
 
 apt-get update && apt-get install --no-install-recommends -y \
+  xclip \
   libnvrtc12 \
   libnvrtc-builtins12.0 \
   python3-pip \

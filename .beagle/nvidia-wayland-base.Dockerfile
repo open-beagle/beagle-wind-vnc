@@ -9,7 +9,6 @@ FROM archlinux:latest
 LABEL maintainer="https://github.com/open-beagle"
 
 ARG TZ=Asia/Shanghai
-ENV PASSWD=mypasswd
 
 SHELL ["/bin/bash", "-c"]
 
@@ -32,7 +31,6 @@ RUN pacman -S --noconfirm \
     dbus \
     fuse3 \
     kmod \
-    udev \
     tzdata \
     ca-certificates \
     curl \
@@ -43,7 +41,7 @@ RUN pacman -S --noconfirm \
     vim \
     htop \
     net-tools \
-    gnu-netcat \
+    openbsd-netcat \
     unzip \
     zip \
     xz \
@@ -84,8 +82,8 @@ RUN pacman -S --noconfirm \
     clinfo \
     nvtop
 
-ENV PATH="/usr/local/nvidia/bin${PATH:+:${PATH}}"
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
+ENV PATH="/usr/local/nvidia/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
 
@@ -175,7 +173,7 @@ RUN groupadd -g 1000 ubuntu || true && \
     useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || true && \
     usermod -a -G audio,video,input,render,games,wheel ubuntu && \
     echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers && \
-    echo "ubuntu:${PASSWD}" | chpasswd && \
+    echo "ubuntu:mypasswd" | chpasswd && \
     # 目录权限
     chown -R -f ubuntu:ubuntu /home/ubuntu || true && \
     chown -R -f ubuntu:ubuntu /opt || true && \

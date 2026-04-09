@@ -71,7 +71,7 @@ ENV LANGUAGE="zh_CN:zh"
 # =============================================================================
 # Step 3: NVIDIA 驱动 + Vulkan (含 32 位支持，Dota 2 / Wine 需要)
 # =============================================================================
-RUN pacman -S --noconfirm \
+RUN pacman -S --noconfirm --ask 4 \
     nvidia-utils \
     lib32-nvidia-utils \
     vulkan-icd-loader \

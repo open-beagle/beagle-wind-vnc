@@ -1,72 +1,239 @@
-# Supported base images: Ubuntu 25.04 (Plucky Puffin) for native KDE Plasma 6 & Wayland support
-ARG BASE=ubuntu:25.04
-FROM ${BASE}
+# =============================================================================
+# P8: Arch Linux + Gamescope + Hyprland 云游戏底座
+#
+# 替代原 Ubuntu 25.04 Wayland 底座
+# Arch Linux 才是唯一真神
+# =============================================================================
+FROM archlinux:latest
 
 LABEL maintainer="https://github.com/open-beagle"
 
-ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
 ENV PASSWD=mypasswd
 
-SHELL ["/bin/sh", "-c"]
+SHELL ["/bin/bash", "-c"]
 
-RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/base-system-setup.sh
+# =============================================================================
+# Step 1: 镜像源 + 系统初始化
+# =============================================================================
+RUN echo 'Server = https://mirrors.aliyun.com/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    pacman-key --init && \
+    pacman-key --populate archlinux && \
+    pacman -Sy --noconfirm archlinux-keyring && \
+    pacman -Syu --noconfirm
+
+# =============================================================================
+# Step 2: 基础系统工具 + 语言环境
+# =============================================================================
+RUN pacman -S --noconfirm \
+    base-devel \
+    bash \
+    sudo \
+    dbus \
+    fuse3 \
+    kmod \
+    udev \
+    tzdata \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    jq \
+    nano \
+    vim \
+    htop \
+    net-tools \
+    gnu-netcat \
+    unzip \
+    zip \
+    xz \
+    zstd \
+    pkg-config \
+    python \
+    python-pip \
+    python-setuptools \
+    python-wheel \
+    python-pillow \
+    python-gobject \
+    python-cairo && \
+    # 语言环境
+    sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
+    sed -i 's/#zh_CN.UTF-8/zh_CN.UTF-8/' /etc/locale.gen && \
+    echo 'zh_CN.GBK GBK' >> /etc/locale.gen && \
+    locale-gen && \
+    echo 'LANG=zh_CN.UTF-8' > /etc/locale.conf && \
+    # 时区
+    ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" > /etc/timezone
 
 ENV LANG="zh_CN.UTF-8"
 ENV LANGUAGE="zh_CN:zh"
 ENV LC_ALL="zh_CN.UTF-8"
 
-RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/bdwind-os-libraries-install.sh && \
-  chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled && \
-  mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
-  chown -R 1000:1000 /var/lib/nginx && \
-  chmod -R 755 /var/lib/nginx
+# =============================================================================
+# Step 3: NVIDIA 驱动 + Vulkan (含 32 位支持，Dota 2 / Wine 需要)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    nvidia-utils \
+    lib32-nvidia-utils \
+    vulkan-icd-loader \
+    lib32-vulkan-icd-loader \
+    vulkan-tools \
+    mesa-utils \
+    libva-nvidia-driver \
+    opencl-nvidia \
+    clinfo \
+    nvtop
 
 ENV PATH="/usr/local/nvidia/bin${PATH:+:${PATH}}"
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
 
-# XDG & Session Core Environments
-# XDG_SESSION_TYPE 决定 entrypoint.sh 走 Wayland (labwc) 还是 X11 (KDE) 路线
+# =============================================================================
+# Step 4: Gamescope + Hyprland + XWayland (核心合成器)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    gamescope \
+    hyprland \
+    xorg-xwayland \
+    wayland-protocols \
+    libinput \
+    libxkbcommon \
+    wlr-randr \
+    wl-clipboard \
+    xdg-utils \
+    xdg-user-dirs
+
+# =============================================================================
+# Step 5: PipeWire 音频全家桶
+# =============================================================================
+RUN pacman -S --noconfirm \
+    pipewire \
+    pipewire-pulse \
+    pipewire-alsa \
+    pipewire-jack \
+    wireplumber \
+    libpulse \
+    alsa-utils
+
+# =============================================================================
+# Step 6: GStreamer 1.28.x 全家桶 (pacman 原生，不用手搓了)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    gstreamer \
+    gst-plugins-base \
+    gst-plugins-good \
+    gst-plugins-bad \
+    gst-plugins-ugly \
+    gst-libav \
+    gst-plugin-pipewire
+
+# =============================================================================
+# Step 7: Nginx + supervisor (进程编排)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    nginx \
+    supervisor && \
+    # Nginx 日志重定向到 stdout/stderr
+    sed -i -e 's|/var/log/nginx/access.log|/dev/stdout|g' \
+           -e 's|/var/log/nginx/error.log|/dev/stderr|g' \
+           /etc/nginx/nginx.conf || true
+
+# =============================================================================
+# Step 8: 字体 (中文 + Nerd Fonts + Emoji)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    noto-fonts \
+    noto-fonts-cjk \
+    noto-fonts-emoji \
+    noto-fonts-extra \
+    ttf-dejavu \
+    ttf-liberation \
+    ttf-hack \
+    ttf-ubuntu-font-family \
+    ttf-nerd-fonts-symbols
+
+# =============================================================================
+# Step 9: 输入法 (fcitx5 中文输入)
+# =============================================================================
+RUN pacman -S --noconfirm \
+    fcitx5 \
+    fcitx5-chinese-addons \
+    fcitx5-gtk \
+    fcitx5-qt \
+    fcitx5-configtool
+
+ENV GTK_IM_MODULE=fcitx
+ENV QT_IM_MODULE=fcitx
+ENV XIM=fcitx
+ENV XMODIFIERS="@im=fcitx"
+
+# =============================================================================
+# Step 10: 创建用户 + sudo 权限
+# =============================================================================
+RUN groupadd -g 1000 ubuntu || true && \
+    useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || true && \
+    usermod -a -G audio,video,input,render,games,wheel ubuntu && \
+    echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    echo "ubuntu:${PASSWD}" | chpasswd && \
+    # 目录权限
+    chown -R -f ubuntu:ubuntu /home/ubuntu || true && \
+    chown -R -f ubuntu:ubuntu /opt || true && \
+    mkdir -p /run/user/1000 && \
+    chown -R -f ubuntu:ubuntu /run/user/1000 || true && \
+    chown -R -f ubuntu:ubuntu /tmp /var/tmp || true && \
+    # sudo setuid
+    chmod -f 4755 /usr/bin/sudo || true
+
+# =============================================================================
+# Step 11: 环境变量 (Wayland + Gamescope)
+# =============================================================================
+
+# XDG & Session
 ENV XDG_SESSION_TYPE=wayland
-# WAYLAND_DISPLAY 和 DISPLAY 供 entrypoint.sh 和子进程继承
 ENV WAYLAND_DISPLAY=wayland-0
 ENV DISPLAY=":20"
-# QT_QPA_PLATFORM / EGL_PLATFORM 不在此硬编码：
-#   - Wayland 路线: entrypoint.sh 不设置 (QT 自动检测), XWayland 应用走 X11
-#   - X11 路线: entrypoint.sh 主动 unset WAYLAND_DISPLAY, QT 回退 xcb
 
+# 分辨率默认值
 ENV DISPLAY_SIZEW=1920
 ENV DISPLAY_SIZEH=1080
 ENV DISPLAY_REFRESH=60
 ENV DISPLAY_DPI=96
 ENV DISPLAY_CDEPTH=24
 
-# Install Wayland and PipeWire essentials (Replacing X.Org, Xvfb, VirtualGL)
-RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/wayland-install.sh
+# NVIDIA Wayland 核心
+ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
+ENV __NV_PRIME_RENDER_OFFLOAD=1
+ENV WLR_RENDERER=vulkan
+ENV WLR_NO_HARDWARE_CURSORS=1
+ENV GBM_BACKEND=nvidia-drm
 
-# Install Essential Utilities (Input Method, File Manager, Terminal) for Labwc
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fcitx5 \
-    fcitx5-chinese-addons \
-    dolphin \
-    konsole && \
-    mkdir -p /etc/environment.d && \
-    echo "GTK_IM_MODULE=fcitx5\nQT_IM_MODULE=fcitx5\nXMODIFIERS=@im=fcitx5\nSDL_IM_MODULE=fcitx\nGLFW_IM_MODULE=ibus" > /etc/environment.d/fcitx5-wayland.conf && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# XDG 运行时
+ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
+ENV USER=ubuntu
+ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-ubuntu"
+ENV PULSE_RUNTIME_PATH="/tmp/runtime-ubuntu/pulse"
+ENV PULSE_SERVER="unix:/tmp/runtime-ubuntu/pulse/native"
 
-# Set input to fcitx5 (Wayland Native)
-ENV GTK_IM_MODULE=fcitx
-ENV QT_IM_MODULE=fcitx
-ENV XIM=fcitx
-ENV XMODIFIERS="@im=fcitx"
+# D-Bus
+ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-system-bus"
+ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
 
-USER 0
-RUN --mount=type=bind,source=scripts/base/,target=/etc/beagle-wind-vnc/scripts/ \
-    bash /etc/beagle-wind-vnc/scripts/sudo-root-setup.sh
+# Gamepad
+ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
+
+# =============================================================================
+# Step 12: Nginx 目录权限
+# =============================================================================
+RUN chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled 2>/dev/null || true && \
+    mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
+    chown -R 1000:1000 /var/lib/nginx && \
+    chmod -R 755 /var/lib/nginx
+
+# =============================================================================
+# Step 13: 清理 pacman 缓存
+# =============================================================================
+RUN pacman -Scc --noconfirm && \
+    rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 
 USER 1000

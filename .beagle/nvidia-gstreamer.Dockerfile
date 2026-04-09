@@ -16,6 +16,9 @@ FROM archlinux:latest
 
 # --- Step 1: Init pacman mirroring ---
 RUN echo "Server = https://mirrors.aliyun.com/archlinux/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist && \
+    echo "Server = https://mirrors.ustc.edu.cn/archlinux/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist && \
+    echo "Server = https://mirrors.tuna.tsinghua.edu.cn/archlinux/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist && \
+    sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf && \
     pacman -Syu --noconfirm
 
 # --- Step 2+3: System + GStreamer Build Deps + Codecs ---

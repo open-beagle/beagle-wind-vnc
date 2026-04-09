@@ -15,9 +15,10 @@ SHELL ["/bin/bash", "-c"]
 # =============================================================================
 # Step 1: 镜像源 + 系统初始化
 # =============================================================================
-RUN echo 'Server = https://mirrors.aliyun.com/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+RUN echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    echo 'Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch' >> /etc/pacman.d/mirrorlist && \
     # 启用 multilib 仓库 (32 位库支持，Dota 2 / Wine 需要)
-    echo -e '\n[multilib]\nServer = https://mirrors.aliyun.com/archlinux/$repo/os/$arch' >> /etc/pacman.conf && \
+    echo -e '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist' >> /etc/pacman.conf && \
     pacman-key --init && \
     pacman-key --populate archlinux && \
     pacman -Sy --noconfirm archlinux-keyring && \
@@ -71,7 +72,18 @@ ENV LANGUAGE="zh_CN:zh"
 # =============================================================================
 # Step 3: NVIDIA 驱动 + Vulkan (含 32 位支持，Dota 2 / Wine 需要)
 # =============================================================================
-RUN pacman -S --noconfirm --ask 4 \
+RUN pacman -S --noconfirm --ask 4 --needed \
+    nvidia-utils \
+    lib32-nvidia-utils \
+    vulkan-icd-loader \
+    lib32-vulkan-icd-loader \
+    vulkan-tools \
+    mesa-utils \
+    libva-nvidia-driver \
+    opencl-nvidia \
+    clinfo \
+    nvtop \
+    || pacman -S --noconfirm --ask 4 --needed \
     nvidia-utils \
     lib32-nvidia-utils \
     vulkan-icd-loader \

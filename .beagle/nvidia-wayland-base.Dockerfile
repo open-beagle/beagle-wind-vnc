@@ -16,6 +16,8 @@ SHELL ["/bin/bash", "-c"]
 # Step 1: 镜像源 + 系统初始化
 # =============================================================================
 RUN echo 'Server = https://mirrors.aliyun.com/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    # 启用 multilib 仓库 (32 位库支持，Dota 2 / Wine 需要)
+    echo -e '\n[multilib]\nServer = https://mirrors.aliyun.com/archlinux/$repo/os/$arch' >> /etc/pacman.conf && \
     pacman-key --init && \
     pacman-key --populate archlinux && \
     pacman -Sy --noconfirm archlinux-keyring && \
@@ -65,7 +67,6 @@ RUN pacman -S --noconfirm \
 
 ENV LANG="zh_CN.UTF-8"
 ENV LANGUAGE="zh_CN:zh"
-ENV LC_ALL="zh_CN.UTF-8"
 
 # =============================================================================
 # Step 3: NVIDIA 驱动 + Vulkan (含 32 位支持，Dota 2 / Wine 需要)
@@ -233,5 +234,7 @@ RUN chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled 2>/dev/null
 # =============================================================================
 RUN pacman -Scc --noconfirm && \
     rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
+
+ENV LC_ALL="zh_CN.UTF-8"
 
 USER 1000

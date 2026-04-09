@@ -85,9 +85,11 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"; fi
 
-export BDWIND_PORT_GSTREAMER="${BDWIND_PORT_GSTREAMER:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')}"
-export BDWIND_PORT_METRICS="${BDWIND_PORT_METRICS:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')}"
-
+if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
+    _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')
+    export BDWIND_PORT_GSTREAMER="${BDWIND_PORT_GSTREAMER:-$(echo $_PORTS | awk '{print $1}')}"
+    export BDWIND_PORT_METRICS="${BDWIND_PORT_METRICS:-$(echo $_PORTS | awk '{print $2}')}"
+fi
 echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
 
 echo "# BDWIND-GStreamer NGINX Configuration

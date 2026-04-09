@@ -76,8 +76,11 @@ fi
 export DISPLAY="${DISPLAY:-:20}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
 if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
-    export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
-    echo 'Waiting for Wayland Socket' && until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]; do sleep 0.5; done && echo 'Wayland Server is ready'
+    echo 'Waiting for Wayland/Gamescope Socket'
+    until ls "${XDG_RUNTIME_DIR}"/wayland-* 1> /dev/null 2>&1 || ls "${XDG_RUNTIME_DIR}"/gamescope-* 1> /dev/null 2>&1; do 
+        sleep 0.5
+    done
+    echo 'Wayland Server is ready'
 else
     echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
 fi
@@ -220,8 +223,8 @@ rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
-    # In X11/GLX explicitly disable the nvenc DRM hook which causes NvFBC GLX context creation to fail with BadValue
-    # export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+    # Unlock hardware encoders dynamically across identical GPUs
+    export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
     
     # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
     nvidia-smi -L >/dev/null 2>&1 || true

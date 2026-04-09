@@ -1,133 +1,73 @@
-# 继承我们刚刚打好的神级 Wayland 底座
+# =============================================================================
+# P8: Arch Linux Desktop Image (Steam, Wine, Lutris, Hyprland, Gamescope)
+# 继承我们刚刚打好的极客版 Arch Linux Wayland 底座
+# =============================================================================
 ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-wayland-base-latest
 FROM ${BASE}
 
 LABEL maintainer="https://github.com/open-beagle"
 
 USER 0
-SHELL ["/bin/sh", "-c"]
-
-ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
 
 # =============================================================================
 # 一站式灌入所有娱乐与生产力引擎 (Steam, Wine, Lutris)
-# 在 Wayland 下，不管是跑 GLX 还是 EGL 的游戏，全都通过 Xwayland 或 Native Wayland 降维打击统一处理！
+# 抛弃 APT，迎接 Pacman 极速体验
 # =============================================================================
-RUN apt update && \
-  # 1. 安装 Wine 体系 (跑 Windows 游戏必备)
-  apt install --install-recommends -y wine wine32:i386 wine64 && \
-  apt install --no-install-recommends -y q4wine playonlinux && \
-  # 2. 安装 Winetricks 与环境依赖
-  curl -o /usr/bin/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" && \
-  chmod -f 755 /usr/bin/winetricks && \
-  # 3. 安装手柄和外设管理工具
-  apt install -y xboxdrv joystick jstest-gtk mangohud gamemode jq && \
-  apt install -y pipx && pipx ensurepath && pipx install protontricks && \
-  # 4. 安装 Lutris (开源游戏收纳站)
-  LUTRIS_VERSION="$(curl -fsSL "https://api.github.com/repos/lutris/lutris/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \
-  curl -o /tmp/lutris.deb -fsSL "https://github.com/lutris/lutris/releases/download/v${LUTRIS_VERSION}/lutris_${LUTRIS_VERSION}_all.deb" && \
-  apt install -y /tmp/lutris.deb && rm -f /tmp/lutris.deb && \
-  # 5. 安装 Steam
-  curl -o /tmp/steam_latest.deb -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
-  apt install -y /tmp/steam_latest.deb && rm -f /tmp/steam_latest.deb && \
-  apt update && apt install -y steam steam-launcher \
-  libc6:amd64 libc6:i386 \
-  steam-libs-amd64:amd64 steam-libs-i386:i386 && \
-  # 6. 安装 Chrome
-  curl -o /tmp/google-chrome-stable.deb -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" && \
-  apt install -y /tmp/google-chrome-stable.deb && rm -f /tmp/google-chrome-stable.deb && \
-  sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/google-chrome.desktop && \
-  # 7. 清理战场
-  apt clean && \
-  rm -rf /usr/share/vulkan/icd.d/*.json && \
-  rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+RUN pacman -S --noconfirm --needed \
+    wine \
+    winetricks \
+    q4wine \
+    playonlinux \
+    joyutils \
+    mangohud \
+    gamemode \
+    jq \
+    lutris \
+    steam \
+    nginx \
+    noto-fonts \
+    noto-fonts-cjk \
+    noto-fonts-emoji \
+    chromium \
+    waybar \
+    kitty \
+    wofi \
+    dolphin \
+    hyprpaper && \
+    pacman -Scc --noconfirm
 
-# 向桌面灌入默认背景图，适配 selkies-desktop 的多分辨率读取特性
-COPY src/img/ /usr/share/backgrounds/selkies/
-RUN ln -sf /usr/share/backgrounds/selkies/1920x1080.png /usr/share/backgrounds/selkies/default.png
-
-# =============================================================================
-# Beagle-Wind WebRTC & Streaming Engine Setup
-# =============================================================================
-# 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
-RUN apt update && apt install --no-install-recommends -y \
-  labwc \
-  wlr-randr \
-  xdg-desktop-portal-wlr \
-  libcairo2-dev \
-  libwayland-dev \
-  wayland-protocols \
-  build-essential \
-  git \
-  libnvrtc12 \
-  libnvidia-egl-wayland1 \
-  libnvidia-egl-gbm1 \
-  wl-clipboard \
-  python3-pip \
-  python3-dev \
-  python3-gi \
-  python3-setuptools \
-  python3-wheel \
-  libgcrypt20-dev \
-  libgirepository1.0-dev \
-  glib-networking \
-  libglib2.0-dev \
-  libgudev-1.0-dev \
-  libasound2-dev \
-  jackd2 \
-  libjack-jackd2-dev \
-  libpulse-dev \
-  libopus-dev \
-  libvpx-dev \
-  libx264-dev \
-  libx265-dev \
-  libaom-dev \
-  libsvtav1enc-dev \
-  libopenh264-dev \
-  libnice10 \
-  libsoup-3.0-0 \
-  libsrtp2-1 \
-  libgraphene-1.0-0 \
-  libgssdp-1.6-0 \
-  libgupnp-1.6-0 \
-  libgupnp-igd-1.6-0 \
-  libbrotli-dev && \
-  ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvrtc.so || true && \
-  apt clean && rm -rf /var/lib/apt/lists/*
-
-# 从 Aliyun OSS 取得编译好的 GStreamer 1.28.1 容器引擎压缩包
-RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.1-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
+# 向桌面灌入系统默认壁纸底图
+COPY src/img/ /usr/share/backgrounds/beagle/
+RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/beagle/default.png
 
 # 拷贝 WebRTC 前端与 Python 启动脚本至指定层
 RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.1.0.tar.gz" | tar -xzf - -C /opt/gstreamer/patches/ && \
-    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.1.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
+    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
-# 注入 xdg-desktop-portal-wlr 静态授权配门 (彻底跳过交互弹窗)
-RUN mkdir -p /etc/xdg/xdg-desktop-portal-wlr && \
-    echo "[screencast]\n\
-output_name = HEADLESS-1\n\
-max_fps = 60\n\
-chooser_type = none\n" > /etc/xdg/xdg-desktop-portal-wlr/config.ini
-
-# 拷贝 Wayland 下专属控制配置文件
+# 拷贝 Wayland 下专属控制配置文件与环境
+RUN mkdir -p /etc/beagle-wind-vnc /etc/xdg/hypr /home/ubuntu/.config/hypr
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/supervisord.conf
+COPY ./nvidia/wayland/hyprland.conf /home/ubuntu/.config/hypr/hyprland.conf
+COPY ./nvidia/wayland/hyprpaper.conf /home/ubuntu/.config/hypr/hyprpaper.conf
 
 RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
-    /etc/supervisord.conf
+    /etc/supervisord.conf && \
+    chown -R ubuntu:ubuntu /home/ubuntu/.config
 
 # 安装 GStreamer Python 打包出的 Wheel (bdwind-gstreamer 引擎)
-RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
+RUN pip install --break-system-packages --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
 
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程
 USER 1000
-SHELL ["/bin/sh", "-c"]
+SHELL ["/bin/bash", "-c"]
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"
 
@@ -136,10 +76,11 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # -----------------------------------------------------------------------------
 ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
-ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
-ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/ubuntu/.local/share}/gstreamer-1.0/plugins:/usr/lib/x86_64-linux-gnu/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
-ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu/girepository-1.0:/usr/lib/x86_64-linux-gnu/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+# Arch Linux 纯净目录映射
+ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/ubuntu/.local/share}/gstreamer-1.0/plugins:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
 ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
@@ -148,8 +89,11 @@ ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-ubuntu"
 ENV PULSE_RUNTIME_PATH="/tmp/runtime-ubuntu/pulse"
 ENV PULSE_SERVER="unix:/tmp/runtime-ubuntu/pulse/native"
 
-ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-system-bus"
+ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
 ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
-ENTRYPOINT ["/usr/bin/supervisord"]
+
+# 把控制权真正交给 entrypoint.sh，这样才能串行建立 DBus -> PipeWire -> Gamescope -> Supervisord
+ENTRYPOINT ["/etc/beagle-wind-vnc/entrypoint.sh"]
+CMD ["/usr/bin/supervisord"]

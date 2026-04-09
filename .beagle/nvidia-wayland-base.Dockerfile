@@ -128,17 +128,31 @@ RUN pacman -S --noconfirm \
     alsa-utils
 
 # =============================================================================
-# Step 6: GStreamer 1.28.x 全家桶 (pacman 原生，不用手搓了)
+# Step 6: 部署手搓的 GStreamer 1.28.2 串流引擎（取代残疾的 pacman 原生版）
 # =============================================================================
-RUN pacman -S --noconfirm \
-    gstreamer \
-    gst-plugins-base \
-    gst-plugins-good \
-    gst-plugins-bad \
-    gst-plugins-ugly \
-    gst-libav \
-    gst-plugin-pipewire
+# 1. 自动注入核心 NVRTC 动态库（仅需 89MB 的 Wheel，跳过几个 G 的 CUDA Toolkit）
+RUN pip install --break-system-packages -i https://mirrors.aliyun.com/pypi/simple/ nvidia-cuda-nvrtc-cu12 && \
+    # 建立 GStreamer nvcodec 隐式依赖的软连接
+    ln -sf /usr/lib/python3.13/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 /usr/lib/libnvrtc.so || true && \
+    ln -sf /usr/lib/python3.13/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so /usr/lib/libnvrtc-builtins.so || true
 
+# 2. 从对象存储拉取刚刚编译通过并打包的 Arch Linux 专属版 GStreamer 
+RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-archlinux.tar.gz" && \
+    tar -xzf bdwind-gstreamer-1.28.2-archlinux.tar.gz -C /opt && \
+    rm -f bdwind-gstreamer-1.28.2-archlinux.tar.gz
+
+# 3. 部署 Web 前端静态资源
+RUN mkdir -p /opt/bdwind/webrtc && \
+    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc || true
+
+# 4. 全局注入手搓引擎的环境变量
+ENV GSTREAMER_PATH="/opt/gstreamer"
+ENV PATH="${GSTREAMER_PATH}/patches:${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
+ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 # =============================================================================
 # Step 7: Nginx + supervisor (进程编排)
 # =============================================================================

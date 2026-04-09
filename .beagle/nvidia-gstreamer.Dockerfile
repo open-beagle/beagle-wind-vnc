@@ -25,8 +25,8 @@ RUN echo "Server = https://mirrors.aliyun.com/archlinux/\$repo/os/\$arch" > /etc
 # ffnvcodec-headers is crucial for enabling nvh264enc / nvh265enc
 RUN pacman -S --noconfirm --needed \
     base-devel git curl wget pkgconf cmake \
-    meson ninja python python-pip python-gobject \
-    glib2 libgudev openssl libsoup3 glib-networking \
+    meson ninja python python-pip python-gobject python-setuptools \
+    glib2 glib2-devel libgudev openssl libsoup3 glib-networking \
     libdrm libglvnd vulkan-headers vulkan-icd-loader \
     wayland wayland-protocols libx11 libxcb libxext libxfixes libxdamage libxv libxtst \
     x264 x265 libvpx aom svt-av1 opus libpulse alsa-lib jack pipewire \

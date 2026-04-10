@@ -237,8 +237,6 @@ sudo nginx -s reload || true
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
-
-
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     # Unlock hardware encoders dynamically across identical GPUs
@@ -253,19 +251,7 @@ if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
 
-# Apply NVFBC GeForce unlock patch (requires root for binary patching)
-# libnvidia-fbc.so is injected by nvidia-container-toolkit at runtime,
-# so the patch must be applied at startup, not during image build.
-if [ -f "/opt/gstreamer/patches/patch-nvfbc.sh" ]; then
-    echo "Applying NVFBC GeForce unlock patch..."
-    sudo bash /opt/gstreamer/patches/patch-nvfbc.sh || echo "WARNING: NVFBC patch failed, falling back to ximagesrc"
-fi
-
-# Hot-load custom compiled GStreamer C plugins (e.g. nvfbcsrc) if provided via volume mount
-if [ -f "/opt/gstreamer/patches/libgstnvfbcsrc.so" ]; then
-    echo "Hot-loading custom libgstnvfbcsrc.so plugin..."
-    sudo cp /opt/gstreamer/patches/libgstnvfbcsrc.so /opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0/
-fi
+# nvfbcsrc plugin is auto-discovered via GST_PLUGIN_PATH which includes /opt/gstreamer/patches/
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then

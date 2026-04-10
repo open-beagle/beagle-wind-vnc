@@ -31,7 +31,6 @@ RUN echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman
 # Step 2: 基础系统工具 + 语言环境
 # =============================================================================
 RUN pacman -S --noconfirm \
-    base-devel \
     bash \
     sudo \
     dbus \

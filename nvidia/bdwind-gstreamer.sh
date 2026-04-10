@@ -58,7 +58,7 @@ export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
 
 
 
-export BDWIND_ENCODER=x264enc
+export BDWIND_ENCODER="${BDWIND_ENCODER:-nvh264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
   export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
@@ -300,8 +300,14 @@ pactl list short sinks | grep -q VirtualSink || pactl load-module module-null-si
 pactl set-default-sink VirtualSink || true
 pactl set-default-source VirtualSink.monitor || true
 
+# Intercept broken encoders: Vulkan Video is unstable in CDI containers, fall back to NVENC CUDA
+if [ "$BDWIND_ENCODER" = "vulkanh264enc" ] || [ "$BDWIND_ENCODER" = "vulkanh265enc" ]; then
+    echo "WARNING: $BDWIND_ENCODER (Vulkan Video) is unstable in CDI container. Falling back to nvh264enc (NVENC CUDA)."
+    export BDWIND_ENCODER="nvh264enc"
+fi
+
 python3 -m bdwind_gstreamer \
-    --encoder=x264enc \
+    --encoder="${BDWIND_ENCODER:-nvh264enc}" \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT_GSTREAMER:-8081}" \
     --enable_basic_auth="false" \

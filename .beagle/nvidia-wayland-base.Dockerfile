@@ -111,6 +111,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=all
 RUN pacman -S --noconfirm \
     gamescope \
     hyprland \
+    xdg-desktop-portal-hyprland \
     xorg-xwayland \
     wayland-protocols \
     libinput \
@@ -118,7 +119,8 @@ RUN pacman -S --noconfirm \
     wlr-randr \
     wl-clipboard \
     xdg-utils \
-    xdg-user-dirs
+    xdg-user-dirs && \
+    pacman -R --noconfirm xdg-desktop-portal-cosmic || true
 
 # =============================================================================
 # Step 5: PipeWire 音频全家桶

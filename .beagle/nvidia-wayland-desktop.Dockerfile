@@ -43,9 +43,14 @@ RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/be
 # 部署自编译的 GStreamer 1.28.2 串流引擎 + Gamescope v6 补丁版
 # =============================================================================
 # 1. NVRTC 动态库（GStreamer nvcodec 隐式依赖）
+#    注意：libnvrtc.so 内部会 dlopen("libnvrtc-builtins.so.12.9")，
+#    必须创建带完整版本号的符号链接，否则 NVENC 编码器无法注册。
 RUN pip install --break-system-packages nvidia-cuda-nvrtc-cu12 && \
     ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 /usr/lib/libnvrtc.so || true && \
-    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so* /usr/lib/libnvrtc-builtins.so || true
+    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so* /usr/lib/libnvrtc-builtins.so || true && \
+    for f in /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so.*; do \
+        [ -f "$f" ] && ln -sf "$f" "/usr/lib/$(basename $f)" || true; \
+    done
 
 # 2. 从 OSS 拉取自编译的 Arch Linux 专属版 GStreamer 1.28.2
 RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-archlinux.tar.gz" && \

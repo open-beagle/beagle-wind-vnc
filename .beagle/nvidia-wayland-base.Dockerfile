@@ -136,7 +136,7 @@ RUN pacman -S --noconfirm \
 # 1. 自动注入核心 NVRTC 动态库（仅需 89MB 的 Wheel，跳过几个 G 的 CUDA Toolkit）
 # 显式打通 Ubuntu Host -> Arch Container 的动态链接隧道，防止宿主机的 libnvidia-encode.so.1 找不到
 RUN echo "/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/nvidia.conf && ldconfig && \
-    pip install --break-system-packages -i https://mirrors.aliyun.com/pypi/simple/ nvidia-cuda-nvrtc-cu12 && \
+    pip install --break-system-packages nvidia-cuda-nvrtc-cu12 && \
     # 建立 GStreamer nvcodec 隐式依赖的软连接 (匹配任意 Python 3.x 版本)
     ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 /usr/lib/libnvrtc.so || true && \
     ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so* /usr/lib/libnvrtc-builtins.so || true

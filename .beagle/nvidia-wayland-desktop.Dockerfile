@@ -39,7 +39,27 @@ RUN pacman -Sy --noconfirm --needed \
 COPY src/img/ /usr/share/backgrounds/beagle/
 RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/beagle/default.png
 
-# 拷贝 WebRTC 前端与 Python 启动脚本至指定层
+# =============================================================================
+# 部署自编译的 GStreamer 1.28.2 串流引擎 + Gamescope v6 补丁版
+# =============================================================================
+# 1. NVRTC 动态库（GStreamer nvcodec 隐式依赖）
+RUN pip install --break-system-packages nvidia-cuda-nvrtc-cu12 && \
+    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 /usr/lib/libnvrtc.so || true && \
+    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so* /usr/lib/libnvrtc-builtins.so || true
+
+# 2. 从 OSS 拉取自编译的 Arch Linux 专属版 GStreamer 1.28.2
+RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-archlinux.tar.gz" && \
+    tar -xzf bdwind-gstreamer-1.28.2-archlinux.tar.gz -C /opt && \
+    rm -f bdwind-gstreamer-1.28.2-archlinux.tar.gz
+
+# 3. 部署自编译的 Gamescope（P8 普罗米修斯行动：wl_compositor v6 补丁版）
+#    覆盖 base 层 pacman 安装的原版，使 Hyprland 能以嵌套 Wayland 客户端运行
+RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamescope-git-archlinux.tar.gz" && \
+    tar -xzf bdwind-gamescope-git-archlinux.tar.gz -C /opt && \
+    rm -f bdwind-gamescope-git-archlinux.tar.gz && \
+    ln -sf /opt/gamescope/bin/gamescope /usr/bin/gamescope
+
+# 4. WebRTC 前端 + Gamepad 服务
 RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.1.0.tar.gz" | tar -xzf - -C /opt/gstreamer/patches/ && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
@@ -70,12 +90,12 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # Expose Self-compiled GStreamer Globally
 # -----------------------------------------------------------------------------
 ENV GSTREAMER_PATH=/opt/gstreamer
-ENV PATH="${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
+ENV PATH="${GSTREAMER_PATH}/patches:${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
 # Arch Linux 纯净目录映射
 ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
+ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
 ENV XDG_DATA_HOME="/home/beagle/.local/share"
-ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME}/gstreamer-1.0/plugins:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
 ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 

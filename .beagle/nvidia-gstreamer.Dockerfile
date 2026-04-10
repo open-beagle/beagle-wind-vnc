@@ -1,8 +1,8 @@
 # ==============================================================================
-# GStreamer 1.28.2 Build Base Image (Arch Linux)
+# GStreamer 1.28.2 + Gamescope Build Base Image (Arch Linux)
 #
 # This image pre-installs ALL build dependencies (pacman, pip, rust, cargo-c)
-# and pre-clones GStreamer source so that scripts/build.sh only patches and compiles.
+# and pre-clones GStreamer + Gamescope source for compilation.
 #
 # Usage:
 #   docker run --rm -it \
@@ -30,7 +30,13 @@ RUN pacman -S --noconfirm --needed \
     libdrm libglvnd vulkan-headers vulkan-icd-loader \
     wayland wayland-protocols libx11 libxcb libxext libxfixes libxdamage libxv libxtst \
     x264 x265 libvpx aom svt-av1 opus libpulse alsa-lib jack pipewire \
-    ffnvcodec-headers nasm yasm gettext && \
+    ffnvcodec-headers nasm yasm gettext \
+    # --- Gamescope 额外编译依赖 (P8 普罗米修斯行动) ---
+    libei luajit sdl2 seatd libseat \
+    xcb-util-errors xcb-util-wm libxmu libxrender libxres \
+    libxxf86vm pixman lcms2 libavif libdecor libcap \
+    libxcomposite libxcursor libxi libxkbcommon \
+    xorg-server-xwayland && \
     rm -rf /var/cache/pacman/pkg/*
 
 # --- Step 4: Python tools ---
@@ -48,6 +54,10 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 ENV GSTREAMER_VERSION="1.28.2"
 RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
         "https://github.com/GStreamer/gstreamer.git" /opt/gst-src
+
+# --- Step 7: Pre-clone Gamescope source (P8) ---
+RUN git clone --depth 1 \
+        "https://github.com/ValveSoftware/gamescope.git" /opt/gamescope-src
 
 # Marker file so build.sh can detect the pre-built environment
 RUN touch /etc/bdwind-build-ready

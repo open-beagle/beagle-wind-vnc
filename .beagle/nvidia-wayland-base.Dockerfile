@@ -106,6 +106,8 @@ ENV NVIDIA_DRIVER_CAPABILITIES=all
 # =============================================================================
 # Step 4: Gamescope + Hyprland + XWayland (核心合成器)
 # =============================================================================
+# 注意：pacman 安装的 gamescope 仅提供运行时依赖 (libei, seatd 等)
+#       实际二进制会被 Step 6.5 中自编译的 v6 补丁版覆盖
 RUN pacman -S --noconfirm \
     gamescope \
     hyprland \
@@ -132,33 +134,10 @@ RUN pacman -S --noconfirm \
     gst-plugin-pipewire
 
 # =============================================================================
-# Step 6: 部署手搓的 GStreamer 1.28.2 串流引擎（取代残疾的 pacman 原生版）
+# Step 6: 链接库路径修复（宿主机 NVIDIA 驱动兼容）
 # =============================================================================
-# 1. 自动注入核心 NVRTC 动态库（仅需 89MB 的 Wheel，跳过几个 G 的 CUDA Toolkit）
-# 显式打通 Ubuntu Host -> Arch Container 的动态链接隧道，防止宿主机的 libnvidia-encode.so.1 找不到
-RUN echo "/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/nvidia.conf && ldconfig && \
-    pip install --break-system-packages nvidia-cuda-nvrtc-cu12 && \
-    # 建立 GStreamer nvcodec 隐式依赖的软连接 (匹配任意 Python 3.x 版本)
-    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 /usr/lib/libnvrtc.so || true && \
-    ln -sf /usr/lib/python3.*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so* /usr/lib/libnvrtc-builtins.so || true
-
-# 2. 从对象存储拉取刚刚编译通过并打包的 Arch Linux 专属版 GStreamer 
-RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-archlinux.tar.gz" && \
-    tar -xzf bdwind-gstreamer-1.28.2-archlinux.tar.gz -C /opt && \
-    rm -f bdwind-gstreamer-1.28.2-archlinux.tar.gz
-
-# 3. 部署 Web 前端静态资源
-RUN mkdir -p /opt/bdwind/webrtc && \
-    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc || true
-
-# 4. 全局注入手搓引擎的环境变量
-ENV GSTREAMER_PATH="/opt/gstreamer"
-ENV PATH="${GSTREAMER_PATH}/patches:${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
-ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
-ENV GST_PLUGIN_SYSTEM_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
-ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
-ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
+# 显式打通 Ubuntu Host -> Arch Container 的动态链接隧道
+RUN echo "/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/nvidia.conf && ldconfig
 # =============================================================================
 # Step 7: Nginx + supervisor (进程编排)
 # =============================================================================

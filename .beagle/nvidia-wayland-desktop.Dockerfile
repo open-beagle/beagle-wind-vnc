@@ -14,7 +14,7 @@ SHELL ["/bin/bash", "-c"]
 # 一站式灌入所有娱乐与生产力引擎 (Steam, Wine, Lutris)
 # 抛弃 APT，迎接 Pacman 极速体验
 # =============================================================================
-RUN pacman -S --noconfirm --needed \
+RUN pacman -Sy --noconfirm --needed \
     wine \
     winetricks \
     joyutils \

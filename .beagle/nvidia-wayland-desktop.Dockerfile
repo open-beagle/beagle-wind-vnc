@@ -70,22 +70,23 @@ RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
 # 拷贝 Wayland 下专属控制配置文件与环境
-RUN mkdir -p /etc/beagle-wind-vnc /etc/xdg/hypr /home/beagle/.config/hypr /home/beagle/.config/waybar
+# 注意：所有配置统一放 /etc/beagle-wind-vnc/，用户级配置由 entrypoint.sh 启动时拷贝到 ~/.config/
+# 这样 /home/beagle 被挂载外部卷时不会丢失默认配置
+RUN mkdir -p /etc/beagle-wind-vnc/user/hypr /etc/beagle-wind-vnc/user/waybar
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/wayland/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/wayland/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
-COPY ./nvidia/wayland/supervisord.conf /etc/supervisord.conf
-COPY ./nvidia/wayland/hyprland.conf /home/beagle/.config/hypr/hyprland.conf
-COPY ./nvidia/wayland/hyprpaper.conf /home/beagle/.config/hypr/hyprpaper.conf
-COPY ./nvidia/wayland/waybar/config /home/beagle/.config/waybar/config
-COPY ./nvidia/wayland/waybar/style.css /home/beagle/.config/waybar/style.css
+COPY ./nvidia/wayland/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
+COPY ./nvidia/wayland/user/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
+COPY ./nvidia/wayland/user/hyprpaper.conf /etc/beagle-wind-vnc/user/hypr/hyprpaper.conf
+COPY ./nvidia/wayland/user/waybar/config /etc/beagle-wind-vnc/user/waybar/config
+COPY ./nvidia/wayland/user/waybar/style.css /etc/beagle-wind-vnc/user/waybar/style.css
 
 RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
-    /etc/supervisord.conf && \
-    chown -R beagle:beagle /home/beagle/.config
+    /etc/beagle-wind-vnc/supervisord.conf
 
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程
 USER 1000
@@ -119,4 +120,4 @@ ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 
 # 把控制权真正交给 entrypoint.sh，这样才能串行建立 DBus -> PipeWire -> Gamescope -> Supervisord
 ENTRYPOINT ["/etc/beagle-wind-vnc/entrypoint.sh"]
-CMD ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/beagle-wind-vnc/supervisord.conf"]

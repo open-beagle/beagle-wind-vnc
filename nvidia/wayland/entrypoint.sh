@@ -15,6 +15,12 @@ sudo rm -rf /tmp/.ICE-unix /tmp/.X* ~/.cache || true
 sudo rm -f ${XDG_RUNTIME_DIR}/wayland-* ${XDG_RUNTIME_DIR}/gamescope-* ${XDG_RUNTIME_DIR}/kwin* ${XDG_RUNTIME_DIR}/pipewire-* ${XDG_RUNTIME_DIR}/bus || true
 sudo mkdir -pm 1777 /tmp/.ICE-unix /tmp/.X11-unix || true
 
+# 1.5 从 /etc/beagle-wind-vnc/user/ 分发默认用户配置到 ~/.config/
+# 仅在目标文件不存在时拷贝，保留用户已有的自定义配置
+mkdir -p ~/.config/hypr ~/.config/waybar
+cp -n /etc/beagle-wind-vnc/user/hypr/* ~/.config/hypr/ 2>/dev/null || true
+cp -n /etc/beagle-wind-vnc/user/waybar/* ~/.config/waybar/ 2>/dev/null || true
+
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || true
 
 export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"

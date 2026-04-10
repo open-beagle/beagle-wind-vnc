@@ -128,7 +128,8 @@ RUN pacman -S --noconfirm \
     pipewire-jack \
     wireplumber \
     libpulse \
-    alsa-utils
+    alsa-utils \
+    gst-plugin-pipewire
 
 # =============================================================================
 # Step 6: 部署手搓的 GStreamer 1.28.2 串流引擎（取代残疾的 pacman 原生版）
@@ -154,8 +155,8 @@ RUN mkdir -p /opt/bdwind/webrtc && \
 ENV GSTREAMER_PATH="/opt/gstreamer"
 ENV PATH="${GSTREAMER_PATH}/patches:${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
 ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
-ENV GST_PLUGIN_SYSTEM_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
 ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 # =============================================================================

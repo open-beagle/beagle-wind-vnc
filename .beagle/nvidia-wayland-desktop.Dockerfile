@@ -54,9 +54,9 @@ RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer
 
 # 3. 部署自编译的 Gamescope（P8 普罗米修斯行动：wl_compositor v6 补丁版）
 #    覆盖 base 层 pacman 安装的原版，使 Hyprland 能以嵌套 Wayland 客户端运行
-RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamescope-git-archlinux.tar.gz" && \
-    tar -xzf bdwind-gamescope-git-archlinux.tar.gz -C /opt && \
-    rm -f bdwind-gamescope-git-archlinux.tar.gz && \
+RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamescope-3.16.23-archlinux.tar.gz" && \
+    tar -xzf bdwind-gamescope-3.16.23-archlinux.tar.gz -C /opt && \
+    rm -f bdwind-gamescope-3.16.23-archlinux.tar.gz && \
     ln -sf /opt/gamescope/bin/gamescope /usr/bin/gamescope
 
 # 4. WebRTC 前端 + Gamepad 服务
@@ -65,13 +65,15 @@ RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
 # 拷贝 Wayland 下专属控制配置文件与环境
-RUN mkdir -p /etc/beagle-wind-vnc /etc/xdg/hypr /home/beagle/.config/hypr
+RUN mkdir -p /etc/beagle-wind-vnc /etc/xdg/hypr /home/beagle/.config/hypr /home/beagle/.config/waybar
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/supervisord.conf
 COPY ./nvidia/wayland/hyprland.conf /home/beagle/.config/hypr/hyprland.conf
 COPY ./nvidia/wayland/hyprpaper.conf /home/beagle/.config/hypr/hyprpaper.conf
+COPY ./nvidia/wayland/waybar/config /home/beagle/.config/waybar/config
+COPY ./nvidia/wayland/waybar/style.css /home/beagle/.config/waybar/style.css
 
 RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \

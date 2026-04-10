@@ -32,7 +32,7 @@ RUN pacman -S --noconfirm --needed \
     x264 x265 libvpx aom svt-av1 opus libpulse alsa-lib jack pipewire \
     ffnvcodec-headers nasm yasm gettext \
     # --- Gamescope 额外编译依赖 (P8 普罗米修斯行动) ---
-    libei luajit sdl2 seatd libseat \
+    libei luajit sdl2 seatd \
     xcb-util-errors xcb-util-wm libxmu libxrender libxres \
     libxxf86vm pixman lcms2 libavif libdecor libcap \
     libxcomposite libxcursor libxi libxkbcommon \

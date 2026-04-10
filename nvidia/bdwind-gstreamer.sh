@@ -277,7 +277,10 @@ fi
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
 # 使用 python3 -m 直接启动模块，等效于 pip 安装的 bdwind-gstreamer 入口脚本，
 # 但不依赖 pip console_scripts，兼容 volume 热挂载调试场景。
-export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+
+# Ensure pipewire has a target sink to capture audio from in completely headless environments
+pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=Virtual_Sink || true
 
 python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-nvh264enc}" \

@@ -198,17 +198,17 @@ ENV XMODIFIERS="@im=fcitx"
 # =============================================================================
 # Step 10: 创建用户 + sudo 权限
 # =============================================================================
-RUN groupadd -g 1000 ubuntu || true && \
-    useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || true && \
-    usermod -a -G audio,video,input,render,games,wheel ubuntu && \
-    echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers && \
-    echo "ubuntu:mypasswd" | chpasswd && \
-    # 目录权限
-    chown -R -f ubuntu:ubuntu /home/ubuntu || true && \
-    chown -R -f ubuntu:ubuntu /opt || true && \
-    mkdir -p /run/user/1000 && \
-    chown -R -f ubuntu:ubuntu /run/user/1000 || true && \
-    chown -R -f ubuntu:ubuntu /tmp /var/tmp || true && \
+RUN groupadd -g 1000 beagle || true && \
+    useradd -ms /bin/bash beagle -u 1000 -g 1000 || true && \
+    usermod -a -G audio,video,input,render,games,wheel beagle && \
+    echo "beagle ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    echo "beagle:mypasswd" | chpasswd && \
+    # 修复常见目录权限，避免挂载或缓存生成失败
+    chown -R -f beagle:beagle /home/beagle || true && \
+    chown -R -f beagle:beagle /opt || true && \
+    # 准备运行时目录
+    chown -R -f beagle:beagle /run/user/1000 || true && \
+    chown -R -f beagle:beagle /tmp /var/tmp || true && \
     # sudo setuid
     chmod -f 4755 /usr/bin/sudo || true
 
@@ -236,15 +236,15 @@ ENV WLR_NO_HARDWARE_CURSORS=1
 ENV GBM_BACKEND=nvidia-drm
 
 # XDG 运行时
-ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
-ENV USER=ubuntu
-ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-ubuntu"
-ENV PULSE_RUNTIME_PATH="/tmp/runtime-ubuntu/pulse"
-ENV PULSE_SERVER="unix:/tmp/runtime-ubuntu/pulse/native"
+ENV XDG_RUNTIME_DIR=/tmp/runtime-beagle
+ENV USER=beagle
+ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-beagle"
+ENV PULSE_RUNTIME_PATH="/tmp/runtime-beagle/pulse"
+ENV PULSE_SERVER="unix:/tmp/runtime-beagle/pulse/native"
 
-# D-Bus
-ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-system-bus"
-ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
+# 将 DBus Socket 指向我们的无特权 runtime
+ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-system-bus"
+ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
 
 # Gamepad
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0

@@ -23,13 +23,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Aliyun Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: registry.cn-qingdao.aliyuncs.com
-          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
-          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
-
       - name: Build and push Docker image - nvidia-wayland-desktop
         uses: docker/build-push-action@v4
         with:
@@ -37,12 +30,11 @@ jobs:
           file: ./.beagle/nvidia-wayland-desktop.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-wayland-desktop-latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.1.0
+            ghcr.io/${{ github.repository }}:1.1.0
           platforms: linux/amd64
           build-args: |
             BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-wayland-base-latest
           no-cache: true
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.1.0"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.1.0"

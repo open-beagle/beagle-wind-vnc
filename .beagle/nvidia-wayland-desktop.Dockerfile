@@ -72,8 +72,8 @@ RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
 # 拷贝 Wayland 下专属控制配置文件与环境
 RUN mkdir -p /etc/beagle-wind-vnc /etc/xdg/hypr /home/beagle/.config/hypr /home/beagle/.config/waybar
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./nvidia/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
-COPY ./nvidia/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
+COPY ./nvidia/wayland/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
+COPY ./nvidia/wayland/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/supervisord.conf
 COPY ./nvidia/wayland/hyprland.conf /home/beagle/.config/hypr/hyprland.conf
 COPY ./nvidia/wayland/hyprpaper.conf /home/beagle/.config/hypr/hyprpaper.conf

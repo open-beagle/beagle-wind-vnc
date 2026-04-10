@@ -23,13 +23,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Aliyun Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: registry.cn-qingdao.aliyuncs.com
-          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
-          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
-
       - name: Build and push Docker image - nvidia-wayland-base
         uses: docker/build-push-action@v4
         with:
@@ -39,8 +32,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:nvidia-wayland-base-2604
             ghcr.io/${{ github.repository }}:nvidia-wayland-base-latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-wayland-base-2604
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:nvidia-wayland-base-latest
           platforms: linux/amd64
           no-cache: true
 

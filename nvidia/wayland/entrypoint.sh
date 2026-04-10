@@ -8,7 +8,7 @@ set -e
 trap "echo TRAPed signal" HUP INT QUIT TERM
 
 # 1. 确保环境变量与基础目录
-until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
+mkdir -p "${XDG_RUNTIME_DIR}"
 
 sudo chown -f "$(id -nu):$(id -ng)" ~ || true
 sudo rm -rf /tmp/.ICE-unix /tmp/.X* ~/.cache || true

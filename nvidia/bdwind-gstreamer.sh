@@ -269,9 +269,20 @@ fi
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then
-    LOCAL_IP=$(hostname -I | awk '{print $1}')
-    export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
-    echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP=$(ip -4 route get 8.8.8.8 2>/dev/null | grep -oP 'src \K\S+')
+    fi
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP=$(awk 'END{print $1}' /etc/hosts)
+    fi
+
+    if [ -n "$LOCAL_IP" ]; then
+        export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
+        echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+    else
+        echo "WARNING: Could not determine LOCAL_IP for NAT mapping, disabling NAT 1-to-1 string rewrites."
+    fi
 fi
 
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application
@@ -284,8 +295,6 @@ until pactl info > /dev/null 2>&1; do sleep 0.5; done
 pactl list short sinks | grep -q VirtualSink || pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=Virtual_Sink || true
 pactl set-default-sink VirtualSink || true
 pactl set-default-source VirtualSink.monitor || true
-
-
 
 python3 -m bdwind_gstreamer \
     --encoder=x264enc \

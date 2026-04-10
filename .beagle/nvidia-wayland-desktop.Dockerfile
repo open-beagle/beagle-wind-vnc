@@ -60,9 +60,6 @@ RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/supervisord.conf && \
     chown -R beagle:beagle /home/beagle/.config
 
-# 安装 GStreamer Python 打包出的 Wheel (bdwind-gstreamer 引擎)
-RUN pip install --break-system-packages --ignore-installed --no-cache-dir /opt/gstreamer/lib/python3/dist-packages/*.whl
-
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程
 USER 1000
 SHELL ["/bin/bash", "-c"]

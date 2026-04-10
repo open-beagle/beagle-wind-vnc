@@ -96,6 +96,7 @@ fi
 echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
 
 echo "# BDWIND-GStreamer NGINX Configuration
+pid /tmp/nginx.pid;
 events {
     worker_connections 1024;
 }

@@ -280,7 +280,8 @@ fi
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 
 # Ensure pipewire has a target sink to capture audio from in completely headless environments
-pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=Virtual_Sink || true
+pactl list short sinks | grep -q VirtualSink || pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=Virtual_Sink || true
+
 
 python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-nvh264enc}" \

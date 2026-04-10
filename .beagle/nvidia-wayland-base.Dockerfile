@@ -19,10 +19,13 @@ RUN echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman
     echo 'Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch' >> /etc/pacman.d/mirrorlist && \
     # 启用 multilib 仓库 (32 位库支持，Dota 2 / Wine 需要)
     echo -e '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist' >> /etc/pacman.conf && \
+    # 放开容器精简版对 Locale 包生成的限制
+    sed -i 's/^NoExtract/#NoExtract/g' /etc/pacman.conf && \
     pacman-key --init && \
     pacman-key --populate archlinux && \
     pacman -Sy --noconfirm archlinux-keyring && \
-    pacman -Syu --noconfirm
+    # 强制重制 glibc，使其将之前因为 NoExtract 被吃掉的语言字典吐出来
+    pacman -Syu --noconfirm && pacman -S --noconfirm glibc
 
 # =============================================================================
 # Step 2: 基础系统工具 + 语言环境

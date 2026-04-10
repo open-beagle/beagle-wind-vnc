@@ -86,7 +86,16 @@ else
 fi
 
 # Configure NGINX
-if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ] && command -v htpasswd >/dev/null; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"; fi
+if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then
+    if command -v htpasswd >/dev/null; then
+        htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"
+    elif command -v openssl >/dev/null; then
+        echo "${BDWIND_BASIC_AUTH_USER:-${USER}}:$(openssl passwd -6 "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}")" > "${XDG_RUNTIME_DIR}/.htpasswd"
+    else
+        echo "Warning: Neither htpasswd nor openssl is installed. Basic auth will be disabled to prevent Nginx crash."
+        export BDWIND_ENABLE_BASIC_AUTH="false"
+    fi
+fi
 
 if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
     _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')

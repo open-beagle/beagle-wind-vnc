@@ -271,7 +271,11 @@ fi
 if [ -n "${BDWIND_ICE_IP}" ]; then
     LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     if [ -z "$LOCAL_IP" ]; then
-        LOCAL_IP=$(ip -4 route get 8.8.8.8 2>/dev/null | grep -oP 'src \K\S+')
+        # 114.114.114.114 or default '1' is safe in China
+        LOCAL_IP=$(ip -4 route get 114.114.114.114 2>/dev/null | grep -oP 'src \K\S+')
+    fi
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP=$(ip -4 route get 1 2>/dev/null | grep -oP 'src \K\S+')
     fi
     if [ -z "$LOCAL_IP" ]; then
         LOCAL_IP=$(awk 'END{print $1}' /etc/hosts)

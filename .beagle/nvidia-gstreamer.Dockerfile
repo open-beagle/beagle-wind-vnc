@@ -14,11 +14,8 @@
 
 FROM archlinux:latest
 
-# --- Step 1: Init pacman mirroring ---
-RUN echo "Server = https://mirrors.aliyun.com/archlinux/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist && \
-    echo "Server = https://mirrors.ustc.edu.cn/archlinux/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist && \
-    echo "Server = https://mirrors.tuna.tsinghua.edu.cn/archlinux/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist && \
-    sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf && \
+# --- Step 1: Init pacman (using default Arch mirrors for Github Actions compatibility) ---
+RUN sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf && \
     pacman -Syu --noconfirm
 
 # --- Step 2+3: System + GStreamer Build Deps + Codecs ---
@@ -33,6 +30,7 @@ RUN pacman -S --noconfirm --needed \
     ffnvcodec-headers nasm yasm gettext \
     # --- Gamescope 额外编译依赖 (P8 普罗米修斯行动) ---
     libei luajit sdl2 seatd \
+    libinput hwdata libdisplay-info vulkan-validation-layers \
     xcb-util-errors xcb-util-wm libxmu libxrender libxres \
     libxxf86vm pixman lcms2 libavif libdecor libcap \
     libxcomposite libxcursor libxi libxkbcommon \
@@ -40,7 +38,7 @@ RUN pacman -S --noconfirm --needed \
     rm -rf /var/cache/pacman/pkg/*
 
 # --- Step 4: Python tools ---
-RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ --break-system-packages --no-cache-dir gitlint tomli
+RUN pip install --break-system-packages --no-cache-dir gitlint tomli
 
 # --- Step 5: Rust / Cargo toolchain (upstream) ---
 ENV CARGO_HOME="/root/.cargo"
@@ -56,8 +54,11 @@ RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
         "https://github.com/GStreamer/gstreamer.git" /opt/gst-src
 
 # --- Step 7: Pre-clone Gamescope source (P8) ---
-RUN git clone --depth 1 \
-        "https://github.com/ValveSoftware/gamescope.git" /opt/gamescope-src
+ENV GAMESCOPE_VERSION="3.16.23"
+RUN git clone --single-branch --depth 1 --branch "${GAMESCOPE_VERSION}" \
+        "https://github.com/ValveSoftware/gamescope.git" /opt/gamescope-src && \
+    cd /opt/gamescope-src && \
+    git submodule update --init --recursive
 
 # Marker file so build.sh can detect the pre-built environment
 RUN touch /etc/bdwind-build-ready

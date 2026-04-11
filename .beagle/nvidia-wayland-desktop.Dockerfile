@@ -105,7 +105,7 @@ RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-intros
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \
     python3.12 -m venv /opt/stark-runtime && \
-    /opt/stark-runtime/bin/pip install setuptools PyGObject && \
+    /opt/stark-runtime/bin/pip install setuptools PyGObject Pillow psutil evdev msgpack websockets prometheus-client basicauth pynput watchdog GPUtil && \
     sudo pacman -Rns --noconfirm base-devel && \
     sudo pacman -Scc --noconfirm
 

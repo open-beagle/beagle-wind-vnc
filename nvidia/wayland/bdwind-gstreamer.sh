@@ -25,7 +25,7 @@ export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}
 export PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}/native}"
 
 # Export environment variables required for BDWIND-GStreamer
-export GST_DEBUG="${GST_DEBUG:-*:2}"
+export GST_DEBUG="${GST_DEBUG:-*:2,pipewiresrc:5,videorate:5}"
 export GSTREAMER_PATH=/opt/gstreamer
 
 # Force exact display variable since Wayland allocates X0
@@ -45,20 +45,12 @@ if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
     . "${HOME}/.config/bdwind_display.conf"
 fi
 
-# Unzip provided python wheels if they haven't been extracted yet
-mkdir -p /tmp/pydeps
-if [ ! -d "/tmp/pydeps/prometheus_client" ]; then
-    echo "Extracting Python .whl dependencies..."
-    cd /tmp/pydeps && for f in /opt/gstreamer/lib/python3/dist-packages/*.whl; do [ -e "$f" ] && unzip -qo "$f" || true; done
-    # Delete bdwind_gstreamer to avoid shadowing the live host mount in /opt/gstreamer
-    rm -rf /tmp/pydeps/bdwind_gstreamer
-    cd - >/dev/null
-fi
-export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
-
-
-
+# Project P8-Stark: Disabled legacy python 3.14 wheel extraction,
+# using isolated Python 3.12 venv with native dependencies instead.
 export BDWIND_ENCODER="${BDWIND_ENCODER:-nvh264enc}"
+# Project P8-Stark: Re-map GStreamer EGL context to Surfaceless to permit WebRTC Native DMABuf imports
+export GST_GL_PLATFORM=egl
+export GST_GL_WINDOW=surfaceless
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
   export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
@@ -81,6 +73,8 @@ if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
         sleep 0.5
     done
     echo 'Wayland Server is ready'
+    # Wait additional seconds for desktop portals to register on DBus
+    sleep 3
 else
     echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
 fi

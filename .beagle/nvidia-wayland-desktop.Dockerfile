@@ -98,22 +98,23 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # =============================================================================
 # Project P8-Stark: 降维重装 Python 3.12 (由 AUR 接管)
 # =============================================================================
-RUN sudo pacman -Sy --noconfirm --needed base-devel && \
+RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-introspection && \
     (yay -S --noconfirm python312 2>/dev/null || \
     (git clone https://aur.archlinux.org/python312.git /tmp/python312 && \
      cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
+    sudo mkdir -p /opt/stark-runtime && \
+    sudo chown -R 1000:1000 /opt/stark-runtime && \
+    python3.12 -m venv /opt/stark-runtime && \
+    /opt/stark-runtime/bin/pip install setuptools PyGObject && \
     sudo pacman -Rns --noconfirm base-devel && \
     sudo pacman -Scc --noconfirm
-
-RUN sudo mkdir -p /opt/stark-runtime && \
-    sudo chown -R 1000:1000 /opt/stark-runtime && \
-    python3.12 -m venv /opt/stark-runtime
 
 # -----------------------------------------------------------------------------
 # Expose Self-compiled GStreamer Globally
 # -----------------------------------------------------------------------------
 ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="${GSTREAMER_PATH}/patches:${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
+
 # Arch Linux 纯净目录映射
 ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0:${GSTREAMER_PATH}/patches:/usr/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"

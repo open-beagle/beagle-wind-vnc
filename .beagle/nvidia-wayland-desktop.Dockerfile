@@ -98,9 +98,12 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # =============================================================================
 # Project P8-Stark: 降维重装 Python 3.12 (由 AUR 接管)
 # =============================================================================
-RUN yay -S --noconfirm python312 || \
+RUN sudo pacman -Sy --noconfirm --needed base-devel && \
+    (yay -S --noconfirm python312 2>/dev/null || \
     (git clone https://aur.archlinux.org/python312.git /tmp/python312 && \
-     cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)
+     cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
+    sudo pacman -Rns --noconfirm base-devel && \
+    sudo pacman -Scc --noconfirm
 
 RUN sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \

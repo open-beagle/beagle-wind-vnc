@@ -46,9 +46,13 @@ export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 # ⚠️ 注意事项：不能预设 WAYLAND_DISPLAY，让 Gamescope 自由掌控并创建 socket。
 unset WAYLAND_DISPLAY
 
-# 强制 NVIDIA Allocator 与 DRM Backend
-export GBM_BACKEND=nvidia-drm
-export __GLX_VENDOR_LIBRARY_NAME=nvidia
+# 强制 NVIDIA Allocator 与 DRM Backend (P8 headless 下取消此项，否则 Aquamarine 无法分配 buffer)
+# export GBM_BACKEND=nvidia-drm
+# export __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+export AQ_DRM_FORMAT=AR30
+export AQ_NO_MODIFIERS=1
+export AQ_NO_ATOMIC=1
 
 # =============================================================================
 # 4. 放行给 Supervisord 去接管所有后台链路 

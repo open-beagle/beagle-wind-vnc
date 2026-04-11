@@ -88,9 +88,9 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then
     if command -v htpasswd >/dev/null; then
-        htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}"
+        htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}"
     elif command -v openssl >/dev/null; then
-        echo "${BDWIND_BASIC_AUTH_USER:-${USER}}:$(openssl passwd -6 "${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}")" > "${XDG_RUNTIME_DIR}/.htpasswd"
+        echo "${BDWIND_BASIC_AUTH_USER:-${USER}}:$(openssl passwd -6 "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}")" > "${XDG_RUNTIME_DIR}/.htpasswd"
     else
         echo "Warning: Neither htpasswd nor openssl is installed. Basic auth will be disabled to prevent Nginx crash."
         export BDWIND_ENABLE_BASIC_AUTH="false"
@@ -240,7 +240,7 @@ rm -rf "${HOME}/.cache/gstreamer-1.0"
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     # Unlock hardware encoders dynamically across identical GPUs
-    export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+    export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so"
     
     # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
     nvidia-smi -L >/dev/null 2>&1 || true
@@ -255,23 +255,21 @@ fi
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then
-    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    if [ -z "$LOCAL_IP" ]; then
-        # 114.114.114.114 or default '1' is safe in China
-        LOCAL_IP=$(ip -4 route get 114.114.114.114 2>/dev/null | grep -oP 'src \K\S+')
-    fi
-    if [ -z "$LOCAL_IP" ]; then
-        LOCAL_IP=$(ip -4 route get 1 2>/dev/null | grep -oP 'src \K\S+')
-    fi
-    if [ -z "$LOCAL_IP" ]; then
-        LOCAL_IP=$(awk 'END{print $1}' /etc/hosts)
-    fi
-
-    if [ -n "$LOCAL_IP" ]; then
-        export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
-        echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+    # Support format: LOCAL_IP:PUBLIC_IP (e.g. 10.241.109.6:36.170.21.98)
+    # or just PUBLIC_IP (e.g. 36.170.21.98) for auto-detection of local IP
+    if echo "${BDWIND_ICE_IP}" | grep -q ':'; then
+        # Explicit LOCAL:PUBLIC format, use directly
+        export NICE_NAT_1TO1="${BDWIND_ICE_IP}"
+        echo "BDWIND_ICE_IP explicit mapping. Force ICE Candidates to: ${NICE_NAT_1TO1}"
     else
-        echo "WARNING: Could not determine LOCAL_IP for NAT mapping, disabling NAT 1-to-1 string rewrites."
+        # Only public IP given, auto-detect local IP
+        LOCAL_IP=$(ip -4 route get 114.114.114.114 2>/dev/null | grep -oP 'src \K\S+' || hostname -I 2>/dev/null | awk '{print $1}')
+        if [ -n "$LOCAL_IP" ]; then
+            export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
+            echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+        else
+            echo "WARNING: Could not determine LOCAL_IP for NAT mapping."
+        fi
     fi
 fi
 
@@ -292,7 +290,7 @@ if [ "$BDWIND_ENCODER" = "vulkanh264enc" ] || [ "$BDWIND_ENCODER" = "vulkanh265e
     export BDWIND_ENCODER="nvh264enc"
 fi
 
-python3 -m bdwind_gstreamer \
+/opt/stark-runtime/bin/python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-nvh264enc}" \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT_GSTREAMER:-8081}" \

@@ -21,6 +21,7 @@ RUN pacman -Sy --noconfirm --needed \
     mangohud \
     gamemode \
     jq \
+    inetutils \
     lutris \
     steam \
     nginx \
@@ -93,6 +94,17 @@ USER 1000
 SHELL ["/bin/bash", "-c"]
 
 ENV PATH="/usr/local/games:/usr/games:$PATH"
+
+# =============================================================================
+# Project P8-Stark: 降维重装 Python 3.12 (由 AUR 接管)
+# =============================================================================
+RUN yay -S --noconfirm python312 || \
+    (git clone https://aur.archlinux.org/python312.git /tmp/python312 && \
+     cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)
+
+RUN sudo mkdir -p /opt/stark-runtime && \
+    sudo chown -R 1000:1000 /opt/stark-runtime && \
+    python3.12 -m venv /opt/stark-runtime
 
 # -----------------------------------------------------------------------------
 # Expose Self-compiled GStreamer Globally

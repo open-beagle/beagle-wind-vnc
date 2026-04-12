@@ -60,6 +60,11 @@ RUN git clone --single-branch --depth 1 --branch "${GAMESCOPE_VERSION}" \
     cd /opt/gamescope-src && \
     git submodule update --init --recursive
 
+# --- Step 8: Pre-clone Aquamarine source (自主觉醒 Patch) ---
+ENV AQUAMARINE_VERSION="0.10.0"
+RUN git clone --single-branch --depth 1 --branch "v${AQUAMARINE_VERSION}" \
+        "https://github.com/hyprwm/aquamarine.git" /opt/aquamarine-src
+
 # Marker file so build.sh can detect the pre-built environment
 RUN touch /etc/bdwind-build-ready
 

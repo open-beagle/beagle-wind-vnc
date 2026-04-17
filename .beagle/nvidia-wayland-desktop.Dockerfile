@@ -77,6 +77,7 @@ RUN mkdir -p /etc/beagle-wind-vnc/user/hypr /etc/beagle-wind-vnc/user/waybar
 COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/wayland/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/wayland/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
+COPY ./nvidia/wayland/bdwind-hyprland.sh /etc/beagle-wind-vnc/bdwind-hyprland.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
 COPY ./nvidia/wayland/user/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
 COPY ./nvidia/wayland/user/hyprpaper.conf /etc/beagle-wind-vnc/user/hypr/hyprpaper.conf
@@ -87,6 +88,7 @@ RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
+    /etc/beagle-wind-vnc/bdwind-hyprland.sh \
     /etc/beagle-wind-vnc/supervisord.conf
 
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程

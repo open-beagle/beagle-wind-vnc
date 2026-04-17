@@ -14,9 +14,8 @@ until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # export LD_PRELOAD="${BDWIND_INTERPOSER}${LD_PRELOAD:+:${LD_PRELOAD}}"
 # export SDL_JOYSTICK_DEVICE=/dev/input/js0
 
-# Set default display
-export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
-export DISPLAY="${DISPLAY:-:20}"
+# Set Wayland session
+export XDG_SESSION_TYPE="wayland"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
@@ -27,9 +26,6 @@ export PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DI
 # Export environment variables required for BDWIND-GStreamer
 export GST_DEBUG="${GST_DEBUG:-*:2,pipewiresrc:5,videorate:5}"
 export GSTREAMER_PATH=/opt/gstreamer
-
-# Force exact display variable since Wayland allocates X0
-# export DISPLAY=":0"
 
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
@@ -64,20 +60,21 @@ if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] &&
   export BDWIND_STUN_PORT="${BDWIND_STUN_PORT:-19302}"
 fi
 
-# Wait for Display server to start
-export DISPLAY="${DISPLAY:-:20}"
-export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
-if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
-    echo 'Waiting for Wayland/Gamescope Socket'
-    until ls "${XDG_RUNTIME_DIR}"/wayland-* 1> /dev/null 2>&1 || ls "${XDG_RUNTIME_DIR}"/gamescope-* 1> /dev/null 2>&1; do 
-        sleep 0.5
-    done
-    echo 'Wayland Server is ready'
-    # Wait additional seconds for desktop portals to register on DBus
-    sleep 3
-else
-    echo "Waiting for X11 Socket on ${DISPLAY}..." && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X11 Server is ready'
+# Wait for Wayland compositor to start
+echo 'Waiting for Wayland Socket'
+until ls "${XDG_RUNTIME_DIR}"/wayland-* 1> /dev/null 2>&1; do 
+    sleep 0.5
+done
+echo 'Wayland Server is ready'
+# 自动检测并 export WAYLAND_DISPLAY，
+# 使 wl-paste/wl-copy 剪贴板命令能连接到 Hyprland 的 Wayland socket
+if [ -z "${WAYLAND_DISPLAY}" ]; then
+    WAYLAND_DISPLAY=$(ls "${XDG_RUNTIME_DIR}"/wayland-* 2>/dev/null | grep -v lock | head -1 | xargs basename 2>/dev/null)
+    export WAYLAND_DISPLAY
+    echo "Auto-detected WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
 fi
+# Wait additional seconds for desktop portals to register on DBus
+sleep 3
 
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then
@@ -244,8 +241,6 @@ if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
     DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
-
-# nvfbcsrc plugin is auto-discovered via GST_PLUGIN_PATH which includes /opt/gstreamer/patches/
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then

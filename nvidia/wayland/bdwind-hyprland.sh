@@ -19,17 +19,11 @@ if [ -f /opt/aquamarine/lib/libaquamarine.so ]; then
     export LD_LIBRARY_PATH="/opt/aquamarine/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 fi
 
-# Hyprland Direct — 独立模式
+# Hyprland Direct — 独立模式（headless 后端）
 unset WAYLAND_DISPLAY
 unset DISPLAY
-
-# P0-B 神经接入：移除 WLR_LIBINPUT_NO_DEVICES=1
-# 容器内有 /dev/uinput（entrypoint.sh 已 chmod 666），
-# 让 Hyprland 通过 libinput 正常扫描 uinput 虚拟设备，
-# 使远程键鼠事件能被 Hyprland 消费。
-# export WLR_LIBINPUT_NO_DEVICES=1
-
-export AQ_DRM_DEVICES=/dev/dri/card6
+# 不设置 AQ_DRM_DEVICES，让 Aquamarine 自动回退到 headless 后端
+# （CDI 容器中 libseat 无法接管 DRM 设备）
 
 # 后台启动 Hyprland
 /usr/bin/Hyprland "$@" 2>/tmp/hyprland-stderr.log &

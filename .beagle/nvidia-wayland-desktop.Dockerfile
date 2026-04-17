@@ -1,5 +1,5 @@
 # =============================================================================
-# P8: Arch Linux Desktop Image (Steam, Wine, Lutris, Hyprland, Gamescope)
+# P8: Arch Linux Desktop Image (Steam, Wine, Lutris, Hyprland)
 # 继承我们刚刚打好的极客版 Arch Linux Wayland 底座
 # =============================================================================
 ARG BASE=ghcr.io/open-beagle/beagle-wind-vnc:nvidia-wayland-base-latest
@@ -41,7 +41,7 @@ COPY src/img/ /usr/share/backgrounds/beagle/
 RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/beagle/default.png
 
 # =============================================================================
-# 部署自编译的 GStreamer 1.28.2 串流引擎 + Gamescope v6 补丁版
+# 部署自编译的 GStreamer 1.28.2 串流引擎 + Aquamarine 0.10.0 补丁版
 # =============================================================================
 # 1. NVRTC 动态库（GStreamer nvcodec 隐式依赖）
 #    注意：libnvrtc.so 内部会 dlopen("libnvrtc-builtins.so.12.9")，
@@ -58,12 +58,14 @@ RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer
     tar -xzf bdwind-gstreamer-1.28.2-archlinux.tar.gz -C /opt && \
     rm -f bdwind-gstreamer-1.28.2-archlinux.tar.gz
 
-# 3. 部署自编译的 Gamescope（P8 普罗米修斯行动：wl_compositor v6 补丁版）
-#    覆盖 base 层 pacman 安装的原版，使 Hyprland 能以嵌套 Wayland 客户端运行
-RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamescope-3.16.23-archlinux.tar.gz" && \
-    tar -xzf bdwind-gamescope-3.16.23-archlinux.tar.gz -C /opt && \
-    rm -f bdwind-gamescope-3.16.23-archlinux.tar.gz && \
-    ln -sf /opt/gamescope/bin/gamescope /usr/bin/gamescope
+# 3. 部署自编译的 Aquamarine 0.10.0（§30.1 锁控流补丁版）
+#    修复 headless 后端 DRM render node + idleCallbacks 时序
+RUN curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-aquamarine-0.10.0-archlinux.tar.gz" && \
+    tar -xzf bdwind-aquamarine-0.10.0-archlinux.tar.gz -C /opt && \
+    rm -f bdwind-aquamarine-0.10.0-archlinux.tar.gz && \
+    cd /opt/aquamarine/lib && \
+    ln -sf libaquamarine.so.0.10.0 libaquamarine.so && \
+    ln -sf libaquamarine.so.0.10.0 libaquamarine.so.0
 
 # 4. WebRTC 前端 + Gamepad 服务
 RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
@@ -78,9 +80,11 @@ COPY ./nvidia/wayland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./nvidia/wayland/bdwind-gstreamer.sh /etc/beagle-wind-vnc/bdwind-gstreamer.sh
 COPY ./nvidia/wayland/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/bdwind-hyprland.sh /etc/beagle-wind-vnc/bdwind-hyprland.sh
+COPY ./nvidia/wayland/mock-picker.sh /etc/beagle-wind-vnc/mock-picker.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
 COPY ./nvidia/wayland/user/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
 COPY ./nvidia/wayland/user/hyprpaper.conf /etc/beagle-wind-vnc/user/hypr/hyprpaper.conf
+COPY ./nvidia/wayland/user/hypr/xdph.conf /etc/beagle-wind-vnc/user/hypr/xdph.conf
 COPY ./nvidia/wayland/user/waybar/config /etc/beagle-wind-vnc/user/waybar/config
 COPY ./nvidia/wayland/user/waybar/style.css /etc/beagle-wind-vnc/user/waybar/style.css
 
@@ -89,6 +93,7 @@ RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/bdwind-gstreamer.sh \
     /etc/beagle-wind-vnc/bdwind-gamepad.sh \
     /etc/beagle-wind-vnc/bdwind-hyprland.sh \
+    /etc/beagle-wind-vnc/mock-picker.sh \
     /etc/beagle-wind-vnc/supervisord.conf
 
 # 切回安全用户组，准备接入 GStreamer + Wayland 信令拦截进程
@@ -107,9 +112,12 @@ RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-intros
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \
     python3.12 -m venv /opt/stark-runtime && \
-    /opt/stark-runtime/bin/pip install setuptools PyGObject Pillow psutil evdev msgpack websockets prometheus-client basicauth pynput watchdog GPUtil && \
+    /opt/stark-runtime/bin/pip install setuptools PyGObject Pillow psutil evdev msgpack websockets prometheus-client basicauth pynput watchdog GPUtil dbus-python && \
     sudo pacman -Rns --noconfirm base-devel && \
     sudo pacman -Scc --noconfirm
+
+# 清理 build.sh 打包的 Python 3.14 编译的 evdev（ABI 不兼容 Python 3.12）
+RUN rm -rf /opt/gstreamer/lib/python3/dist-packages/evdev /opt/gstreamer/lib/python3/dist-packages/evdev-*.dist-info || true
 
 # -----------------------------------------------------------------------------
 # Expose Self-compiled GStreamer Globally
@@ -136,6 +144,6 @@ ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 
-# 把控制权真正交给 entrypoint.sh，这样才能串行建立 DBus -> PipeWire -> Gamescope -> Supervisord
+# 把控制权真正交给 entrypoint.sh
 ENTRYPOINT ["/etc/beagle-wind-vnc/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/beagle-wind-vnc/supervisord.conf"]

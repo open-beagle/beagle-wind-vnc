@@ -117,7 +117,7 @@ RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-intros
     sudo pacman -Scc --noconfirm
 
 # 清理 build.sh 打包的 Python 3.14 编译的 evdev（ABI 不兼容 Python 3.12）
-RUN rm -rf /opt/gstreamer/lib/python3/dist-packages/evdev /opt/gstreamer/lib/python3/dist-packages/evdev-*.dist-info || true
+RUN sudo rm -rf /opt/gstreamer/lib/python3/dist-packages/evdev /opt/gstreamer/lib/python3/dist-packages/evdev-*.dist-info || true
 
 # -----------------------------------------------------------------------------
 # Expose Self-compiled GStreamer Globally

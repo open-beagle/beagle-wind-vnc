@@ -279,6 +279,14 @@ if [ "$BDWIND_ENCODER" = "vulkanh264enc" ] || [ "$BDWIND_ENCODER" = "vulkanh265e
     export BDWIND_ENCODER="nvh264enc"
 fi
 
+# =============================================================================
+# [PERFORMANCE LIFELINE] Wayland Display Passthrough
+# =============================================================================
+# Without this, the python webRTC controller falls back to X11 ximagesrc software readbacks, 
+# resulting in catastrophic 100% CPU lockups and 65% idle GPU bloat.
+export WAYLAND_DISPLAY=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | head -1 | xargs basename)
+echo "[bdwind-gstreamer] Bound to WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+
 /opt/stark-runtime/bin/python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-nvh264enc}" \
     --addr="127.0.0.1" \

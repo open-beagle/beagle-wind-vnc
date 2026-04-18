@@ -25,6 +25,16 @@ unset DISPLAY
 # 不设置 AQ_DRM_DEVICES，让 Aquamarine 自动回退到 headless 后端
 # （CDI 容器中 libseat 无法接管 DRM 设备）
 
+# 视觉净空指令（Visual Clearance Protocol） 
+# 1. 强制内核态无指针环境，切断一切硬件鼠标游标平面渲染
+export WLR_NO_HARDWARE_CURSORS=1
+
+# [BEAGLE-WIND] Start seatd so libinput can access /dev/input devices
+# Without a seat manager, Hyprland's libinput backend won't initialize
+sudo seatd -g input -u beagle &
+sleep 0.3
+export LIBSEAT_BACKEND=seatd
+
 # 后台启动 Hyprland
 /usr/bin/Hyprland "$@" 2>/tmp/hyprland-stderr.log &
 HYPR_PID=$!

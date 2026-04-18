@@ -8,7 +8,7 @@
 #   docker run --rm -it \
 #     -v $(pwd)/gstreamer:/workspace \
 #     -w /workspace \
-#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2-arch \
+#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2 \
 #     bash scripts/build.sh
 # ==============================================================================
 

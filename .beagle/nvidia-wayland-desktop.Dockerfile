@@ -30,10 +30,11 @@ RUN pacman -Sy --noconfirm --needed \
     noto-fonts-emoji \
     chromium \
     waybar \
-    kitty \
+    foot \
+    foot-terminfo \
     wofi \
     dolphin \
-    hyprpaper && \
+    swaybg && \
     pacman -Scc --noconfirm
 
 # 向桌面灌入系统默认壁纸底图
@@ -83,10 +84,10 @@ COPY ./nvidia/wayland/bdwind-hyprland.sh /etc/beagle-wind-vnc/bdwind-hyprland.sh
 COPY ./nvidia/wayland/mock-picker.sh /etc/beagle-wind-vnc/mock-picker.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
 COPY ./nvidia/wayland/user/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
-COPY ./nvidia/wayland/user/hyprpaper.conf /etc/beagle-wind-vnc/user/hypr/hyprpaper.conf
 COPY ./nvidia/wayland/user/hypr/xdph.conf /etc/beagle-wind-vnc/user/hypr/xdph.conf
 COPY ./nvidia/wayland/user/waybar/config /etc/beagle-wind-vnc/user/waybar/config
 COPY ./nvidia/wayland/user/waybar/style.css /etc/beagle-wind-vnc/user/waybar/style.css
+COPY ./nvidia/wayland/user/wofi /etc/beagle-wind-vnc/user/wofi
 
 RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \

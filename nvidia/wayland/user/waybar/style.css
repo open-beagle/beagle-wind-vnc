@@ -70,3 +70,15 @@ window#waybar.hidden {
         color: #000000;
     }
 }
+
+#custom-launcher {
+    font-size: 22px;
+    padding: 0 12px;
+    color: #33ccff;
+    transition: all 0.3s ease;
+}
+
+#custom-launcher:hover {
+    color: #00ff99;
+    background: rgba(255, 255, 255, 0.1);
+}

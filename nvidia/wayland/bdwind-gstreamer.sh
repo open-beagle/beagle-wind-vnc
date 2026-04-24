@@ -79,9 +79,9 @@ sleep 3
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then
     if command -v htpasswd >/dev/null; then
-        htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}"
+        htpasswd -bcm "/tmp/.htpasswd-beagle" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}"
     elif command -v openssl >/dev/null; then
-        echo "${BDWIND_BASIC_AUTH_USER:-${USER}}:$(openssl passwd -6 "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}")" > "${XDG_RUNTIME_DIR}/.htpasswd"
+        echo "${BDWIND_BASIC_AUTH_USER:-${USER}}:$(openssl passwd -6 "${BDWIND_PASSWORD:-${BDWIND_BASIC_AUTH_PASSWORD:-${PASSWD}}}")" > "/tmp/.htpasswd-beagle"
     else
         echo "Warning: Neither htpasswd nor openssl is installed. Basic auth will be disabled to prevent Nginx crash."
         export BDWIND_ENABLE_BASIC_AUTH="false"
@@ -109,7 +109,7 @@ http {
     listen ${BDWIND_PORT_NGINX:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
     listen [::]:${BDWIND_PORT_NGINX:-8080} $(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "ssl"; fi);
     $(if [ "$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')" = "true" ]; then echo "ssl_certificate ${BDWIND_HTTPS_CERT-/etc/ssl/certs/ssl-cert-snakeoil.pem};"; echo "    ssl_certificate_key ${BDWIND_HTTPS_KEY-/etc/ssl/private/ssl-cert-snakeoil.key};"; fi)
-    $(if [ \"$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file ${XDG_RUNTIME_DIR}/.htpasswd;"; fi)
+    $(if [ \"$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')\" != \"false\" ]; then echo "auth_basic \"Selkies\";"; echo -n "    auth_basic_user_file /tmp/.htpasswd-beagle;"; fi)
 
     location / {
         root /opt/bdwind/webrtc/;

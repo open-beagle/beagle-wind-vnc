@@ -85,6 +85,8 @@ RUN pacman -S --noconfirm --ask 4 --needed \
     opencl-nvidia \
     clinfo \
     nvtop \
+    egl-wayland \
+    lib32-egl-wayland \
     || pacman -S --noconfirm --ask 4 --needed \
     nvidia-utils \
     lib32-nvidia-utils \
@@ -95,7 +97,9 @@ RUN pacman -S --noconfirm --ask 4 --needed \
     libva-nvidia-driver \
     opencl-nvidia \
     clinfo \
-    nvtop
+    nvtop \
+    egl-wayland \
+    lib32-egl-wayland
 
 ENV PATH="/usr/local/nvidia/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"

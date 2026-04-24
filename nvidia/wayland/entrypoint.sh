@@ -9,6 +9,7 @@ trap "echo TRAPed signal" HUP INT QUIT TERM
 
 # 1. 确保环境变量与基础目录
 mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 0700 "${XDG_RUNTIME_DIR}"
 
 sudo chown -f "$(id -nu):$(id -ng)" ~ || true
 sudo rm -rf /tmp/.ICE-unix /tmp/.X* ~/.cache || true
@@ -72,12 +73,15 @@ UINPUT_SEED_PID=$!
 echo "[entrypoint] uinput seed process PID=$UINPUT_SEED_PID"
 sleep 1
 sudo mkdir -p /var/run/dbus || true
+sudo systemd-machine-id-setup || true
+sudo dbus-uuidgen --ensure || true
 
 # =============================================================================
 # 3. 提供给 Supervisord 子进程的全局变量
 # =============================================================================
 export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
+export NO_PROXY="localhost,127.0.0.1,127.0.0.0/8,::1,/tmp/"
 
 # ⚠️ 注意事项：不能预设 WAYLAND_DISPLAY，让 Gamescope 自由掌控并创建 socket。
 unset WAYLAND_DISPLAY

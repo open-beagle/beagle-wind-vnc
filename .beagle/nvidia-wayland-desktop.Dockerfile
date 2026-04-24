@@ -34,6 +34,8 @@ RUN pacman -Sy --noconfirm --needed \
     foot-terminfo \
     wofi \
     dolphin \
+    kded \
+    kio-extras \
     swaybg && \
     pacman -Scc --noconfirm
 

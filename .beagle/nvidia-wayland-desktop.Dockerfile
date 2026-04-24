@@ -85,7 +85,7 @@ COPY ./nvidia/wayland/bdwind-gamepad.sh /etc/beagle-wind-vnc/bdwind-gamepad.sh
 COPY ./nvidia/wayland/bdwind-hyprland.sh /etc/beagle-wind-vnc/bdwind-hyprland.sh
 COPY ./nvidia/wayland/mock-picker.sh /etc/beagle-wind-vnc/mock-picker.sh
 COPY ./nvidia/wayland/supervisord.conf /etc/beagle-wind-vnc/supervisord.conf
-COPY ./nvidia/wayland/user/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
+COPY ./nvidia/wayland/user/hypr/hyprland.conf /etc/beagle-wind-vnc/user/hypr/hyprland.conf
 COPY ./nvidia/wayland/user/hypr/xdph.conf /etc/beagle-wind-vnc/user/hypr/xdph.conf
 COPY ./nvidia/wayland/user/waybar/config /etc/beagle-wind-vnc/user/waybar/config
 COPY ./nvidia/wayland/user/waybar/style.css /etc/beagle-wind-vnc/user/waybar/style.css

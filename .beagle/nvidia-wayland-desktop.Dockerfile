@@ -36,7 +36,8 @@ RUN pacman -Sy --noconfirm --needed \
     dolphin \
     kded \
     kio-extras \
-    swaybg && \
+    swaybg \
+    wl-clipboard && \
     pacman -Scc --noconfirm
 
 # 向桌面灌入系统默认壁纸底图
@@ -112,6 +113,7 @@ RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-intros
     (yay -S --noconfirm python312 2>/dev/null || \
     (git clone https://aur.archlinux.org/python312.git /tmp/python312 && \
      cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
+    yay -S --noconfirm ttf-google-sans xcursor-transparent-theme && \
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \
     python3.12 -m venv /opt/stark-runtime && \

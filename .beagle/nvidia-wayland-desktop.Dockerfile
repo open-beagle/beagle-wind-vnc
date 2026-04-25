@@ -112,7 +112,9 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # =============================================================================
 RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-introspection && \
     sudo mkdir -p /usr/share/fonts/GoogleSansCode && \
-    curl -fsSL "https://github.com/sahibjotsaggu/Google-Sans-Fonts/archive/refs/heads/master.tar.gz" | sudo tar -xz -C /usr/share/fonts/GoogleSansCode --strip-components=1 && \
+    curl -fsSL "https://github.com/googlefonts/googlesans-code/releases/download/v7.000/GoogleSansCode-v7.000.zip" -o /tmp/font.zip && \
+    sudo python3 -m zipfile -e /tmp/font.zip /usr/share/fonts/GoogleSansCode/ && \
+    rm -f /tmp/font.zip && \
     sudo fc-cache -fv && \
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \

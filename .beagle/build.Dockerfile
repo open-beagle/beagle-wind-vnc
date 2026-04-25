@@ -18,4 +18,4 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.
     sudo chmod +x /usr/bin/joystick-server
 
 # Copy selkies_gstreamer
-COPY ./src/selkies_gstreamer/. /usr/local/lib/python3.12/dist-packages/selkies_gstreamer/
+COPY ./src/selkies_gstreamer/. /usr/local/lib/python3/dist-packages/selkies_gstreamer/

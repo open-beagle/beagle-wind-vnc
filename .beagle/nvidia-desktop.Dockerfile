@@ -55,8 +55,8 @@ RUN apt update && \
   # Install BaiduDisk
   curl -o /tmp/baidunetdisk_4.17.7_amd64.deb -fsSL "https://issuecdn.baidupcs.com/issue/netdisk/LinuxGuanjia/4.17.7/baidunetdisk_4.17.7_amd64.deb" && \
   apt install -y /tmp/baidunetdisk_4.17.7_amd64.deb && rm -f /tmp/baidunetdisk_4.17.7_amd64.deb && \
-  # Clean up and add deadsnakes PPA for pipx/tools
-  add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.12-venv && \
+  # Clean up and install generic python3-venv
+  apt-get update && apt-get install -y python3-venv && \
   apt clean && \
   rm -rf /usr/share/vulkan/icd.d/*.json && \
   rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*

@@ -108,24 +108,18 @@ SHELL ["/bin/bash", "-c"]
 ENV PATH="/usr/local/games:/usr/games:$PATH"
 
 # =============================================================================
-# Project P8-Stark: 降维重装 Python 3.12 (由 AUR 接管)
+# Project P8-Stark: 构建 Python 独立运行虚拟环境
 # =============================================================================
 RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-introspection && \
-    (yay -S --noconfirm python312 2>/dev/null || \
-    (curl -fsSL --retry 3 "https://aur.archlinux.org/cgit/aur.git/snapshot/python312.tar.gz" | tar -xzf - -C /tmp && \
-     cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
     sudo mkdir -p /usr/share/fonts/GoogleSansCode && \
     curl -fsSL "https://github.com/sahibjotsaggu/Google-Sans-Fonts/archive/refs/heads/master.tar.gz" | sudo tar -xz -C /usr/share/fonts/GoogleSansCode --strip-components=1 && \
     sudo fc-cache -fv && \
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \
-    python3.12 -m venv /opt/stark-runtime && \
+    python3 -m venv /opt/stark-runtime && \
     /opt/stark-runtime/bin/pip install setuptools PyGObject Pillow psutil evdev msgpack websockets prometheus-client basicauth pynput watchdog GPUtil dbus-python && \
     sudo pacman -Rns --noconfirm base-devel && \
     sudo pacman -Scc --noconfirm
-
-# 清理 build.sh 打包的 Python 3.14 编译的 evdev（ABI 不兼容 Python 3.12）
-RUN sudo rm -rf /opt/gstreamer/lib/python3/dist-packages/evdev /opt/gstreamer/lib/python3/dist-packages/evdev-*.dist-info || true
 
 # -----------------------------------------------------------------------------
 # Expose Self-compiled GStreamer Globally

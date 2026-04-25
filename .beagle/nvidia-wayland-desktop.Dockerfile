@@ -91,6 +91,7 @@ COPY ./nvidia/wayland/user/hypr/xdph.conf /etc/beagle-wind-vnc/user/hypr/xdph.co
 COPY ./nvidia/wayland/user/waybar/config /etc/beagle-wind-vnc/user/waybar/config
 COPY ./nvidia/wayland/user/waybar/style.css /etc/beagle-wind-vnc/user/waybar/style.css
 COPY ./nvidia/wayland/user/wofi /etc/beagle-wind-vnc/user/wofi
+COPY ./nvidia/wayland/user/foot /etc/beagle-wind-vnc/user/foot
 
 RUN chmod 755 /opt/gstreamer/patches/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \

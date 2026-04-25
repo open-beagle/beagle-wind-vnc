@@ -18,10 +18,11 @@ sudo mkdir -pm 1777 /tmp/.ICE-unix /tmp/.X11-unix || true
 
 # 1.5 从 /etc/beagle-wind-vnc/user/ 分发默认用户配置到 ~/.config/
 # 强制覆盖，确保热更新的配置生效
-mkdir -p ~/.config/hypr ~/.config/waybar ~/.config/wofi
+mkdir -p ~/.config/hypr ~/.config/waybar ~/.config/wofi ~/.config/foot
 cp -a /etc/beagle-wind-vnc/user/hypr/* ~/.config/hypr/ 2>/dev/null || true
 cp -a /etc/beagle-wind-vnc/user/waybar/* ~/.config/waybar/ 2>/dev/null || true
 cp -a /etc/beagle-wind-vnc/user/wofi/* ~/.config/wofi/ 2>/dev/null || true
+cp -a /etc/beagle-wind-vnc/user/foot/* ~/.config/foot/ 2>/dev/null || true
 
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || true
 

@@ -40,9 +40,9 @@ RUN pacman -Sy --noconfirm --needed \
     wl-clipboard && \
     pacman -Scc --noconfirm
 
-# 预置 Chromium NVDEC 硬件解码配置，充分利用 NVIDIA 强大算力无缝渲染 B站
-RUN echo -e "--ozone-platform-hint=auto\n--enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE\n--use-angle=vulkan\n--enable-gpu-rasterization\n--enable-zero-copy" > /etc/chromium-flags.conf && \
-    sed -i '/^Exec=/ s/$/ --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE --use-angle=vulkan --enable-gpu-rasterization --enable-zero-copy/' /usr/share/applications/chromium.desktop || true
+# 预置 Chromium NVDEC 硬件解码配置，关闭存在兼容性 bug 的 Vulkan 与 zero-copy，改用 EGL 解决透明框问题
+RUN echo -e "--ozone-platform-hint=auto\n--enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks\n--use-gl=egl\n--disable-features=UseChromeOSDirectVideoDecoder" > /etc/chromium-flags.conf && \
+    sed -i '/^Exec=/ s/$/ --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks --use-gl=egl --disable-features=UseChromeOSDirectVideoDecoder/' /usr/share/applications/chromium.desktop || true
 
 # 向桌面灌入系统默认壁纸底图
 COPY src/img/ /usr/share/backgrounds/beagle/

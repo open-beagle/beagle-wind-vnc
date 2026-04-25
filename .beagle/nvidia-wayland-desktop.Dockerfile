@@ -114,8 +114,9 @@ RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-intros
     (yay -S --noconfirm python312 2>/dev/null || \
     (curl -fsSL --retry 3 "https://aur.archlinux.org/cgit/aur.git/snapshot/python312.tar.gz" | tar -xzf - -C /tmp && \
      cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
-    (curl -fsSL --retry 3 "https://aur.archlinux.org/cgit/aur.git/snapshot/ttf-google-sans.tar.gz" | tar -xzf - -C /tmp && \
-     cd /tmp/ttf-google-sans && makepkg -si --noconfirm && rm -rf /tmp/ttf-google-sans) && \
+    sudo mkdir -p /usr/share/fonts/GoogleSansCode && \
+    curl -fsSL "https://github.com/sahibjotsaggu/Google-Sans-Fonts/archive/refs/heads/master.tar.gz" | sudo tar -xz -C /usr/share/fonts/GoogleSansCode --strip-components=1 && \
+    sudo fc-cache -fv && \
     sudo mkdir -p /opt/stark-runtime && \
     sudo chown -R 1000:1000 /opt/stark-runtime && \
     python3.12 -m venv /opt/stark-runtime && \

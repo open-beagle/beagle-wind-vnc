@@ -112,7 +112,7 @@ ENV PATH="/usr/local/games:/usr/games:$PATH"
 # =============================================================================
 RUN sudo pacman -Sy --noconfirm --needed base-devel cairo pkgconf gobject-introspection && \
     (yay -S --noconfirm python312 2>/dev/null || \
-    (git clone https://aur.archlinux.org/python312.git /tmp/python312 && \
+    (curl -fsSL --retry 3 "https://aur.archlinux.org/cgit/aur.git/snapshot/python312.tar.gz" | tar -xzf - -C /tmp && \
      cd /tmp/python312 && makepkg -si --noconfirm && rm -rf /tmp/python312)) && \
     yay -S --noconfirm ttf-google-sans xcursor-transparent-theme && \
     sudo mkdir -p /opt/stark-runtime && \

@@ -40,6 +40,10 @@ RUN pacman -Sy --noconfirm --needed \
     wl-clipboard && \
     pacman -Scc --noconfirm
 
+# 预置 Chromium NVDEC 硬件解码配置，充分利用 NVIDIA 强大算力无缝渲染 B站
+RUN echo -e "--ozone-platform-hint=auto\n--enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE\n--use-angle=vulkan\n--enable-gpu-rasterization\n--enable-zero-copy" > /etc/chromium-flags.conf && \
+    sed -i '/^Exec=/ s/$/ --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,VaapiVideoDecoder,VaapiIgnoreDriverChecks,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE --use-angle=vulkan --enable-gpu-rasterization --enable-zero-copy/' /usr/share/applications/chromium.desktop || true
+
 # 向桌面灌入系统默认壁纸底图
 COPY src/img/ /usr/share/backgrounds/beagle/
 RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/beagle/default.png
@@ -145,6 +149,9 @@ ENV PULSE_SERVER="unix:/tmp/runtime-beagle/pulse/native"
 
 ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
 ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
+
+ENV LIBVA_DRIVER_NAME=nvidia
+ENV NVD_BACKEND=direct
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 

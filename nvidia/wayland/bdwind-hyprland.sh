@@ -35,6 +35,11 @@ sudo seatd -g input -u beagle &
 sleep 0.3
 export LIBSEAT_BACKEND=seatd
 
+# Ensure PipeWire virtual routing exists BEFORE Hyprland executes applications (like Chromium)
+pactl list short sinks | grep -q VirtualSink || pactl load-module module-null-sink sink_name=VirtualSink sink_properties="device.description=Virtual_Sink audio.format=S16LE audio.rate=48000" || true
+pactl set-default-sink VirtualSink || true
+pactl set-default-source VirtualSink.monitor || true
+
 # 后台启动 Hyprland
 /usr/bin/Hyprland "$@" 2>/tmp/hyprland-stderr.log &
 HYPR_PID=$!

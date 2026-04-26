@@ -23,7 +23,7 @@ RUN apt update && \
   chmod -f 755 /usr/bin/winetricks && \
   curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
   # Install Joystick and Game tools
-  apt install -y xboxdrv joystick jstest-gtk mangohud gamemode jq && \
+  apt install -y xboxdrv joystick jstest-gtk mangohud gamemode jq xclip && \
   apt install -y pipx && pipx ensurepath && pipx install protontricks && \
   # Install Lutris (auto-fetch latest version)
   LUTRIS_VERSION="$(curl -fsSL "https://api.github.com/repos/lutris/lutris/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \

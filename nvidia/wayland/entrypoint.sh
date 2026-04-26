@@ -23,6 +23,7 @@ cp -a /etc/beagle-wind-vnc/user/hypr/* ~/.config/hypr/ 2>/dev/null || true
 cp -a /etc/beagle-wind-vnc/user/waybar/* ~/.config/waybar/ 2>/dev/null || true
 cp -a /etc/beagle-wind-vnc/user/wofi/* ~/.config/wofi/ 2>/dev/null || true
 cp -a /etc/beagle-wind-vnc/user/foot/* ~/.config/foot/ 2>/dev/null || true
+sudo cp -a /etc/beagle-wind-vnc/local.conf /etc/fonts/local.conf 2>/dev/null || true
 
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || true
 

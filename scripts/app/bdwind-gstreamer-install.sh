@@ -79,10 +79,10 @@ ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvr
 # 私有化定制：使用刚编译好的 1.28.2 专用底座与 Python 包合集
 cd /tmp
 echo "Downloading custom bdwind-gstreamer 1.28.2 tarball..."
-curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-ubuntu24.04.tar.gz"
+curl -O -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-ubuntu2404.tar.gz"
 echo "Extracting GStreamer Custom Engines into /opt..."
-tar -xzf bdwind-gstreamer-1.28.2-ubuntu24.04.tar.gz -C /opt
-rm -f bdwind-gstreamer-1.28.2-ubuntu24.04.tar.gz
+tar -xzf bdwind-gstreamer-1.28.2-ubuntu2404.tar.gz -C /opt
+rm -f bdwind-gstreamer-1.28.2-ubuntu2404.tar.gz
 
 # 安装 Python 控制端（四大魔改补丁已预打包在 tarball 的 dist-packages 中）
 echo "Installing custom bdwind_gstreamer Python environment..."
@@ -100,13 +100,13 @@ pip3 install --root-user-action=ignore --ignore-installed --no-cache-dir --no-de
 rm -rf /tmp/bdwind_gstreamer_tmp
 
 # 获取自研风洞前端 (webrtc 子模块打包的静态资源)
-BDWIND_WEBRTC_VERSION="1.28.2"
+BDWIND_WEBRTC_VERSION="1.28.2-ubuntu2404"
 mkdir -p /opt/bdwind/webrtc
 echo "Downloading custom bdwind-webrtc ${BDWIND_WEBRTC_VERSION} Web Frontend..."
 curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-${BDWIND_WEBRTC_VERSION}.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc || true
 
 # 清理解压包、系统缓存和临时文件
-rm -f /tmp/bdwind-gstreamer-1.28.2-ubuntu24.04.tar.gz
+rm -f /tmp/bdwind-gstreamer-1.28.2-ubuntu2404.tar.gz
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/*
 # 由于脚本本身是以 --mount=bind 挂载在 /tmp 下的，清理其余垃圾时允许遇到挂载占用而忽略报错
 rm -rf /tmp/* /var/tmp/* 2>/dev/null || true

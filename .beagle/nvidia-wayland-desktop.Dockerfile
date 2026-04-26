@@ -95,13 +95,13 @@ RUN apt update && apt install --no-install-recommends -y \
   ln -sf /usr/lib/x86_64-linux-gnu/libnvrtc.so.12 /usr/lib/x86_64-linux-gnu/libnvrtc.so || true && \
   apt clean && rm -rf /var/lib/apt/lists/*
 
-# 从 Aliyun OSS 取得编译好的 GStreamer 1.28.1 容器引擎压缩包
-RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.1-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
+# 从 Aliyun OSS 取得编译好的 GStreamer 1.28.2 容器引擎压缩包
+RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.2-ubuntu25.04.tar.gz" | tar -xzf - -C /opt || true
 
 # 拷贝 WebRTC 前端与 Python 启动脚本至指定层
 RUN mkdir -p /opt/gstreamer/patches /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.1.0.tar.gz" | tar -xzf - -C /opt/gstreamer/patches/ && \
-    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.1.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
+    curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
 # 注入 xdg-desktop-portal-wlr 静态授权配门 (彻底跳过交互弹窗)
 RUN mkdir -p /etc/xdg/xdg-desktop-portal-wlr && \

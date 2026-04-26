@@ -19,7 +19,7 @@ LABEL maintainer="https://github.com/open-beagle"
 USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Step 1: Install self-compiled GStreamer 1.28.1 + BDWIND Python environment + Web UI
+# Step 1: Install self-compiled GStreamer 1.28.2 + BDWIND Python environment + Web UI
 RUN --mount=type=bind,source=scripts/app/bdwind-gstreamer-install.sh,target=/tmp/bdwind-gstreamer-install.sh \
     bash /tmp/bdwind-gstreamer-install.sh
 
@@ -46,7 +46,7 @@ RUN chmod 755 /usr/bin/joystick-server \
 USER 1000
 
 # -----------------------------------------------------------------------------
-# Expose Self-compiled GStreamer 1.24.6 Globally
+# Expose Self-compiled GStreamer 1.28.2 Globally
 # -----------------------------------------------------------------------------
 ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"

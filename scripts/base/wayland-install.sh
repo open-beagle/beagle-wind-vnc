@@ -29,7 +29,7 @@ apt-get install -y --no-install-recommends \
 # Clean up
 apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 手动物理提取 pipewiresrc 插件，绕过 apt 强制依赖安装 (防止 Ubuntu 在系统中安装 1.24 版本的原生 GStreamer 库污染我们的 1.28.1 隔离环境)
+# 手动物理提取 pipewiresrc 插件，绕过 apt 强制依赖安装 (防止 Ubuntu 在系统中安装 1.24 版本的原生 GStreamer 库污染我们的 1.28.2 隔离环境)
 mkdir -p /tmp/gst-pipewire
 cd /tmp/gst-pipewire
 apt-get update

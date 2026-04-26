@@ -1,9 +1,9 @@
-name: Build GStreamer Base Image
+name: Build GStreamer Ubuntu 24.04 Image
 
 on:
   push:
     branches:
-      - nvidia-gstreamer
+      - nvidia-gstreamer-ubuntu2404
 
 jobs:
   build:
@@ -27,11 +27,11 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-gstreamer.Dockerfile
+          file: ./.beagle/nvidia-gstreamer-ubuntu2404.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2-ubuntu2404
           platforms: linux/amd64
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2-ubuntu2404"

@@ -1,5 +1,5 @@
 # ==============================================================================
-# GStreamer 1.28.1 Build Base Image
+# GStreamer 1.28.2 Build Base Image
 #
 # This image pre-installs ALL build dependencies (apt, pip, rust, cargo-c)
 # and pre-clones GStreamer source so that scripts/build.sh only patches and compiles.
@@ -8,7 +8,7 @@
 #   docker run --rm -it \
 #     -v $(pwd)/gstreamer:/workspace \
 #     -w /workspace \
-#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.1 \
+#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2 \
 #     bash scripts/build.sh
 # ==============================================================================
 
@@ -47,7 +47,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     cargo install cargo-c
 
 # --- Step 6 (partial): Pre-clone GStreamer source to save bandwidth ---
-ENV GSTREAMER_VERSION="1.28.1"
+ENV GSTREAMER_VERSION="1.28.2"
 RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
         "https://github.com/GStreamer/gstreamer.git" /opt/gst-src
 

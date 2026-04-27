@@ -6,6 +6,9 @@
 
 set -e
 
+# Support unified BDWIND_PASSWORD with legacy PASSWD fallback
+export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
+
 trap "echo TRAPed signal" HUP INT QUIT TERM
 
 # Wait for XDG_RUNTIME_DIR

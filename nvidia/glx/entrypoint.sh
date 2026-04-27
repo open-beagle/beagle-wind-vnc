@@ -6,6 +6,9 @@
 
 set -e
 
+# Support unified BDWIND_PASSWORD with legacy PASSWD fallback
+export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
+
 # Force SDL to use X11, preventing Wayland detection issues which cause swapchain errors
 export SDL_VIDEODRIVER=x11
 

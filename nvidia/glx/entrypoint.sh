@@ -102,11 +102,15 @@ fi
 export CUDA_VISIBLE_DEVICES="${GPU_SELECT}"
 
 
-# Force Vulkan to only use the GPU bound to Xorg in multi-GPU --privileged containers.
-# Uses Mesa's device selection layer instead of chmod on /dev nodes to avoid polluting
-# the host or other containers sharing the same device namespace.
-export MESA_VK_DEVICE_SELECT="$(nvidia-smi --query-gpu=pci.bus_id --id=${GPU_SELECT} --format=csv,noheader | head -n1 | sed 's/00000000://' | tr '[:upper:]' '[:lower:]')"
-export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
+# Force Vulkan to use the NVIDIA driver instead of falling back to Mesa lavapipe (CPU software rendering).
+# MESA_VK_DEVICE_SELECT is only for Mesa open-source drivers (like AMD/Intel) and causes Nvidia setups
+# to fallback to 10 FPS CPU rendering (lavapipe). We enforce the Nvidia ICD directly.
+export VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json"
+export VK_DRIVER_FILES="/etc/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json"
+
+# Force OpenGL to use NVIDIA driver
+export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+
 
 
 # Setting `VIDEO_PORT` to none disables RANDR/XRANDR, causing potential compatibility issues, set to DFP if using datacenter GPUs
@@ -126,6 +130,16 @@ unset IFS
 BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]}):$(printf '%u' 0x${ARR_ID[2]}):$(printf '%u' 0x${ARR_ID[3]})"
 # A custom modeline should be generated because there is no monitor to fetch this information normally
 export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
+
+# Check for spoofed EDID (Fixes Headless 30FPS lock for games like Dota 2)
+export EDID_OPTIONS=""
+if [ -f "/etc/X11/edid.bin" ]; then
+    export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
+    Option         \"IgnoreEDID\" \"False\"
+    Option         \"UseEDID\" \"True\""
+fi
+
+
 # Generate /etc/X11/xorg.conf manually instead of relying on nvidia-xconfig
 cat <<EOF | sudo tee /etc/X11/xorg.conf >/dev/null
 Section "ServerLayout"
@@ -176,6 +190,7 @@ Section "Device"
     Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
     Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
     Option         "AllowFlipping" "False"
+${EDID_OPTIONS}
 EndSection
 
 Section "Screen"
@@ -216,6 +231,11 @@ chmod 700 ~/.config ~/.local ~/.cache
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
 export __GL_THREADED_OPTIMIZATIONS=0
+
+# Disable OpenGL/Vulkan VSync globally to prevent headless Xorg from capping games at 20-30fps
+# and causing 1000%+ CPU spin-lock overhead in Vulkan presentation queues.
+export __GL_SYNC_TO_VBLANK=0
+export vblank_mode=0
 
 # 彻底禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)
 # 在无头的 NVIDIA 云推流环境内，KWin Compositing 会导致严重的画面延迟、与 ximagesrc/NVENC 争抢显存，

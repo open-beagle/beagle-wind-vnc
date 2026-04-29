@@ -124,10 +124,40 @@ else
 fi
 
 # Bus ID from nvidia-smi is in hexadecimal format and should be converted to decimal format (including the domain) which Xorg understands, required because nvidia-xconfig doesn't work as intended in a container
-HEX_ID="$(nvidia-smi --query-gpu=pci.bus_id --id=${GPU_SELECT} --format=csv,noheader | head -n1)"
+HEX_ID="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader | head -n1)"
 IFS=":." ARR_ID=(${HEX_ID})
 unset IFS
-BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]}):$(printf '%u' 0x${ARR_ID[2]}):$(printf '%u' 0x${ARR_ID[3]})"
+BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:-0}):$(printf '%u' 0x${ARR_ID[3]:-0})"
+
+# Dynamically bind MangoHud to the correct physical GPU without destroying user config
+MANGOHUD_CONF="/home/ubuntu/.config/MangoHud/MangoHud.conf"
+sudo -u ubuntu mkdir -p /home/ubuntu/.config/MangoHud
+if [ ! -f "$MANGOHUD_CONF" ]; then
+    sudo -u ubuntu bash -c "cat > $MANGOHUD_CONF <<EOF
+pci_dev=${HEX_ID}
+legacy_layout=false
+gpu_stats
+gpu_temp
+gpu_core_clock
+gpu_mem_clock
+gpu_power
+cpu_stats
+cpu_temp
+cpu_mhz
+ram
+vram
+fps
+frametime
+frame_timing=1
+EOF"
+else
+    if grep -q "^pci_dev=" "$MANGOHUD_CONF"; then
+        sudo -u ubuntu sed -i "s/^pci_dev=.*/pci_dev=${HEX_ID}/" "$MANGOHUD_CONF"
+    else
+        sudo -u ubuntu bash -c "echo 'pci_dev=${HEX_ID}' >> $MANGOHUD_CONF"
+    fi
+fi
+
 # A custom modeline should be generated because there is no monitor to fetch this information normally
 export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
 
@@ -213,6 +243,10 @@ Section "ServerFlags"
 EndSection
 EOF
 
+# Add virtual display support to Xorg config as requested by P8-H
+if command -v nvidia-xconfig >/dev/null 2>&1; then
+    sudo nvidia-xconfig --virtual-display || echo 'Failed to set virtual display'
+fi
 
 # Real sudo (sudo) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
 ln -snf /dev/ptmx /dev/tty7 || sudo ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'

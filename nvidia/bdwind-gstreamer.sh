@@ -85,12 +85,25 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${BDWIND_PASSWORD:-${PASSWD}}}"; fi
 
+# 端口持久化复用：容器内重启时保持端口不变
 if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
-    _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')
-    export BDWIND_PORT_GSTREAMER="${BDWIND_PORT_GSTREAMER:-$(echo $_PORTS | awk '{print $1}')}"
-    export BDWIND_PORT_METRICS="${BDWIND_PORT_METRICS:-$(echo $_PORTS | awk '{print $2}')}"
+    # 优先从缓存文件读取上次分配的端口
+    CACHED_GSTREAMER_PORT=$(cat /tmp/gstreamer-port 2>/dev/null || true)
+    CACHED_METRICS_PORT=$(cat /tmp/metrics-port 2>/dev/null || true)
+
+    if [ -n "$CACHED_GSTREAMER_PORT" ] && [ -n "$CACHED_METRICS_PORT" ]; then
+        # 容器内重启：复用上次端口
+        export BDWIND_PORT_GSTREAMER="$CACHED_GSTREAMER_PORT"
+        export BDWIND_PORT_METRICS="$CACHED_METRICS_PORT"
+    else
+        # 容器首次启动：动态分配
+        _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')
+        export BDWIND_PORT_GSTREAMER="$(echo $_PORTS | awk '{print $1}')"
+        export BDWIND_PORT_METRICS="$(echo $_PORTS | awk '{print $2}')"
+    fi
 fi
 echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
+echo "${BDWIND_PORT_METRICS}" > /tmp/metrics-port
 
 echo "# BDWIND-GStreamer NGINX Configuration
 server {

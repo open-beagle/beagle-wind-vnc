@@ -23,7 +23,23 @@ RUN apt update && \
   chmod -f 755 /usr/bin/winetricks && \
   curl -o /usr/share/bash-completion/completions/winetricks -fsSL "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion"  && \
   # Install Joystick and Game tools
-  apt install -y xboxdrv joystick jstest-gtk mangohud gamemode jq xclip && \
+  apt install -y xboxdrv joystick jstest-gtk gamemode jq xclip && \
+  # Install MangoHud v0.8.3 from GitHub (apt version 0.6.9 has no NVIDIA NVML support, GPU metrics show 0%)
+  MANGOHUD_VER="0.8.3" && \
+  MANGOHUD_TAG="MangoHud-${MANGOHUD_VER}.r0.g330c42a" && \
+  curl -o /tmp/mangohud.tar.gz -fsSL "https://github.com/flightlessmango/MangoHud/releases/download/v${MANGOHUD_VER}/${MANGOHUD_TAG}.tar.gz" && \
+  tar -xzf /tmp/mangohud.tar.gz -C /tmp && \
+  tar -xf /tmp/MangoHud/MangoHud-package.tar -C /tmp/MangoHud && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib64/libMangoHud.so /usr/lib/mangohud/lib64/libMangoHud.so && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib64/libMangoHud_opengl.so /usr/lib/mangohud/lib64/libMangoHud_opengl.so && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib64/libMangoHud_shim.so /usr/lib/mangohud/lib64/libMangoHud_shim.so && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib32/libMangoHud.so /usr/lib/mangohud/lib32/libMangoHud.so && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib32/libMangoHud_opengl.so /usr/lib/mangohud/lib32/libMangoHud_opengl.so && \
+  install -Dm644 /tmp/MangoHud/usr/lib/mangohud/lib32/libMangoHud_shim.so /usr/lib/mangohud/lib32/libMangoHud_shim.so && \
+  install -Dm644 /tmp/MangoHud/usr/share/vulkan/implicit_layer.d/MangoHud.x86_64.json /usr/share/vulkan/implicit_layer.d/MangoHud.x86_64.json && \
+  install -Dm644 /tmp/MangoHud/usr/share/vulkan/implicit_layer.d/MangoHud.x86.json /usr/share/vulkan/implicit_layer.d/MangoHud.x86.json && \
+  install -Dm755 /tmp/MangoHud/usr/bin/mangohud /usr/bin/mangohud && \
+  rm -rf /tmp/MangoHud /tmp/mangohud.tar.gz && \
   apt install -y pipx && pipx ensurepath && pipx install protontricks && \
   # Install Lutris (auto-fetch latest version)
   LUTRIS_VERSION="$(curl -fsSL "https://api.github.com/repos/lutris/lutris/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g')" && \

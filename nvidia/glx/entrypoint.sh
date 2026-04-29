@@ -129,7 +129,10 @@ IFS=":." ARR_ID=(${HEX_ID})
 unset IFS
 BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:-0}):$(printf '%u' 0x${ARR_ID[3]:-0})"
 
-# Dynamically bind MangoHud to the correct physical GPU without destroying user config
+# Dynamically bind MangoHud to the correct physical GPU without destroying user config.
+# MangoHud >= 0.7.0 uses NVML (nvmlDeviceGetHandleByPciBusId_v2) to read NVIDIA GPU metrics.
+# The old 0.6.9 from Ubuntu apt only supported AMD (amdgpu hwmon), showing 0% for NVIDIA GPUs.
+# pci_dev tells MangoHud which GPU to monitor; in CDI single-GPU containers NVML index is always 0.
 MANGOHUD_CONF="/home/ubuntu/.config/MangoHud/MangoHud.conf"
 sudo -u ubuntu mkdir -p /home/ubuntu/.config/MangoHud
 if [ ! -f "$MANGOHUD_CONF" ]; then
@@ -156,6 +159,10 @@ else
     else
         sudo -u ubuntu bash -c "echo 'pci_dev=${HEX_ID}' >> $MANGOHUD_CONF"
     fi
+    # Remove gpu_list if present — it conflicts with pci_dev and uses sysfs card index
+    # which doesn't match the container's assigned GPU in multi-GPU hosts
+    sudo -u ubuntu sed -i "/^gpu_list=/d" "$MANGOHUD_CONF"
+    sudo -u ubuntu sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
 fi
 
 # A custom modeline should be generated because there is no monitor to fetch this information normally

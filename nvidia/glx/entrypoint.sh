@@ -194,78 +194,21 @@ if [ -f "/etc/X11/edid.bin" ]; then
 fi
 
 
-# Generate /etc/X11/xorg.conf manually instead of relying on nvidia-xconfig
-cat <<EOF | sudo tee /etc/X11/xorg.conf >/dev/null
-Section "ServerLayout"
-    Identifier     "Layout0"
-    Screen      0  "Screen0"
-    InputDevice    "Keyboard0" "CoreKeyboard"
-    InputDevice    "Mouse0" "CorePointer"
-EndSection
+export MODE_NAME="$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
 
-Section "Files"
-EndSection
+# Generate /etc/X11/xorg.conf
+XORG_TEMPLATE="/etc/beagle-wind-vnc/xorg.conf.template"
+if [ ! -f "$XORG_TEMPLATE" ]; then
+    XORG_TEMPLATE="$(dirname "$0")/xorg.conf.template"
+fi
 
-Section "InputDevice"
-    # generated from default
-    Identifier     "Mouse0"
-    Driver         "mouse"
-    Option         "Protocol" "auto"
-    Option         "Device" "/dev/input/mice"
-    Option         "Emulate3Buttons" "no"
-    Option         "ZAxisMapping" "4 5"
-EndSection
-
-Section "InputDevice"
-    # generated from default
-    Identifier     "Keyboard0"
-    Driver         "kbd"
-EndSection
-
-Section "Monitor"
-    Identifier     "Monitor0"
-    VendorName     "Unknown"
-    ModelName      "Unknown"
-    Option         "DPMS" "False"
-    ${MODELINE}
-EndSection
-
-Section "Device"
-    Identifier     "Device0"
-    Driver         "nvidia"
-    VendorName     "NVIDIA Corporation"
-    BusID          "${BUS_ID}"
-    Option         "AllowEmptyInitialConfiguration" "True"
-    Option         "ProbeAllGpus" "False"
-    Option         "IncludeImplicitMetaModes" "True"
-    Option         "ModeDebug" "True"
-    Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"
-    Option         "AllowExternalGpus" "True"
-    Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
-    Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
-    Option         "AllowFlipping" "False"
-${EDID_OPTIONS}
-EndSection
-
-Section "Screen"
-    Identifier     "Screen0"
-    Device         "Device0"
-    Monitor        "Monitor0"
-    DefaultDepth    ${DISPLAY_CDEPTH}
-    SubSection     "Display"
-        Depth       ${DISPLAY_CDEPTH}
-        Virtual     ${DISPLAY_SIZEW} ${DISPLAY_SIZEH}
-        Modes      "$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
-    EndSubSection
-EndSection
-
-Section "ServerFlags"
-    Option         "DontVTSwitch" "True"
-    Option         "DontZap" "True"
-    Option         "AllowMouseOpenFail" "True"
-    Option         "AutoAddGPU" "False"
-EndSection
-EOF
+if [ -f "$XORG_TEMPLATE" ]; then
+    envsubst < "$XORG_TEMPLATE" | sudo tee /etc/X11/xorg.conf >/dev/null
+    echo "Generated /etc/X11/xorg.conf from template: $XORG_TEMPLATE"
+else
+    echo "ERROR: xorg.conf.template not found!"
+    exit 1
+fi
 
 # Add virtual display support to Xorg config as requested by P8-H
 if command -v nvidia-xconfig >/dev/null 2>&1; then

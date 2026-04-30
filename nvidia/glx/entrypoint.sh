@@ -149,10 +149,43 @@ if [ -f "$MANGOHUD_CONF" ]; then
     sudo -u ubuntu sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
 fi
 
+# Read user-persisted framerate from ~/.config/bdwind.json (set by frontend)
+# This overrides the container-level DISPLAY_REFRESH environment variable
+BDWIND_JSON="$HOME/.config/bdwind.json"
+if [ -f "$BDWIND_JSON" ]; then
+    USER_FPS=$(python3 -c "
+import json, sys
+try:
+    with open('$BDWIND_JSON') as f:
+        d = json.load(f)
+    fps = int(d.get('BDWIND_FRAMERATE', 0))
+    if fps in (30, 60, 120, 144):
+        print(fps)
+except:
+    pass
+" 2>/dev/null)
+    if [ -n "$USER_FPS" ]; then
+        export DISPLAY_REFRESH="$USER_FPS"
+        echo "Using user-configured refresh rate: ${DISPLAY_REFRESH}Hz (from bdwind.json)"
+    fi
+fi
+
+# Generate EDID binary matching the target refresh rate
+# This ensures NVIDIA driver's VBlank frequency matches the desired framerate
+EDID_SCRIPT="/etc/beagle-wind-vnc/generate-edid.py"
+if [ ! -f "$EDID_SCRIPT" ]; then
+    EDID_SCRIPT="$(dirname "$0")/generate-edid.py"
+fi
+if [ -f "$EDID_SCRIPT" ]; then
+    sudo python3 "$EDID_SCRIPT" "${DISPLAY_REFRESH}" "/etc/X11/edid.bin" && \
+        echo "Generated EDID for ${DISPLAY_REFRESH}Hz" || \
+        echo "WARNING: Failed to generate EDID, using existing edid.bin if available"
+fi
+
 # A custom modeline should be generated because there is no monitor to fetch this information normally
 export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | sed -n 2p)"
 
-# Check for spoofed EDID (Fixes Headless 30FPS lock for games like Dota 2)
+# Load EDID into Xorg config (Fixes Headless 30FPS lock for games like Dota 2)
 export EDID_OPTIONS=""
 if [ -f "/etc/X11/edid.bin" ]; then
     export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"

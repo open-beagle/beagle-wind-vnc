@@ -100,7 +100,7 @@ pip3 install --root-user-action=ignore --ignore-installed --no-cache-dir --no-de
 rm -rf /tmp/bdwind_gstreamer_tmp
 
 # 获取自研风洞前端 (webrtc 子模块打包的静态资源)
-BDWIND_WEBRTC_VERSION="1.28.2-ubuntu2404"
+BDWIND_WEBRTC_VERSION="1.28.2"
 mkdir -p /opt/bdwind/webrtc
 echo "Downloading custom bdwind-webrtc ${BDWIND_WEBRTC_VERSION} Web Frontend..."
 curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-${BDWIND_WEBRTC_VERSION}.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc || true

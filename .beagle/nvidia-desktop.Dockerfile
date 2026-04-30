@@ -79,6 +79,9 @@ RUN apt update && \
 
 COPY src/img/ /usr/share/wallpapers/Next/contents/images/
 
+# MangoHud static config (pci_dev is injected at runtime by entrypoint.sh)
+COPY vnc/nvidia/glx/MangoHud.conf /etc/mangohud/MangoHud.conf
+
 USER 1000
 SHELL ["/bin/sh", "-c"]
 

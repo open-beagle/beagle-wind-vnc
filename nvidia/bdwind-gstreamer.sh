@@ -278,4 +278,6 @@ python3 -m bdwind_gstreamer \
     --enable_basic_auth="false" \
     --enable_metrics_http="true" \
     --metrics_http_port="${BDWIND_PORT_METRICS:-9081}" \
+    --udp_port_min="${BDWIND_UDP_PORT_MIN:-0}" \
+    --udp_port_max="${BDWIND_UDP_PORT_MAX:-0}" \
     $@

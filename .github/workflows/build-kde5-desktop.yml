@@ -1,0 +1,37 @@
+name: Build Nvidia Desktop Image
+
+on:
+  push:
+    branches:
+      - nvidia-desktop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image - nvidia-desktop
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./.beagle/kde5-desktop.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:nvidia-desktop-latest
+          platforms: linux/amd64
+
+      - name: Image push success
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-desktop-latest"

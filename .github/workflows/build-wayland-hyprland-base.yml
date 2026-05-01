@@ -1,0 +1,41 @@
+name: Build Wayland Hyprland Base Image
+
+on:
+  push:
+    branches:
+      - wayland-hyprland-base
+
+jobs:
+  build-wayland-hyprland-base:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image - wayland-hyprland-base
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./.beagle/wayland-hyprland-base.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:wayland-hyprland-base-2504
+            ghcr.io/${{ github.repository }}:wayland-hyprland-base-latest
+          platforms: linux/amd64
+          build-args: |
+            BASE=ubuntu:25.04
+          no-cache: true
+
+      - name: Image push success - wayland-hyprland-base
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:wayland-hyprland-base-2504"

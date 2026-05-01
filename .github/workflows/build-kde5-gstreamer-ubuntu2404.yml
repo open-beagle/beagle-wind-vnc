@@ -3,7 +3,7 @@ name: Build GStreamer Ubuntu 24.04 Image
 on:
   push:
     branches:
-      - nvidia-gstreamer-ubuntu2404
+      - kde5-gstreamer-ubuntu2404
 
 jobs:
   build:
@@ -23,11 +23,11 @@ jobs:
           username: ${{ secrets.REGISTRY_USER_ALIYUN }}
           password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
 
-      - name: Build and push Docker image - nvidia-gstreamer
+      - name: Build and push Docker image - kde5-gstreamer
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-gstreamer-ubuntu2404.Dockerfile
+          file: ./.beagle/kde5-gstreamer-ubuntu2404.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2-ubuntu2404

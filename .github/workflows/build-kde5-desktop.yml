@@ -3,7 +3,7 @@ name: Build Nvidia Desktop Image
 on:
   push:
     branches:
-      - nvidia-desktop
+      - kde5-desktop
 
 jobs:
   build:
@@ -30,8 +30,11 @@ jobs:
           file: ./.beagle/kde5-desktop.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-desktop-latest
+            ghcr.io/${{ github.repository }}:1.0.13-desktop
+            ghcr.io/${{ github.repository }}:latest-desktop
           platforms: linux/amd64
+          build-args: |
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:1.0.13-base
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-desktop-latest"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.13-desktop"

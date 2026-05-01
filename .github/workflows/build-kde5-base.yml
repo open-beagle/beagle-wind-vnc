@@ -3,7 +3,7 @@ name: Build Nvidia Base Image
 on:
   push:
     branches:
-      - nvidia-base
+      - kde5-base
 
 jobs:
   build-nvidia-base:
@@ -30,12 +30,12 @@ jobs:
           file: ./.beagle/kde5-base.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:nvidia-base-2404
-            ghcr.io/${{ github.repository }}:nvidia-base-latest
+            ghcr.io/${{ github.repository }}:1.0.13-base
+            ghcr.io/${{ github.repository }}:latest-base
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:24.04
           no-cache: true
 
       - name: Image push success - nvidia-base
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:nvidia-base-2404"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.13-base"

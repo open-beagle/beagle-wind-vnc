@@ -37,11 +37,13 @@ jobs:
           file: ./.beagle/wayland-hyprland-desktop.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:wayland-hyprland-desktop-latest
+            ghcr.io/${{ github.repository }}:1.1.0
+            ghcr.io/${{ github.repository }}:latest-wayland
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.1.0
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest-wayland
           platforms: linux/amd64
           build-args: |
-            BASE=ghcr.io/open-beagle/beagle-wind-vnc:wayland-hyprland-base-latest
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:1.1.0-base
           no-cache: true
 
       - name: Image push success

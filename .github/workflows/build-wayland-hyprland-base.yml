@@ -30,12 +30,11 @@ jobs:
           file: ./.beagle/wayland-hyprland-base.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:wayland-hyprland-base-2504
-            ghcr.io/${{ github.repository }}:wayland-hyprland-base-latest
+            ghcr.io/${{ github.repository }}:1.1.0-base
+            ghcr.io/${{ github.repository }}:latest-wayland-base
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:25.04
           no-cache: true
 
-      - name: Image push success - wayland-hyprland-base
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:wayland-hyprland-base-2504"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.1.0-base"

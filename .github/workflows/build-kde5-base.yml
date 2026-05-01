@@ -1,4 +1,4 @@
-name: Build Nvidia Base Image
+name: Build KDE5 Base Image
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - kde5-base
 
 jobs:
-  build-nvidia-base:
+  build-kde5-base:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image - nvidia-base
+      - name: Build and push Docker image - kde5-base
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -37,5 +37,5 @@ jobs:
             BASE=ubuntu:24.04
           no-cache: true
 
-      - name: Image push success - nvidia-base
+      - name: Image push success - kde5-base
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.13-base"

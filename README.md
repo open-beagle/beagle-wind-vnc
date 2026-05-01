@@ -10,15 +10,15 @@
 
 ```bash
 # 极速连招：切换流水线分支 -> 合并代码 -> 推送触发构建 -> 成功后无缝切回 dev 开发分支（带异常阻断，更安全）
-# nvidia-glx-app
-git -C vnc checkout nvidia-glx-app && \
+# kde5-glx
+git -C vnc checkout kde5-glx && \
   git -C vnc merge dev && \
-  git -C vnc push origin nvidia-glx-app && \
+  git -C vnc push origin kde5-glx && \
   git -C vnc checkout dev
 
-# nvidia-gstreamer
-git -C vnc checkout nvidia-gstreamer && \
+# kde5-gstreamer
+git -C vnc checkout kde5-gstreamer && \
   git -C vnc merge dev && \
-  git -C vnc push origin nvidia-gstreamer && \
+  git -C vnc push origin kde5-gstreamer && \
   git -C vnc checkout dev
 ```

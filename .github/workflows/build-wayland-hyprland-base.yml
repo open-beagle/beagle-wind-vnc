@@ -37,4 +37,5 @@ jobs:
             BASE=ubuntu:25.04
           no-cache: true
 
+      - name: Print success message
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.1.0-base"

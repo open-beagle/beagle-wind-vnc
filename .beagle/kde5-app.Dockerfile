@@ -42,8 +42,8 @@ RUN chmod 755 /usr/bin/joystick-server \
     /etc/beagle-wind-vnc/entrypoint.sh \
     /etc/beagle-wind-vnc/start-webrtc.sh \
     /etc/beagle-wind-vnc/start-gamepad.sh \
-    /etc/supervisord.conf \
-    /opt/gstreamer/hooks/patch-nvfbc.sh
+    /etc/supervisord.conf && \
+    chmod 755 /opt/gstreamer/hooks/* 2>/dev/null || true
 
 USER 1000
 

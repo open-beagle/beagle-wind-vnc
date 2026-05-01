@@ -127,7 +127,7 @@ fi
 HEX_ID="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader | head -n1)"
 IFS=":." ARR_ID=(${HEX_ID})
 unset IFS
-BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:-0}):$(printf '%u' 0x${ARR_ID[3]:-0})"
+export BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:-0}):$(printf '%u' 0x${ARR_ID[3]:-0})"
 
 # Dynamically bind MangoHud to the correct physical GPU.
 # Static config (layout, metrics) is baked into the image at /etc/mangohud/MangoHud.conf.

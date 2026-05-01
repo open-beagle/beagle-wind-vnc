@@ -31,10 +31,10 @@ RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.
 # Use dynamic backend copy based on RENDER_ENGINE
 COPY ./KDE5/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./KDE5/${RENDER_ENGINE}/xorg.conf.template* /etc/beagle-wind-vnc/
-COPY ./KDE5/base/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
-COPY ./KDE5/base/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
+COPY ./KDE5/${RENDER_ENGINE}/scripts/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
+COPY ./KDE5/${RENDER_ENGINE}/scripts/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
 COPY ./KDE5/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
-COPY ./KDE5/base/fallback-sink.lua /usr/share/wireplumber/scripts/fallback-sink.lua
+COPY ./KDE5/${RENDER_ENGINE}/scripts/fallback-sink.lua /usr/share/wireplumber/scripts/fallback-sink.lua
 # P7: Patches directory (NVFBC GeForce unlock, nvenc hooks, etc.)
 RUN mkdir -p /opt/gstreamer/hooks
 COPY ./KDE5/${RENDER_ENGINE}/patch-nvfbc.sh* /opt/gstreamer/hooks/

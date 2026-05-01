@@ -112,8 +112,8 @@ chooser_type = none\n" > /etc/xdg/xdg-desktop-portal-wlr/config.ini
 
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./Wayland/Hyprland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./KDE5/base/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
-COPY ./KDE5/base/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
+COPY ./Wayland/Hyprland/scripts/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
+COPY ./Wayland/Hyprland/scripts/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
 COPY ./Wayland/Hyprland/supervisord.conf /etc/supervisord.conf
 
 RUN chmod 755 /opt/gstreamer/hooks/joystick-server \

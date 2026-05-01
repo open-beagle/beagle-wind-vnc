@@ -13,7 +13,9 @@ Pin: version 1:1snap*\n\
 Pin-Priority: -1" >/etc/apt/preferences.d/firefox-nosnap
 
 # 添加Mozilla团队PPA源
-add-apt-repository -y ppa:mozillateam/ppa
+for i in 1 2 3 4 5; do
+  add-apt-repository -y ppa:mozillateam/ppa && break || (echo "Retry $i failed, waiting 5s..." && sleep 5)
+done
 
 # 安装KDE桌面环境及常用GUI包
 # 分类说明：

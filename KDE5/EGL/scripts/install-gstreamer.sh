@@ -48,11 +48,6 @@ apt-get update && apt-get install --no-install-recommends -y \
   libgupnp-igd-1.6-0 \
   libbrotli1 \
   xcvt \
-  wayland-protocols \
-  libwayland-client0 \
-  libwayland-server0 \
-  libwayland-cursor0 \
-  libwayland-egl1 \
   wmctrl \
   xsel \
   xdotool \

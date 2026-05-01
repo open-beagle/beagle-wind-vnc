@@ -167,8 +167,8 @@ apt-get install --no-install-recommends -y \
   language-pack-kde-zh-hans || true
 
 # KDE Plasma 默认语言设置（全局）
-echo '[Locale]' >/etc/xdg/plasma-localerc
-echo 'LANG=zh_CN.UTF-8' >>/etc/xdg/plasma-localerc
+echo '[Locale]' > /etc/xdg/plasma-localerc
+echo 'LANG=zh_CN.UTF-8' >> /etc/xdg/plasma-localerc
 
 # 确保Firefox作为默认网络浏览器
 # 注意：在容器构建阶段，这些命令可能失败，所以暂时注释掉
@@ -196,11 +196,13 @@ cat >/etc/xdg/kscreenlockerrc <<EOF
 Autolock=false
 LockOnResume=false
 EOF
+
 # 禁用合成器
 cat >/etc/xdg/kwinrc <<EOF
 [Compositing]
 Enabled=false
 EOF
+
 # 配置KDE全局设置
 cat >/etc/xdg/kdeglobals <<EOF
 [KDE]

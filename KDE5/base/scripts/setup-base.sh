@@ -5,7 +5,6 @@ set -e
 # 基础系统设置脚本
 # 为容器环境配置无root权限的用户环境，适用于受限条件下的约束环境
 # =============================================================================
-
 # 清理并更新系统包，安装基础依赖
 apt-get clean && apt-get update && apt-get dist-upgrade -y
 apt-get install --no-install-recommends -y \
@@ -28,6 +27,7 @@ locale-gen zh_CN.GBK
 update-locale LANG=zh_CN.UTF-8
 # 设置时区
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezone
+
 # =============================================================================
 # 配置sudo权限系统
 # ubuntu用户可以使用sudo执行需要root权限的操作
@@ -44,6 +44,7 @@ usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,rend
 echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
 # 设置ubuntu用户密码
 echo "ubuntu:${PASSWD}" | chpasswd
+
 # =============================================================================
 # 设置文件系统所有权
 # =============================================================================
@@ -59,6 +60,7 @@ mkdir -p /run/user/1000
 chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
 # 临时目录
 chown -R -f ubuntu:ubuntu /tmp /var/tmp || echo 'Failed to set /tmp ownership'
+
 # =============================================================================
 # 恢复被chown移除的setuid/setgid权限
 # =============================================================================

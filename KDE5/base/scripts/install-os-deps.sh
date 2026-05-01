@@ -131,7 +131,9 @@ apt-get install --no-install-recommends -y \
 # =============================================================================
 # NGINX配置优化
 # =============================================================================
-sed -i -e 's/\/var\/log\/nginx\/access\.log/\/dev\/stdout/g' -e 's/\/var\/log\/nginx\/error\.log/\/dev\/stderr/g' -e 's/\/run\/nginx\.pid/\/tmp\/nginx\.pid/g' /etc/nginx/nginx.conf
+sed -i -e 's/\/var\/log\/nginx\/access\.log/\/dev\/stdout/g' \
+  -e 's/\/var\/log\/nginx\/error\.log/\/dev\/stderr/g' \
+  -e 's/\/run\/nginx\.pid/\/tmp\/nginx\.pid/g' /etc/nginx/nginx.conf
 echo "error_log /dev/stderr;" >>/etc/nginx/nginx.conf
 
 # =============================================================================
@@ -190,6 +192,37 @@ if [ "$(dpkg --print-architecture)" = "amd64" ]; then
     libglx0:i386 \
     libglu1:i386 \
     libsm6:i386
+
+  echo "/usr/local/nvidia/lib" >>/etc/ld.so.conf.d/nvidia.conf
+  echo "/usr/local/nvidia/lib64" >>/etc/ld.so.conf.d/nvidia.conf
+
+  # OpenCL配置
+  mkdir -pm755 /etc/OpenCL/vendors
+  echo "libnvidia-opencl.so.1" >/etc/OpenCL/vendors/nvidia.icd
+
+  # Vulkan配置
+  VULKAN_API_VERSION=$(dpkg -s libvulkan1 | grep -oP 'Version: [0-9|\.]+' | grep -oP '[0-9]+(\.[0-9]+)(\.[0-9]+)')
+  mkdir -pm755 /etc/vulkan/icd.d/
+  cat >/etc/vulkan/icd.d/nvidia_icd.json <<EOF
+{
+    "file_format_version" : "1.0.0",
+    "ICD": {
+        "library_path": "libGLX_nvidia.so.0",
+        "api_version" : "\${VULKAN_API_VERSION}"
+    }
+}
+EOF
+
+  # EGL配置
+  mkdir -pm755 /usr/share/glvnd/egl_vendor.d/
+  cat >/usr/share/glvnd/egl_vendor.d/10_nvidia.json <<EOF
+{
+    "file_format_version" : "1.0.0",
+    "ICD": {
+        "library_path": "libEGL_nvidia.so.0"
+    }
+}
+EOF
 fi
 
 # =============================================================================
@@ -202,33 +235,4 @@ fi
 # 系统清理和配置
 # =============================================================================
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
-echo "/usr/local/nvidia/lib" >>/etc/ld.so.conf.d/nvidia.conf
-echo "/usr/local/nvidia/lib64" >>/etc/ld.so.conf.d/nvidia.conf
 
-# OpenCL配置
-mkdir -pm755 /etc/OpenCL/vendors
-echo "libnvidia-opencl.so.1" >/etc/OpenCL/vendors/nvidia.icd
-
-# Vulkan配置
-VULKAN_API_VERSION=$(dpkg -s libvulkan1 | grep -oP 'Version: [0-9|\.]+' | grep -oP '[0-9]+(\.[0-9]+)(\.[0-9]+)')
-mkdir -pm755 /etc/vulkan/icd.d/
-cat >/etc/vulkan/icd.d/nvidia_icd.json <<EOF
-{
-    "file_format_version" : "1.0.0",
-    "ICD": {
-        "library_path": "libGLX_nvidia.so.0",
-        "api_version" : "${VULKAN_API_VERSION}"
-    }
-}
-EOF
-
-# EGL配置
-mkdir -pm755 /usr/share/glvnd/egl_vendor.d/
-cat >/usr/share/glvnd/egl_vendor.d/10_nvidia.json <<EOF
-{
-    "file_format_version" : "1.0.0",
-    "ICD": {
-        "library_path": "libEGL_nvidia.so.0"
-    }
-}
-EOF

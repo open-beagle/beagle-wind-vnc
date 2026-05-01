@@ -20,8 +20,8 @@ USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Step 1: Install self-compiled GStreamer 1.28.2 + BDWIND Python environment + Web UI
-RUN --mount=type=bind,source=KDE5/base/scripts/install-gstreamer.sh,target=/tmp/install-gstreamer.sh \
-    bash /tmp/install-gstreamer.sh
+COPY ./KDE5/${RENDER_ENGINE}/scripts/install-gstreamer.sh /tmp/install-gstreamer.sh
+RUN bash /tmp/install-gstreamer.sh && rm -f /tmp/install-gstreamer.sh
 
 # [P7] nvidia-vaapi-driver removed — we use direct CUDA/NVENC path, not VA-API
 

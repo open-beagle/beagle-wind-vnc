@@ -241,7 +241,11 @@ if [ -f "/opt/gstreamer/hooks/nvenc_ioctl_hook.so" ]; then
 
     # export NVENC_HOOK_DEBUG=1
     # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
-    DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
+    if [ -L /dev/nvidia0 ]; then
+        DETECTED_GPU=$(readlink /dev/nvidia0 | grep -Eo '[0-9]+$' | head -n 1)
+    else
+        DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
+    fi
     export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
 

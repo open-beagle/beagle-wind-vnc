@@ -26,6 +26,27 @@ chown -f "$(id -nu):$(id -ng)" ~ || sudo-root chown -f "$(id -nu):$(id -ng)" ~ |
 ) | passwd "$(id -nu)" || echo 'Password change failed, using default password'
 # Remove directories to make sure the desktop environment starts
 rm -rf /tmp/.X* ~/.cache || echo 'Failed to clean X11 paths'
+
+# Fix NVENC Error Code 2 (OOM) by symlinking isolated NVIDIA devices to index 0 interfaces
+if [ ! -e /dev/nvidia0 ]; then
+    REAL_NVD=$(ls /dev/nvidia[0-9]* 2>/dev/null | head -n 1)
+    if [ -n "$REAL_NVD" ]; then
+        sudo ln -snf "$REAL_NVD" /dev/nvidia0 || echo "Failed to symlink $REAL_NVD to /dev/nvidia0"
+    fi
+fi
+if [ ! -e /dev/dri/renderD128 ]; then
+    REAL_REND=$(ls /dev/dri/renderD* 2>/dev/null | grep -v 128 | head -n 1)
+    if [ -n "$REAL_REND" ]; then
+        sudo ln -snf "$REAL_REND" /dev/dri/renderD128 || echo "Failed to symlink $REAL_REND to /dev/dri/renderD128"
+    fi
+fi
+if [ ! -e /dev/dri/card0 ]; then
+    REAL_CARD=$(ls /dev/dri/card* 2>/dev/null | grep -E '/dev/dri/card[0-9]+' | grep -v card0 | head -n 1)
+    if [ -n "$REAL_CARD" ]; then
+        sudo ln -snf "$REAL_CARD" /dev/dri/card0 || echo "Failed to symlink $REAL_CARD to /dev/dri/card0"
+    fi
+fi
+
 # Change time zone from environment variable
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || echo 'Failed to set timezone'
 # Add Lutris directories to path
@@ -62,8 +83,16 @@ fi
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
 
-# Resize the screen to the provided size
-/usr/local/bin/selkies-gstreamer-resize "${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
+# Resize the screen to the provided size via xrandr modeline
+MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH:-60} | sed -n 2p)"
+if [ -n "${MODELINE}" ]; then
+  MODE_NAME="${DISPLAY_SIZEW}x${DISPLAY_SIZEH}_${DISPLAY_REFRESH:-60}.00"
+  xrandr --display "${DISPLAY}" --newmode ${MODELINE#*Modeline } 2>/dev/null || true
+  xrandr --display "${DISPLAY}" --addmode screen ${MODE_NAME} 2>/dev/null || true
+  xrandr --display "${DISPLAY}" --output screen --mode ${MODE_NAME} 2>/dev/null || \
+    xrandr --display "${DISPLAY}" -s "${DISPLAY_SIZEW}x${DISPLAY_SIZEH}" 2>/dev/null || \
+    echo "Warning: Failed to set resolution to ${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
+fi
 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache

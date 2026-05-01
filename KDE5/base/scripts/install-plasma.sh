@@ -6,16 +6,7 @@ set -ex
 # 安装KDE和其他GUI包
 # =============================================================================
 
-# 配置Firefox PPA，禁用snap版本
-mkdir -pm755 /etc/apt/preferences.d
-echo "Package: firefox*\n\
-Pin: version 1:1snap*\n\
-Pin-Priority: -1" >/etc/apt/preferences.d/firefox-nosnap
-
-# 添加Mozilla团队PPA源
-for i in 1 2 3 4 5; do
-  add-apt-repository -y ppa:mozillateam/ppa && break || (echo "Retry $i failed, waiting 5s..." && sleep 5)
-done
+# 不再配置Firefox及相关PPA，后续直接使用Chrome
 
 # 安装KDE桌面环境及常用GUI包
 # 分类说明：
@@ -145,7 +136,6 @@ apt-get install --no-install-recommends -y \
   vlc-plugin-visualization \
   xdg-user-dirs \
   xdg-utils \
-  firefox \
   transmission-qt
 
 # 安装LibreOffice办公套件
@@ -210,7 +200,6 @@ action/lock_screen=false
 logout=false
 
 [General]
-BrowserApplication=firefox.desktop
 EOF
 
 # =============================================================================

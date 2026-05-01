@@ -6,7 +6,7 @@ on:
       - wayland-hyprland-desktop
 
 jobs:
-  build-wayland-hyprland-desktop:
+  build:
     runs-on: ubuntu-latest
 
     steps:

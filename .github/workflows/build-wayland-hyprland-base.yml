@@ -6,7 +6,7 @@ on:
       - wayland-hyprland-base
 
 jobs:
-  build-wayland-hyprland-base:
+  build:
     runs-on: ubuntu-latest
 
     steps:

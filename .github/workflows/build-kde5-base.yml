@@ -6,7 +6,7 @@ on:
       - kde5-base
 
 jobs:
-  build-kde5-base:
+  build:
     runs-on: ubuntu-latest
 
     steps:

@@ -1,9 +1,9 @@
-name: Build GStreamer Base Image
+name: Build GStreamer Base Image (Arch Linux)
 
 on:
   push:
     branches:
-      - nvidia-gstreamer
+      - wayland-gstreamer-archlinux
 
 jobs:
   build:
@@ -23,11 +23,11 @@ jobs:
           username: ${{ secrets.REGISTRY_USER_ALIYUN }}
           password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
 
-      - name: Build and push Docker image - nvidia-gstreamer
+      - name: Build and push Docker image - wayland-gstreamer-archlinux
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/nvidia-gstreamer.Dockerfile
+          file: ./.beagle/wayland-gstreamer-archlinux.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2

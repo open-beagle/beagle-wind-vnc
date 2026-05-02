@@ -56,7 +56,8 @@ if [ ! -d "/tmp/pydeps/prometheus_client" ]; then
 fi
 export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
 
-
+# Render engine identity — drives pipeline builder selection in Python
+export BDWIND_RENDER_ENGINE="wayland"
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-nvh264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"

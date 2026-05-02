@@ -77,22 +77,29 @@ if [ -z "$(ldconfig -N -v $(sed 's/:/ /g' <<<$LD_LIBRARY_PATH) 2>/dev/null | gre
     echo "WARNING: libEGL_nvidia.so.0 not found! The NVIDIA container runtime is likely not passing correct libraries."
 fi
 
-# Run Xvfb server with required extensions
-/usr/bin/Xvfb "${DISPLAY}" -screen 0 "8192x4096x${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
+# Read persisted physical resolution from bdwind.json (Auto mode persistence).
+# This ensures Xvfb starts at the last client's resolution after container restart.
+if [ -f "$HOME/.config/bdwind.json" ]; then
+    _PHYS_RES=$(python3 -c "import json; d=json.load(open('$HOME/.config/bdwind.json')); print(d.get('BDWIND_PHYSICAL_RESOLUTION',''))" 2>/dev/null)
+    if [ -n "$_PHYS_RES" ]; then
+        export DISPLAY_SIZEW="${_PHYS_RES%x*}"
+        export DISPLAY_SIZEH="${_PHYS_RES#*x}"
+        echo "Using persisted resolution from bdwind.json: ${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
+    fi
+fi
+
+# Also source bdwind_display.conf if it exists (written by display_resize.py)
+if [ -f "$HOME/.config/bdwind_display.conf" ]; then
+    . "$HOME/.config/bdwind_display.conf"
+fi
+
+# Run Xvfb server at the target resolution.
+# Xvfb does NOT support dynamic CRTC mode switching; resolution changes require
+# restarting this process (supervisord handles restart automatically).
+/usr/bin/Xvfb "${DISPLAY}" -screen 0 "${DISPLAY_SIZEW:-1920}x${DISPLAY_SIZEH:-1080}x${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
-
-# Resize the screen to the provided size via xrandr modeline
-MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH:-60} | sed -n 2p)"
-if [ -n "${MODELINE}" ]; then
-  MODE_NAME="${DISPLAY_SIZEW}x${DISPLAY_SIZEH}_${DISPLAY_REFRESH:-60}.00"
-  xrandr --display "${DISPLAY}" --newmode ${MODELINE#*Modeline } 2>/dev/null || true
-  xrandr --display "${DISPLAY}" --addmode screen ${MODE_NAME} 2>/dev/null || true
-  xrandr --display "${DISPLAY}" --output screen --mode ${MODE_NAME} 2>/dev/null || \
-    xrandr --display "${DISPLAY}" -s "${DISPLAY_SIZEW}x${DISPLAY_SIZEH}" 2>/dev/null || \
-    echo "Warning: Failed to set resolution to ${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
-fi
 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache

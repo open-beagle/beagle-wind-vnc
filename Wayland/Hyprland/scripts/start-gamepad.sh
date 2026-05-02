@@ -1,2 +1,2 @@
 #!/bin/bash
-exec sudo /opt/gstreamer/hooks/joystick-server
+exec sudo /opt/gstreamer/patches/joystick-server

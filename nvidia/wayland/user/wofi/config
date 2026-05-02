@@ -1,0 +1,14 @@
+width=1200
+height=800
+location=center
+show=drun
+prompt=Search / 搜索应用...
+allow_markup=true
+no_actions=true
+halign=fill
+orientation=vertical
+content_halign=fill
+label_chars=true
+hide_scroll=true
+allow_images=true
+image_size=40

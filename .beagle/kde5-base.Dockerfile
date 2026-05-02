@@ -56,9 +56,6 @@ ENV DISPLAY_DPI=96
 ENV DISPLAY_CDEPTH=24
 ENV VIDEO_PORT=DFP
 ENV VGL_DISPLAY=egl
-ENV BDWIND_ENCODER=nvh264enc
-ENV BDWIND_ENABLE_RESIZE=true
-ENV BDWIND_ENABLE_BASIC_AUTH=true
 
 # Install ALL display backends (X.Org natively for GLX, Xvfb and VirtualGL for EGL)
 RUN --mount=type=bind,source=KDE5/base/scripts/,target=/etc/beagle-wind-vnc/scripts/kde5/ \

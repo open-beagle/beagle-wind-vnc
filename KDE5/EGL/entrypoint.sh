@@ -78,7 +78,7 @@ if [ -z "$(ldconfig -N -v $(sed 's/:/ /g' <<<$LD_LIBRARY_PATH) 2>/dev/null | gre
 fi
 
 # Read persisted physical resolution from bdwind.json (Auto mode persistence).
-# This ensures Xvfb starts at the last client's resolution after container restart.
+# This ensures we restore the last client's resolution after container restart.
 if [ -f "$HOME/.config/bdwind.json" ]; then
     _PHYS_RES=$(python3 -c "import json; d=json.load(open('$HOME/.config/bdwind.json')); print(d.get('BDWIND_PHYSICAL_RESOLUTION',''))" 2>/dev/null)
     if [ -n "$_PHYS_RES" ]; then
@@ -93,13 +93,26 @@ if [ -f "$HOME/.config/bdwind_display.conf" ]; then
     . "$HOME/.config/bdwind_display.conf"
 fi
 
-# Run Xvfb server at the target resolution.
-# Xvfb does NOT support dynamic CRTC mode switching; resolution changes require
-# restarting this process (supervisord handles restart automatically).
-/usr/bin/Xvfb "${DISPLAY}" -screen 0 "${DISPLAY_SIZEW:-1920}x${DISPLAY_SIZEH:-1080}x${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
+# Set target viewport resolution
+TARGET_W="${DISPLAY_SIZEW:-1920}"
+TARGET_H="${DISPLAY_SIZEH:-1080}"
+
+# Run Xvfb server with a massive 8K virtual canvas (7680x4320).
+# This allocates ~126MB RAM and sets the maximum RandR bounds to 8K,
+# allowing us to dynamically scale up to 4K/8K without restarting Xvfb.
+/usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
+
+# Dynamically set the initial viewport using Xrandr
+echo "Setting initial Xrandr viewport to ${TARGET_W}x${TARGET_H}..."
+MODELINE=$(cvt "$TARGET_W" "$TARGET_H" 60 | grep Modeline | cut -d' ' -f3-)
+MODENAME="${TARGET_W}x${TARGET_H}_60.00"
+xrandr -d "${DISPLAY}" --newmode "$MODENAME" $MODELINE
+xrandr -d "${DISPLAY}" --addmode screen "$MODENAME"
+xrandr -d "${DISPLAY}" --output screen --mode "$MODENAME"
+echo "Viewport scaled successfully."
 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache

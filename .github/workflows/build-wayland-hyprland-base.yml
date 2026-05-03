@@ -34,7 +34,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest-wayland-base
           platforms: linux/amd64
           build-args: |
-            BASE=ubuntu:25.04
+            BASE=archlinux:latest
           no-cache: true
 
       - name: Print success message

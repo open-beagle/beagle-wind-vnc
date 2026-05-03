@@ -19,8 +19,8 @@ ENV LC_ALL="zh_CN.UTF-8"
 
 RUN --mount=type=bind,source=Wayland/Hyprland/scripts/,target=/etc/beagle-wind-vnc/scripts/ \
     bash /etc/beagle-wind-vnc/scripts/install-os-deps.sh && \
+  mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
   chmod -R 777 /etc/nginx/sites-available /etc/nginx/sites-enabled && \
-  mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
   chown -R 1000:1000 /var/lib/nginx && \
   chmod -R 755 /var/lib/nginx
 

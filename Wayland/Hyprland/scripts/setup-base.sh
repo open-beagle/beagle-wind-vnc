@@ -7,25 +7,24 @@ set -e
 # =============================================================================
 
 # 清理并更新系统包，安装基础依赖
-apt-get clean && apt-get update && apt-get dist-upgrade -y
-apt-get install --no-install-recommends -y \
-  apt-utils \
-  dbus-user-session \
-  fuse \
+sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf || true
+pacman -Syu --noconfirm \
   kmod \
-  locales \
-  ssl-cert \
   sudo \
-  udev \
-  tzdata
+  tzdata \
+  base-devel
+
 # 清理系统缓存和临时文件
-apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+rm -rf /var/cache/pacman/pkg/* /var/log/* /tmp/* /var/tmp/*
+
 # 生成系统语言环境
-locale-gen en_US.UTF-8
-locale-gen zh_CN.UTF-8
-locale-gen zh_CN.GBK
+sed -i -e 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+sed -i -e 's/#zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen
+sed -i -e 's/#zh_CN.GBK GBK/zh_CN.GBK GBK/' /etc/locale.gen
+locale-gen
+
 # 设置默认语言为中文UTF-8
-update-locale LANG=zh_CN.UTF-8
+echo "LANG=zh_CN.UTF-8" > /etc/locale.conf
 # 设置时区
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezone
 # =============================================================================
@@ -39,7 +38,7 @@ ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezon
 groupadd -g 1000 ubuntu || echo 'Failed to add ubuntu group'
 useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || echo 'Failed to add ubuntu user'
 # 将ubuntu用户添加到各种系统组
-usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice ubuntu
+usermod -a -G adm,audio,cdrom,disk,floppy,games,input,lp,rfkill,render,tty,video ubuntu || true
 # 配置sudo权限，允许ubuntu用户无密码执行所有命令
 echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
 # 设置ubuntu用户密码

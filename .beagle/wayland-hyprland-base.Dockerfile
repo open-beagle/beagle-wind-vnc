@@ -1,5 +1,5 @@
-# Supported base images: Ubuntu 25.04 (Plucky Puffin) for native KDE Plasma 6 & Wayland support
-ARG BASE=ubuntu:25.04
+# Supported base images: Arch Linux for native KDE Plasma 6 & Wayland support
+ARG BASE=archlinux:latest
 FROM ${BASE}
 
 LABEL maintainer="https://github.com/open-beagle"
@@ -49,15 +49,15 @@ ENV DISPLAY_CDEPTH=24
 RUN --mount=type=bind,source=Wayland/Hyprland/scripts/,target=/etc/beagle-wind-vnc/scripts/wayland/ \
     bash /etc/beagle-wind-vnc/scripts/wayland/install-wayland.sh
 
-# Install Essential Utilities (Input Method, File Manager, Terminal) for Labwc
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install Essential Utilities (Input Method, File Manager, Terminal) for Labwc/Hyprland
+RUN pacman -Syu --noconfirm \
     fcitx5 \
     fcitx5-chinese-addons \
     dolphin \
     konsole && \
     mkdir -p /etc/environment.d && \
-    echo "GTK_IM_MODULE=fcitx5\nQT_IM_MODULE=fcitx5\nXMODIFIERS=@im=fcitx5\nSDL_IM_MODULE=fcitx\nGLFW_IM_MODULE=ibus" > /etc/environment.d/fcitx5-wayland.conf && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    echo -e "GTK_IM_MODULE=fcitx5\nQT_IM_MODULE=fcitx5\nXMODIFIERS=@im=fcitx5\nSDL_IM_MODULE=fcitx\nGLFW_IM_MODULE=ibus" > /etc/environment.d/fcitx5-wayland.conf && \
+    rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
 
 # Set input to fcitx5 (Wayland Native)
 ENV GTK_IM_MODULE=fcitx

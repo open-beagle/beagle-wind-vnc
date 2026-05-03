@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libssl-dev libva-dev libvpx-dev libx264-dev libx265-dev \
     libdrm-dev libegl-dev libgl-dev libopengl-dev libgles-dev \
     libglvnd-dev libglx-dev wayland-protocols libwayland-dev \
-    libwayland-egl-backend-dev libx11-xcb-dev libxcb-dri3-dev \
+    libwayland-egl-backend-dev libx11-xcb-dev libxcb-dri3-dev libxcb-sync-dev \
     libxdamage-dev libxfixes-dev libxv-dev libxtst-dev libxext-dev \
     libpipewire-0.3-dev libspa-0.2-dev \
     libopenh264-dev svt-av1 libsvtav1enc-dev aom-tools libaom-dev \

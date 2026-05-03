@@ -60,7 +60,7 @@ pacman -Syu --noconfirm \
   libva-mesa-driver \
   libva-utils \
   vdpauinfo \
-  libva-vdpau-driver \
+  libvdpau \
   vulkan-radeon \
   vulkan-intel \
   vulkan-tools \
@@ -75,9 +75,7 @@ pacman -Syu --noconfirm \
   xorg-xinit \
   xsettingsd \
   xorg-xrandr \
-  xorg-server-utils \
   nginx \
-  apache \
   openbsd-netcat
 
 # =============================================================================

@@ -27,18 +27,22 @@ RUN pacman -Syu --noconfirm && \
   # 5. 清理战场
   rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/* /usr/share/vulkan/icd.d/*.json ~/.cache/pip /var/log/* /tmp/* /var/tmp/*
 
-# 向桌面灌入默认背景图，适配 selkies-desktop 的多分辨率读取特性
-COPY assets/wallpapers/ /usr/share/backgrounds/selkies/
-RUN ln -sf /usr/share/backgrounds/selkies/1920x1080.png /usr/share/backgrounds/selkies/default.png
+# 向桌面灌入默认背景图，适配 beagle-wind-desktop 的多分辨率读取特性
+COPY assets/wallpapers/ /usr/share/backgrounds/beagle/
+RUN ln -sf /usr/share/backgrounds/beagle/1920x1080.png /usr/share/backgrounds/beagle/default.png
 
 # =============================================================================
 # Beagle-Wind WebRTC & Streaming Engine Setup
 # =============================================================================
 # 安装运行时核心依赖 (由于废弃了独立安装脚本，必须在此处补齐 Python 与 GStreamer 的强绑定库)
-RUN pacman -S --noconfirm \
-  labwc \
-  wlr-randr \
-  xdg-desktop-portal-wlr \
+RUN pacman -Syu --noconfirm \
+  hyprland \
+  xdg-desktop-portal-hyprland \
+  waybar \
+  swaybg \
+  foot \
+  wofi \
+  xorg-xcursorgen \
   cairo \
   wayland \
   wayland-protocols \
@@ -82,14 +86,13 @@ RUN mkdir -p /opt/gstreamer/hooks /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.1.0.tar.gz" | tar -xzf - -C /opt/gstreamer/hooks/ && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-archlinux.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
-# 注入 xdg-desktop-portal-wlr 静态授权配门 (彻底跳过交互弹窗)
-RUN mkdir -p /etc/xdg/xdg-desktop-portal-wlr && \
-    echo "[screencast]\n\
-output_name = HEADLESS-1\n\
-max_fps = 60\n\
-chooser_type = none\n" > /etc/xdg/xdg-desktop-portal-wlr/config.ini
+# 注入 xdg-desktop-portal-hyprland 静态授权配门 (通过自定义脚本跳过交互弹窗)
+COPY ./Wayland/Hyprland/mock-picker.sh /etc/beagle-wind-vnc/mock-picker.sh
+RUN chmod 755 /etc/beagle-wind-vnc/mock-picker.sh
 
 # 拷贝 Wayland 下专属控制配置文件
+COPY ./Wayland/Hyprland/user /etc/beagle-wind-vnc/user
+COPY ./Wayland/Hyprland/local.conf /etc/beagle-wind-vnc/local.conf
 COPY ./Wayland/Hyprland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
 COPY ./Wayland/Hyprland/scripts/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
 COPY ./Wayland/Hyprland/scripts/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh

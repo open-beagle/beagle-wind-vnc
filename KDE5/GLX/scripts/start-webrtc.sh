@@ -45,16 +45,8 @@ if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
     . "${HOME}/.config/bdwind_display.conf"
 fi
 
-# Unzip provided python wheels if they haven't been extracted yet
-mkdir -p /tmp/pydeps
-if [ ! -d "/tmp/pydeps/prometheus_client" ]; then
-    echo "Extracting Python .whl dependencies..."
-    cd /tmp/pydeps && for f in /opt/gstreamer/lib/python3/dist-packages/*.whl; do unzip -qo $f; done
-    # Delete bdwind_gstreamer to avoid shadowing the live host mount in /opt/gstreamer
-    rm -rf /tmp/pydeps/bdwind_gstreamer
-    cd - >/dev/null
-fi
-export PYTHONPATH="/tmp/pydeps:${PYTHONPATH}"
+# Dependencies are pre-extracted natively in dist-packages/ in the GStreamer 1.28.2 tarball.
+# We no longer need to unzip .whl files at runtime.
 
 # Render engine identity — drives pipeline builder selection in Python
 export BDWIND_RENDER_ENGINE="glx"

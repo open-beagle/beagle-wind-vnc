@@ -36,8 +36,15 @@ ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezon
 # =============================================================================
 # 创建beagle用户
 # =============================================================================
-groupadd -g 1000 beagle || echo 'Failed to add beagle group'
-useradd -ms /bin/bash beagle -u 1000 -g 1000 || echo 'Failed to add beagle user'
+# 如果是 Ubuntu 24.04 官方镜像，默认已经有一个 UID 1000 的 ubuntu 用户，直接重命名并迁移 home 目录即可
+if id "ubuntu" &>/dev/null; then
+    usermod -l beagle ubuntu || echo 'Failed to rename ubuntu user'
+    groupmod -n beagle ubuntu || echo 'Failed to rename ubuntu group'
+    usermod -d /home/beagle -m beagle || echo 'Failed to move home directory'
+else
+    groupadd -g 1000 beagle || echo 'Failed to add beagle group'
+    useradd -ms /bin/bash beagle -u 1000 -g 1000 || echo 'Failed to add beagle user'
+fi
 # 将beagle用户添加到各种系统组
 usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice beagle
 # 配置sudo权限，允许beagle用户无密码执行所有命令

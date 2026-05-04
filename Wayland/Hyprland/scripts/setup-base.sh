@@ -8,11 +8,17 @@ set -e
 
 # 清理并更新系统包，安装基础依赖
 sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf || true
+# 移除 Docker 镜像中为了精简体积而设置的 NoExtract，这会导致非英文 locale 源文件丢失
+sed -i '/NoExtract/d' /etc/pacman.conf || true
+
 pacman -Syu --noconfirm \
   kmod \
   sudo \
   tzdata \
   base-devel
+
+# 重新安装 glibc 以恢复所有的 locale 源文件 (zh_CN 等)
+pacman -S --noconfirm glibc
 
 # 清理系统缓存和临时文件
 rm -rf /var/cache/pacman/pkg/* /var/log/* /tmp/* /var/tmp/*

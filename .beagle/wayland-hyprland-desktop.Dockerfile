@@ -60,7 +60,6 @@ RUN pacman -Syu --noconfirm \
   glib2 \
   libgudev \
   alsa-lib \
-  jack2 \
   libpulse \
   opus \
   libvpx \

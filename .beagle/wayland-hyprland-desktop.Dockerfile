@@ -119,18 +119,18 @@ ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
 ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
-ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/ubuntu/.local/share}/gstreamer-1.0/plugins:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/beagle/.local/share}/gstreamer-1.0/plugins:/usr/lib/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
 ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/girepository-1.0:/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3.14/site-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
-ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
-ENV USER=ubuntu
-ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-ubuntu"
-ENV PULSE_RUNTIME_PATH="/tmp/runtime-ubuntu/pulse"
-ENV PULSE_SERVER="unix:/tmp/runtime-ubuntu/pulse/native"
+ENV XDG_RUNTIME_DIR=/tmp/runtime-beagle
+ENV USER=beagle
+ENV PIPEWIRE_RUNTIME_DIR="/tmp/runtime-beagle"
+ENV PULSE_RUNTIME_PATH="/tmp/runtime-beagle/pulse"
+ENV PULSE_SERVER="unix:/tmp/runtime-beagle/pulse/native"
 
-ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-system-bus"
-ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-ubuntu/dbus-session-bus"
+ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-system-bus"
+ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
 ENTRYPOINT ["/usr/bin/supervisord"]

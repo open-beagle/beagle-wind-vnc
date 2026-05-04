@@ -54,7 +54,7 @@ ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="${GSTREAMER_PATH}/bin${PATH:+:${PATH}}"
 ENV LD_LIBRARY_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ENV GST_PLUGIN_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu/gstreamer-1.0${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}"
-ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/ubuntu/.local/share}/gstreamer-1.0/plugins:/usr/lib/x86_64-linux-gnu/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
+ENV GST_PLUGIN_SYSTEM_PATH="${XDG_DATA_HOME:-/home/beagle/.local/share}/gstreamer-1.0/plugins:/usr/lib/x86_64-linux-gnu/gstreamer-1.0${GST_PLUGIN_SYSTEM_PATH:+:${GST_PLUGIN_SYSTEM_PATH}}"
 ENV GI_TYPELIB_PATH="${GSTREAMER_PATH}/lib/x86_64-linux-gnu/girepository-1.0:/usr/lib/x86_64-linux-gnu/girepository-1.0${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
 ENV PYTHONPATH="${GSTREAMER_PATH}/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
@@ -68,7 +68,7 @@ ENV BDWIND_ENABLE_RESIZE=true
 ENV BDWIND_ENABLE_BASIC_AUTH=true
 
 ENV PIPEWIRE_LATENCY="128/48000"
-ENV XDG_RUNTIME_DIR=/tmp/runtime-ubuntu
+ENV XDG_RUNTIME_DIR=/tmp/runtime-beagle
 ENV PIPEWIRE_RUNTIME_DIR="${PIPEWIRE_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}}"
 ENV PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}"
 ENV PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DIR:-/tmp}/pulse}/native}"
@@ -79,9 +79,9 @@ ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-system-bus"
 ENV DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/tmp}/dbus-session-bus"
 
 ENV SHELL=/bin/bash
-ENV USER=ubuntu
-ENV HOME=/home/ubuntu
-WORKDIR /home/ubuntu
+ENV USER=beagle
+ENV HOME=/home/beagle
+WORKDIR /home/beagle
 
 EXPOSE 8080
 

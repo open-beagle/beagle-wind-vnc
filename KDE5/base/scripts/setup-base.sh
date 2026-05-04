@@ -30,36 +30,36 @@ ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" >/etc/timezon
 
 # =============================================================================
 # 配置sudo权限系统
-# ubuntu用户可以使用sudo执行需要root权限的操作
+# beagle用户可以使用sudo执行需要root权限的操作
 # =============================================================================
 # 不再使用fakeroot，保持标准sudo功能
 # =============================================================================
-# 创建ubuntu用户和组
+# 创建beagle用户
 # =============================================================================
-groupadd -g 1000 ubuntu || echo 'Failed to add ubuntu group'
-useradd -ms /bin/bash ubuntu -u 1000 -g 1000 || echo 'Failed to add ubuntu user'
-# 将ubuntu用户添加到各种系统组
-usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice ubuntu
-# 配置sudo权限，允许ubuntu用户无密码执行所有命令
-echo "ubuntu ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
-# 设置ubuntu用户密码
-echo "ubuntu:${PASSWD}" | chpasswd
+groupadd -g 1000 beagle || echo 'Failed to add beagle group'
+useradd -ms /bin/bash beagle -u 1000 -g 1000 || echo 'Failed to add beagle user'
+# 将beagle用户添加到各种系统组
+usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice beagle
+# 配置sudo权限，允许beagle用户无密码执行所有命令
+echo "beagle ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
+# 设置beagle用户密码
+echo "beagle:${PASSWD}" | chpasswd
 
 # =============================================================================
 # 设置文件系统所有权
 # =============================================================================
-# 只对必要的目录更改所有权为ubuntu用户，保持系统目录为root所有者
+# 只对必要的目录更改所有权为beagle用户，保持系统目录为root所有者
 # 用户主目录
-chown -R -f ubuntu:ubuntu /home/ubuntu || echo 'Failed to set /home/ubuntu ownership'
+chown -R -f beagle:beagle /home/beagle || echo 'Failed to set /home/beagle ownership'
 # 应用程序目录（存放 gstreamer、selkies-gstreamer-web 等）
-chown -R -f ubuntu:ubuntu /opt || echo 'Failed to set /opt ownership'
+chown -R -f beagle:beagle /opt || echo 'Failed to set /opt ownership'
 # 本地安装目录（存放 Python 包、NVIDIA 库、工具等）
-chown -R -f ubuntu:ubuntu /usr/local || echo 'Failed to set /usr/local ownership'
+chown -R -f beagle:beagle /usr/local || echo 'Failed to set /usr/local ownership'
 # 运行时目录
 mkdir -p /run/user/1000
-chown -R -f ubuntu:ubuntu /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
+chown -R -f beagle:beagle /run/user/1000 || echo 'Failed to set /run/user/1000 ownership'
 # 临时目录
-chown -R -f ubuntu:ubuntu /tmp /var/tmp || echo 'Failed to set /tmp ownership'
+chown -R -f beagle:beagle /tmp /var/tmp || echo 'Failed to set /tmp ownership'
 
 # =============================================================================
 # 恢复被chown移除的setuid/setgid权限

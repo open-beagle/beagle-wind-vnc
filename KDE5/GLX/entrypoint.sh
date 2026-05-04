@@ -132,21 +132,21 @@ export BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:
 # Dynamically bind MangoHud to the correct physical GPU.
 # Static config (layout, metrics) is baked into the image at /etc/mangohud/MangoHud.conf.
 # entrypoint only injects pci_dev which depends on which GPU the container is assigned to.
-MANGOHUD_CONF="/home/ubuntu/.config/MangoHud/MangoHud.conf"
-sudo -u ubuntu mkdir -p /home/ubuntu/.config/MangoHud
+MANGOHUD_CONF="/home/beagle/.config/MangoHud/MangoHud.conf"
+sudo -u beagle mkdir -p /home/beagle/.config/MangoHud
 if [ ! -f "$MANGOHUD_CONF" ]; then
-    sudo -u ubuntu cp /etc/mangohud/MangoHud.conf "$MANGOHUD_CONF" 2>/dev/null || true
+    sudo -u beagle cp /etc/mangohud/MangoHud.conf "$MANGOHUD_CONF" 2>/dev/null || true
 fi
 # Inject or update pci_dev for the assigned GPU
 if [ -f "$MANGOHUD_CONF" ]; then
     if grep -q "^pci_dev=" "$MANGOHUD_CONF"; then
-        sudo -u ubuntu sed -i "s/^pci_dev=.*/pci_dev=${HEX_ID}/" "$MANGOHUD_CONF"
+        sudo -u beagle sed -i "s/^pci_dev=.*/pci_dev=${HEX_ID}/" "$MANGOHUD_CONF"
     else
-        sudo -u ubuntu sed -i "1i pci_dev=${HEX_ID}" "$MANGOHUD_CONF"
+        sudo -u beagle sed -i "1i pci_dev=${HEX_ID}" "$MANGOHUD_CONF"
     fi
     # Clean up conflicting params that don't work in multi-GPU containers
-    sudo -u ubuntu sed -i "/^gpu_list=/d" "$MANGOHUD_CONF"
-    sudo -u ubuntu sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
+    sudo -u beagle sed -i "/^gpu_list=/d" "$MANGOHUD_CONF"
+    sudo -u beagle sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
 fi
 
 # Read user-persisted framerate from ~/.config/bdwind.json (set by frontend)
@@ -247,8 +247,8 @@ fi
 # 在无头的 NVIDIA 云推流环境内，KWin Compositing 会导致严重的画面延迟、与 ximagesrc/NVENC 争抢显存，
 # 更会导致浏览器引擎（如 Steam CEF）在软件回落时发生严重的 XWindow 销毁冲突和彻底黑屏！
 # 必须使用硬切断方式保证所有层在原生 Xorg 驱动直接被画出来，再配合 AllowFlipping=False 根治所有撕裂。
-sudo -u ubuntu bash -c "mkdir -p ~/.config && kwriteconfig5 --file kwinrc --group Compositing --key Enabled false || true"
-sudo -u ubuntu bash -c "mkdir -p ~/.config && kwriteconfig6 --file kwinrc --group Compositing --key Enabled false || true"
+sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig5 --file kwinrc --group Compositing --key Enabled false || true"
+sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig6 --file kwinrc --group Compositing --key Enabled false || true"
 
 /usr/bin/startplasma-x11 &
 

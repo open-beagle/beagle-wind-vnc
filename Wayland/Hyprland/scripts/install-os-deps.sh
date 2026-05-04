@@ -11,7 +11,8 @@ set -e
 # =============================================================================
 
 # 启用 multilib 仓库，以支持 32 位运行库 (给 Steam/Wine 使用)
-sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+echo "[multilib]" >> /etc/pacman.conf
+echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
 sed -i '/\[options\]/a DisableDownloadTimeout' /etc/pacman.conf || true
 
 # 安装基础操作系统包

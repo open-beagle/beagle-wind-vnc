@@ -5,6 +5,10 @@ set -e
 # 基础系统设置脚本
 # 为容器环境配置无root权限的用户环境，适用于受限条件下的约束环境
 # =============================================================================
+# 替换系统默认源为 Azure 源，防止 GitHub Actions 环境下由于请求 Canonical 原站遭到限流导致的连接超时
+sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+sed -i 's/security.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+
 # 清理并更新系统包，安装基础依赖
 apt-get clean && apt-get update && apt-get dist-upgrade -y
 apt-get install --no-install-recommends -y \

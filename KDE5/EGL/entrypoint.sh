@@ -120,8 +120,8 @@ chmod 700 ~/.config ~/.local ~/.cache
 
 # Auto-detect Compute-only GPUs (like A100/H100) or missing GPUs and fallback to Software Encoding
 if [ -n "$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | grep -i 'A100\|H100')" ] || [ -z "$(ls -A /dev/dri 2>/dev/null)" ] && [ -z "$(nvidia-smi 2>/dev/null)" ]; then
-    echo "export BDWIND_ENCODER=sw_x264" > ~/.config/bdwind_encoder.conf
-    echo "Detected compute-only GPU or No GPU. Falling back to software encoding (sw_x264)."
+    echo "export BDWIND_ENCODER=x264enc" > ~/.config/bdwind_encoder.conf
+    echo "Detected compute-only GPU or No GPU. Falling back to software encoding (x264enc)."
 fi
 
 # Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe

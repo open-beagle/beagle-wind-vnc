@@ -43,7 +43,7 @@ fi
 
 # Project P8-Stark: Disabled legacy python 3.14 wheel extraction,
 # using isolated Python 3.12 venv with native dependencies instead.
-export BDWIND_ENCODER="${BDWIND_ENCODER:-nvh264enc}"
+export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 # Project P8-Stark: Re-map GStreamer EGL context to Surfaceless to permit WebRTC Native DMABuf imports
 export GST_GL_PLATFORM=egl
 export GST_GL_WINDOW=surfaceless
@@ -275,8 +275,8 @@ pactl set-default-source VirtualSink.monitor || true
 
 # Intercept broken encoders: Vulkan Video is unstable in CDI containers, fall back to NVENC CUDA
 if [ "$BDWIND_ENCODER" = "vulkanh264enc" ] || [ "$BDWIND_ENCODER" = "vulkanh265enc" ]; then
-    echo "WARNING: $BDWIND_ENCODER (Vulkan Video) is unstable in CDI container. Falling back to nvh264enc (NVENC CUDA)."
-    export BDWIND_ENCODER="nvh264enc"
+    echo "WARNING: $BDWIND_ENCODER (Vulkan Video) is unstable in CDI container. Falling back to x264enc (CPU Software)."
+    export BDWIND_ENCODER="x264enc"
 fi
 
 # =============================================================================
@@ -288,7 +288,7 @@ export WAYLAND_DISPLAY=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | head -1 | x
 echo "[bdwind-gstreamer] Bound to WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
 
 /opt/stark-runtime/bin/python3 -m bdwind_gstreamer \
-    --encoder="${BDWIND_ENCODER:-nvh264enc}" \
+    --encoder="${BDWIND_ENCODER:-x264enc}" \
     --addr="127.0.0.1" \
     --port="${BDWIND_PORT_GSTREAMER:-8081}" \
     --enable_basic_auth="false" \

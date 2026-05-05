@@ -9,23 +9,7 @@ SHELL ["/bin/sh", "-c"]
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# =============================================================================
-# 一站式灌入所有娱乐与生产力引擎 (Steam, Wine, Lutris)
-# 在 Wayland 下，不管是跑 GLX 还是 EGL 的游戏，全都通过 Xwayland 或 Native Wayland 降维打击统一处理！
-# =============================================================================
-RUN pacman -Syu --noconfirm && \
-  # 1. 安装 Wine 体系 (跑 Windows 游戏必备)
-  pacman -S --noconfirm wine wine-mono wine-gecko q4wine winetricks && \
-  # 2. 安装手柄和外设管理工具
-  pacman -S --noconfirm xboxdrv joystick mangohud gamemode jq python-pipx && \
-  pipx ensurepath && pipx install protontricks && \
-  # 3. 安装 Lutris 和 Steam
-  pacman -S --noconfirm lutris steam && \
-  # 4. 安装 Chromium (替代 Chrome)
-  pacman -S --noconfirm chromium && \
-  sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/chromium.desktop || true && \
-  # 5. 清理战场
-  rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/* /usr/share/vulkan/icd.d/*.json ~/.cache/pip /var/log/* /tmp/* /var/tmp/*
+
 
 # 向桌面灌入默认背景图，适配 beagle-wind-desktop 的多分辨率读取特性
 COPY assets/wallpapers/ /usr/share/backgrounds/beagle/

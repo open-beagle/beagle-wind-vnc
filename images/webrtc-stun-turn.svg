@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" font-family="Microsoft YaHei, SimHei, sans-serif">
+  <defs>
+    <!-- 全局阴影 -->
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.1"/>
+    </filter>
+
+    <!-- 标题栏渐变 (蓝灰渐变) -->
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 客户端卡片渐变 (蓝) -->
+    <linearGradient id="moduleGradBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#eff6ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dbeafe;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 云桌面卡片渐变 (绿) -->
+    <linearGradient id="moduleGradGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0fdf4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dcfce7;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- STUN卡片渐变 (橙) -->
+    <linearGradient id="moduleGradOrange" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff7ed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffedd5;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- TURN卡片渐变 (紫) -->
+    <linearGradient id="moduleGradPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#faf5ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f3e8ff;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 箭头定义 -->
+    <marker id="arrowGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- ================= 画布背景 ================= -->
+  <rect width="1100" height="700" rx="12" fill="#f8fafc"/>
+
+  <!-- ================= 标题栏 ================= -->
+  <rect x="0" y="0" width="1100" height="56" rx="12" fill="url(#headerGrad)"/>
+  <rect x="0" y="24" width="1100" height="32" fill="url(#headerGrad)"/>
+  <text x="550" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="bold">WebRTC 穿透与 STUN/TURN 技术原理</text>
+
+  <!-- ================= 核心背景层 (纵向三列) ================= -->
+  <!-- 左侧：客户端环境 -->
+  <rect x="30" y="76" width="320" height="590" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="190" y="104" text-anchor="middle" fill="#166534" font-size="14" font-weight="bold">🌐 客户端局域网 (Client NAT)</text>
+
+  <!-- 中间：公网环境 -->
+  <rect x="370" y="76" width="360" height="590" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="550" y="104" text-anchor="middle" fill="#1e3a5f" font-size="14" font-weight="bold">☁️ 公共互联网 (Public Internet)</text>
+
+  <!-- 右侧：服务端环境 -->
+  <rect x="750" y="76" width="320" height="590" rx="10" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="910" y="104" text-anchor="middle" fill="#5b21b6" font-size="14" font-weight="bold">🖥️ 宿主机/机房 (Server NAT)</text>
+
+  <!-- ================= 模块卡片 ================= -->
+
+  <!-- 1. WebRTC 客户端 -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="300" width="240" height="150" rx="8" fill="url(#moduleGradBlue)" stroke="#93c5fd" stroke-width="1"/>
+    <rect x="70" y="300" width="240" height="30" rx="8" fill="#2563eb"/>
+    <rect x="70" y="316" width="240" height="14" fill="#2563eb"/>
+    <text x="190" y="320" text-anchor="middle" fill="white" font-size="13" font-weight="bold">💻 WebRTC 浏览器</text>
+    
+    <text x="90" y="355" fill="#1e3a5f" font-size="12">• 请求建立 P2P 桌面连接</text>
+    <text x="90" y="380" fill="#1e3a5f" font-size="12">• 接收硬解音视频流 (Video)</text>
+    <text x="90" y="405" fill="#1e3a5f" font-size="12">• 发送键鼠操控指令 (Data)</text>
+    <text x="90" y="430" fill="#1e3a5f" font-size="12">• 位于家庭或公司 NAT 后</text>
+  </g>
+
+  <!-- 2. STUN 服务 -->
+  <g filter="url(#shadow)">
+    <rect x="410" y="160" width="280" height="130" rx="8" fill="url(#moduleGradOrange)" stroke="#fcd34d" stroke-width="1"/>
+    <rect x="410" y="160" width="280" height="30" rx="8" fill="#d97706"/>
+    <rect x="410" y="176" width="280" height="14" fill="#d97706"/>
+    <text x="550" y="180" text-anchor="middle" fill="white" font-size="13" font-weight="bold">⚡ STUN 发现服务</text>
+    
+    <text x="430" y="215" fill="#78350f" font-size="12">• 类似 "照妖镜" 功能</text>
+    <text x="430" y="240" fill="#78350f" font-size="12">• 告知端点它的真实公网 IP/Port</text>
+    <text x="430" y="265" fill="#78350f" font-size="12">• 仅消耗微量信令带宽，不走流量</text>
+  </g>
+
+  <!-- 3. TURN 服务 -->
+  <g filter="url(#shadow)">
+    <rect x="410" y="460" width="280" height="130" rx="8" fill="url(#moduleGradPurple)" stroke="#d8b4fe" stroke-width="1"/>
+    <rect x="410" y="460" width="280" height="30" rx="8" fill="#7c3aed"/>
+    <rect x="410" y="476" width="280" height="14" fill="#7c3aed"/>
+    <text x="550" y="480" text-anchor="middle" fill="white" font-size="13" font-weight="bold">🔄 TURN 中继服务</text>
+    
+    <text x="430" y="515" fill="#4c1d95" font-size="12">• P2P 打洞失败时的兜底方案</text>
+    <text x="430" y="540" fill="#4c1d95" font-size="12">• 强制将所有音视频流通过此转发</text>
+    <text x="430" y="565" fill="#4c1d95" font-size="12">• 100% 连通率，消耗极高服务器带宽</text>
+  </g>
+
+  <!-- 4. Beagle Wind 服务端 -->
+  <g filter="url(#shadow)">
+    <rect x="790" y="300" width="240" height="150" rx="8" fill="url(#moduleGradGreen)" stroke="#86efac" stroke-width="1"/>
+    <rect x="790" y="300" width="240" height="30" rx="8" fill="#059669"/>
+    <rect x="790" y="316" width="240" height="14" fill="#059669"/>
+    <text x="910" y="320" text-anchor="middle" fill="white" font-size="13" font-weight="bold">🖥️ Beagle Wind 云桌面</text>
+    
+    <text x="810" y="355" fill="#064e3b" font-size="12">• 运行 Xvfb / Wayland 实例</text>
+    <text x="810" y="380" fill="#064e3b" font-size="12">• GStreamer 硬件编码桌面帧</text>
+    <text x="810" y="405" fill="#064e3b" font-size="12">• 监听 BDWIND_UDP_PORT 端口</text>
+    <text x="810" y="430" fill="#064e3b" font-size="12">• 位于复杂的云网 VPC 或内网中</text>
+  </g>
+
+  <!-- ================= 连线与数据流 ================= -->
+  
+  <!-- 1. STUN 请求线 (Client -> STUN) -->
+  <path d="M 310 330 L 370 330 L 370 200 L 400 200" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowGray)"/>
+  <rect x="330" y="240" width="20" height="20" rx="10" fill="white" stroke="#6b7280"/>
+  <text x="340" y="254" text-anchor="middle" fill="#6b7280" font-size="10" font-weight="bold">1</text>
+  <text x="325" y="275" text-anchor="middle" fill="#6b7280" font-size="11">获取出口 IP</text>
+
+  <!-- 2. STUN 请求线 (Server -> STUN) -->
+  <path d="M 790 330 L 730 330 L 730 200 L 700 200" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowGray)"/>
+  <rect x="720" y="240" width="20" height="20" rx="10" fill="white" stroke="#6b7280"/>
+  <text x="730" y="254" text-anchor="middle" fill="#6b7280" font-size="10" font-weight="bold">1</text>
+  <text x="770" y="275" text-anchor="middle" fill="#6b7280" font-size="11">获取出口 IP</text>
+
+  <!-- 3. P2P 直连 (绿色粗线) Server -> Client -->
+  <line x1="790" y1="375" x2="320" y2="375" stroke="#059669" stroke-width="3" marker-end="url(#arrowGreen)"/>
+  <rect x="395" y="363" width="310" height="24" rx="12" fill="#dcfce7" stroke="#059669"/>
+  <text x="550" y="380" text-anchor="middle" fill="#059669" font-size="11" font-weight="bold">🟢 最佳路径：WebRTC P2P 直连打洞 (Zero-Latency)</text>
+
+  <!-- 4. TURN 兜底线 (紫色粗线) Server -> TURN -> Client -->
+  <path d="M 790 420 L 730 420 L 730 525 L 700 525" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arrowPurple)"/>
+  <path d="M 410 525 L 370 525 L 370 420 L 320 420" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arrowPurple)"/>
+  
+  <rect x="710" y="460" width="20" height="20" rx="10" fill="white" stroke="#7c3aed"/>
+  <text x="720" y="474" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="bold">2</text>
+  <text x="760" y="495" text-anchor="middle" fill="#7c3aed" font-size="11">推流至中继</text>
+
+  <rect x="360" y="460" width="20" height="20" rx="10" fill="white" stroke="#7c3aed"/>
+  <text x="370" y="474" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="bold">3</text>
+  <text x="340" y="495" text-anchor="middle" fill="#7c3aed" font-size="11">从中继拉流</text>
+
+  <rect x="445" y="603" width="210" height="24" rx="12" fill="#f3e8ff" stroke="#7c3aed"/>
+  <text x="550" y="620" text-anchor="middle" fill="#7c3aed" font-size="11" font-weight="bold">🟣 兜底路径：高延迟、消耗流量</text>
+
+  <!-- ================= 额外说明 ================= -->
+  <rect x="30" y="660" width="1040" height="30" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="550" y="679" text-anchor="middle" fill="#64748b" font-size="11">注：如果在内网或局域网 (LAN) 环境下，客户端可直接连接服务端内网 IP，完全不需要经过 STUN/TURN (即 Local Host Connection)。</text>
+
+</svg>

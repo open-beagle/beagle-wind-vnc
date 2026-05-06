@@ -20,7 +20,7 @@ USER 0
 ARG PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Step 1: Install self-compiled GStreamer 1.28.2 + BDWIND Python environment + Web UI
-COPY ./KDE5/${RENDER_ENGINE}/scripts/install-gstreamer.sh /tmp/install-gstreamer.sh
+COPY ./KDE5/${RENDER_ENGINE}/install-gstreamer.sh /tmp/install-gstreamer.sh
 RUN bash /tmp/install-gstreamer.sh && rm -f /tmp/install-gstreamer.sh
 
 # [P7] nvidia-vaapi-driver removed — we use direct CUDA/NVENC path, not VA-API
@@ -29,20 +29,12 @@ RUN bash /tmp/install-gstreamer.sh && rm -f /tmp/install-gstreamer.sh
 RUN curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.0.0.tar.gz" | tar -xzf - -C /usr/bin/
 
 # Use dynamic backend copy based on RENDER_ENGINE
-COPY ./KDE5/${RENDER_ENGINE}/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./KDE5/${RENDER_ENGINE}/xorg.conf.template* /etc/beagle-wind-vnc/
-COPY ./KDE5/${RENDER_ENGINE}/scripts/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
-COPY ./KDE5/${RENDER_ENGINE}/scripts/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
-COPY ./KDE5/${RENDER_ENGINE}/supervisord.conf /etc/supervisord.conf
-COPY ./KDE5/${RENDER_ENGINE}/scripts/fallback-sink.lua /usr/share/wireplumber/scripts/fallback-sink.lua
+COPY ./KDE5/${RENDER_ENGINE}/beagle-wind-vnc/ /etc/beagle-wind-vnc/
+COPY ./KDE5/${RENDER_ENGINE}/wireplumber/ /usr/share/wireplumber/
 # P7: Patches directory (NVFBC GeForce unlock, nvenc hooks, etc.)
 RUN mkdir -p /opt/gstreamer/hooks
-COPY ./KDE5/${RENDER_ENGINE}/patch-nvfbc.sh* /opt/gstreamer/hooks/
 RUN chmod 755 /usr/bin/joystick-server \
-    /etc/beagle-wind-vnc/entrypoint.sh \
-    /etc/beagle-wind-vnc/start-webrtc.sh \
-    /etc/beagle-wind-vnc/start-gamepad.sh \
-    /etc/supervisord.conf && \
+    /etc/beagle-wind-vnc/* && \
     chmod 755 /opt/gstreamer/hooks/* 2>/dev/null || true
 
 USER 1000
@@ -86,4 +78,4 @@ WORKDIR /home/beagle
 EXPOSE 8080
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
-ENTRYPOINT ["/usr/bin/supervisord"]
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/beagle-wind-vnc/supervisord.conf"]

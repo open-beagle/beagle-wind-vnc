@@ -69,23 +69,13 @@ RUN mkdir -p /opt/gstreamer/hooks /opt/bdwind/webrtc && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gamepad-1.1.0.tar.gz" | tar -xzf - -C /opt/gstreamer/hooks/ && \
     curl -fsSL "https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-archlinux.tar.gz" | tar -xzf - -C /opt/bdwind/webrtc --strip-components=1 || true
 
-# 注入 xdg-desktop-portal-hyprland 静态授权配门 (通过自定义脚本跳过交互弹窗)
-COPY ./Wayland/Hyprland/mock-picker.sh /etc/beagle-wind-vnc/mock-picker.sh
-RUN chmod 755 /etc/beagle-wind-vnc/mock-picker.sh
-
 # 拷贝 Wayland 下专属控制配置文件
 COPY ./Wayland/Hyprland/user /etc/beagle-wind-vnc/user
-COPY ./Wayland/Hyprland/local.conf /etc/beagle-wind-vnc/local.conf
-COPY ./Wayland/Hyprland/entrypoint.sh /etc/beagle-wind-vnc/entrypoint.sh
-COPY ./Wayland/Hyprland/scripts/start-webrtc.sh /etc/beagle-wind-vnc/start-webrtc.sh
-COPY ./Wayland/Hyprland/scripts/start-gamepad.sh /etc/beagle-wind-vnc/start-gamepad.sh
-COPY ./Wayland/Hyprland/supervisord.conf /etc/supervisord.conf
+COPY ./Wayland/Hyprland/beagle-wind-vnc/ /etc/beagle-wind-vnc/
+COPY ./Wayland/Hyprland/wireplumber/ /usr/share/wireplumber/
 
 RUN chmod 755 /opt/gstreamer/hooks/joystick-server \
-    /etc/beagle-wind-vnc/entrypoint.sh \
-    /etc/beagle-wind-vnc/start-webrtc.sh \
-    /etc/beagle-wind-vnc/start-gamepad.sh \
-    /etc/supervisord.conf
+    /etc/beagle-wind-vnc/*
 
 # 安装 GStreamer Python 打包出的 Wheel (bdwind-gstreamer 引擎)
 RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir /opt/gstreamer/lib/python*/site-packages/*.whl || true
@@ -117,4 +107,4 @@ ENV DBUS_SYSTEM_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-system-bus"
 ENV DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/runtime-beagle/dbus-session-bus"
 
 ENV SDL_JOYSTICK_DEVICE=/dev/input/js0
-ENTRYPOINT ["/usr/bin/supervisord"]
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/beagle-wind-vnc/supervisord.conf"]

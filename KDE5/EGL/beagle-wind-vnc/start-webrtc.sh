@@ -245,9 +245,9 @@ fi
 # Apply NVFBC GeForce unlock patch (requires root for binary patching)
 # libnvidia-fbc.so is injected by nvidia-container-toolkit at runtime,
 # so the patch must be applied at startup, not during image build.
-if [ -f "/opt/gstreamer/hooks/patch-nvfbc.sh" ]; then
+if [ -f "/etc/beagle-wind-vnc/patch-nvfbc.sh" ]; then
     echo "Applying NVFBC GeForce unlock patch..."
-    sudo bash /opt/gstreamer/hooks/patch-nvfbc.sh || echo "WARNING: NVFBC patch failed, falling back to ximagesrc"
+    sudo bash /etc/beagle-wind-vnc/patch-nvfbc.sh || echo "WARNING: NVFBC patch failed, falling back to ximagesrc"
 fi
 
 # Hot-load custom compiled GStreamer C plugins (e.g. nvfbcsrc) if provided via volume mount

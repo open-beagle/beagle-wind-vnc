@@ -11,7 +11,11 @@ trap "echo TRAPed signal" HUP INT QUIT TERM
 mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 0700 "${XDG_RUNTIME_DIR}"
 
-sudo chown -f "$(id -nu):$(id -ng)" ~ || true
+# Make user directory owned by the default user
+if [ "$(stat -c '%u:%g' ~)" != "$(id -u):$(id -g)" ]; then
+    echo "Detected incorrect permissions on $HOME, fixing with sudo..."
+    sudo chown -R "$(id -u):$(id -g)" ~ || echo 'Failed to fix home directory permissions'
+fi
 sudo rm -rf /tmp/.ICE-unix /tmp/.X* ~/.cache || true
 sudo rm -f ${XDG_RUNTIME_DIR}/wayland-* ${XDG_RUNTIME_DIR}/gamescope-* ${XDG_RUNTIME_DIR}/kwin* ${XDG_RUNTIME_DIR}/pipewire-* ${XDG_RUNTIME_DIR}/bus || true
 sudo mkdir -pm 1777 /tmp/.ICE-unix /tmp/.X11-unix || true

@@ -17,7 +17,10 @@ trap "echo TRAPed signal" HUP INT QUIT TERM
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # Make user directory owned by the default user
-chown -f "$(id -nu):$(id -ng)" ~ || sudo chown -f "$(id -nu):$(id -ng)" ~ || chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || sudo chown -R -f -h --no-preserve-root "$(id -nu):$(id -ng)" ~ || echo 'Failed to change user directory permissions, there may be permission issues'
+if [ "$(stat -c '%u:%g' ~)" != "$(id -u):$(id -g)" ]; then
+    echo "Detected incorrect permissions on $HOME, fixing with sudo..."
+    sudo chown -R "$(id -u):$(id -g)" ~ || echo 'Failed to fix home directory permissions'
+fi
 # Change operating system password to environment variable
 (
   echo "${PASSWD}"

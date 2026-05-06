@@ -18,17 +18,17 @@ trap "echo TRAPed signal" HUP INT QUIT TERM
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 # Make user directory owned by the default user
 if [ "$(stat -c '%u:%g' ~)" != "$(id -u):$(id -g)" ]; then
-    echo "Detected incorrect permissions on $HOME, fixing with sudo..."
-    sudo chown -R "$(id -u):$(id -g)" ~ || echo 'Failed to fix home directory permissions'
+	echo "Detected incorrect permissions on $HOME, fixing with sudo..."
+	sudo chown -R "$(id -u):$(id -g)" ~ || echo 'Failed to fix home directory permissions'
 fi
 # Change operating system password to environment variable
 (
-  echo "${PASSWD}"
-  echo "${PASSWD}"
+	echo "${PASSWD}"
+	echo "${PASSWD}"
 ) | sudo passwd "$(id -nu)" || (
-  echo "mypasswd"
-  echo "${PASSWD}"
-  echo "${PASSWD}"
+	echo "mypasswd"
+	echo "${PASSWD}"
+	echo "${PASSWD}"
 ) | passwd "$(id -nu)" || echo 'Password change failed, using default password'
 
 # Inject Polkit rule to allow passwordless pkexec for Steam dependencies
@@ -47,22 +47,22 @@ rm -rf /tmp/.X* ~/.cache || echo 'Failed to clean X11 paths'
 
 # Fix NVENC Error Code 2 (OOM) by symlinking isolated NVIDIA devices to index 0 interfaces
 if [ ! -e /dev/nvidia0 ]; then
-    REAL_NVD=$(ls /dev/nvidia[0-9]* 2>/dev/null | head -n 1)
-    if [ -n "$REAL_NVD" ]; then
-        sudo ln -snf "$REAL_NVD" /dev/nvidia0 || echo "Failed to symlink $REAL_NVD to /dev/nvidia0"
-    fi
+	REAL_NVD=$(ls /dev/nvidia[0-9]* 2>/dev/null | head -n 1)
+	if [ -n "$REAL_NVD" ]; then
+		sudo ln -snf "$REAL_NVD" /dev/nvidia0 || echo "Failed to symlink $REAL_NVD to /dev/nvidia0"
+	fi
 fi
 if [ ! -e /dev/dri/renderD128 ]; then
-    REAL_REND=$(ls /dev/dri/renderD* 2>/dev/null | grep -v 128 | head -n 1)
-    if [ -n "$REAL_REND" ]; then
-        sudo ln -snf "$REAL_REND" /dev/dri/renderD128 || echo "Failed to symlink $REAL_REND to /dev/dri/renderD128"
-    fi
+	REAL_REND=$(ls /dev/dri/renderD* 2>/dev/null | grep -v 128 | head -n 1)
+	if [ -n "$REAL_REND" ]; then
+		sudo ln -snf "$REAL_REND" /dev/dri/renderD128 || echo "Failed to symlink $REAL_REND to /dev/dri/renderD128"
+	fi
 fi
 if [ ! -e /dev/dri/card0 ]; then
-    REAL_CARD=$(ls /dev/dri/card* 2>/dev/null | grep -E '/dev/dri/card[0-9]+' | grep -v card0 | head -n 1)
-    if [ -n "$REAL_CARD" ]; then
-        sudo ln -snf "$REAL_CARD" /dev/dri/card0 || echo "Failed to symlink $REAL_CARD to /dev/dri/card0"
-    fi
+	REAL_CARD=$(ls /dev/dri/card* 2>/dev/null | grep -E '/dev/dri/card[0-9]+' | grep -v card0 | head -n 1)
+	if [ -n "$REAL_CARD" ]; then
+		sudo ln -snf "$REAL_CARD" /dev/dri/card0 || echo "Failed to symlink $REAL_CARD to /dev/dri/card0"
+	fi
 fi
 # Change time zone from environment variable
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || echo 'Failed to set timezone'
@@ -83,11 +83,11 @@ export PULSE_SERVER="${PULSE_SERVER:-unix:${PULSE_RUNTIME_PATH:-${XDG_RUNTIME_DI
 # The NVIDIA-Linux driver installer has been removed.
 # Host drivers must be mapped correctly via NVIDIA Container Toolkit.
 if ! command -v nvidia-xconfig >/dev/null 2>&1; then
-    echo "WARNING: nvidia-xconfig not found! The NVIDIA container runtime is likely not passing correct utilities."
+	echo "WARNING: nvidia-xconfig not found! The NVIDIA container runtime is likely not passing correct utilities."
 fi
 # Remove existing Xorg configuration
 if [ -f "/etc/X11/xorg.conf" ]; then
-  sudo rm -f "/etc/X11/xorg.conf"
+	sudo rm -f "/etc/X11/xorg.conf"
 fi
 
 # When using --gpus all, we need to select the specific GPU to bind Xorg and Vulkan to.
@@ -96,14 +96,13 @@ export GPU_INDEX="${GPU_INDEX:-0}"
 export GPU_SELECT="$(nvidia-smi --query-gpu=uuid --id="${GPU_INDEX}" --format=csv,noheader | head -n1)"
 
 if [ -z "${GPU_SELECT}" ]; then
-  echo "No NVIDIA GPUs detected or NVIDIA Container Toolkit not configured. Exiting."
-  exit 1
+	echo "No NVIDIA GPUs detected or NVIDIA Container Toolkit not configured. Exiting."
+	exit 1
 fi
 
 # Limit CUDA to THIS specific GPU so nvenc (selkies-gstreamer) and applications
 # only see this specific GPU as their CUDA device 0.
 export CUDA_VISIBLE_DEVICES="${GPU_SELECT}"
-
 
 # Force Vulkan to use the NVIDIA driver instead of falling back to Mesa lavapipe (CPU software rendering).
 # MESA_VK_DEVICE_SELECT is only for Mesa open-source drivers (like AMD/Intel) and causes Nvidia setups
@@ -114,16 +113,14 @@ export VK_DRIVER_FILES="/etc/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.
 # Force OpenGL to use NVIDIA driver
 export __GLX_VENDOR_LIBRARY_NAME="nvidia"
 
-
-
 # Setting `VIDEO_PORT` to none disables RANDR/XRANDR, causing potential compatibility issues, set to DFP if using datacenter GPUs
 if [ "$(echo ${VIDEO_PORT} | tr '[:upper:]' '[:lower:]')" = "none" ]; then
-  export CONNECTED_MONITOR="None"
-  export USE_DISPLAY_DEVICE="None"
+	export CONNECTED_MONITOR="None"
+	export USE_DISPLAY_DEVICE="None"
 # The X server is otherwise deliberately set to a specific video port despite not being plugged to enable RANDR/XRANDR, monitor will display the screen if plugged to the specific port
 else
-  export CONNECTED_MONITOR="${VIDEO_PORT:-DFP}"
-  export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DFP}"
+	export CONNECTED_MONITOR="${VIDEO_PORT:-DFP}"
+	export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DFP}"
 fi
 
 # Bus ID from nvidia-smi is in hexadecimal format and should be converted to decimal format (including the domain) which Xorg understands, required because nvidia-xconfig doesn't work as intended in a container
@@ -138,25 +135,25 @@ export BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:
 MANGOHUD_CONF="/home/beagle/.config/MangoHud/MangoHud.conf"
 sudo -u beagle mkdir -p /home/beagle/.config/MangoHud
 if [ ! -f "$MANGOHUD_CONF" ]; then
-    sudo -u beagle cp /etc/mangohud/MangoHud.conf "$MANGOHUD_CONF" 2>/dev/null || true
+	sudo -u beagle cp /etc/mangohud/MangoHud.conf "$MANGOHUD_CONF" 2>/dev/null || true
 fi
 # Inject or update pci_dev for the assigned GPU
 if [ -f "$MANGOHUD_CONF" ]; then
-    if grep -q "^pci_dev=" "$MANGOHUD_CONF"; then
-        sudo -u beagle sed -i "s/^pci_dev=.*/pci_dev=${HEX_ID}/" "$MANGOHUD_CONF"
-    else
-        sudo -u beagle sed -i "1i pci_dev=${HEX_ID}" "$MANGOHUD_CONF"
-    fi
-    # Clean up conflicting params that don't work in multi-GPU containers
-    sudo -u beagle sed -i "/^gpu_list=/d" "$MANGOHUD_CONF"
-    sudo -u beagle sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
+	if grep -q "^pci_dev=" "$MANGOHUD_CONF"; then
+		sudo -u beagle sed -i "s/^pci_dev=.*/pci_dev=${HEX_ID}/" "$MANGOHUD_CONF"
+	else
+		sudo -u beagle sed -i "1i pci_dev=${HEX_ID}" "$MANGOHUD_CONF"
+	fi
+	# Clean up conflicting params that don't work in multi-GPU containers
+	sudo -u beagle sed -i "/^gpu_list=/d" "$MANGOHUD_CONF"
+	sudo -u beagle sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
 fi
 
 # Read user-persisted framerate from ~/.config/bdwind.json (set by frontend)
 # This overrides the container-level DISPLAY_REFRESH environment variable
 BDWIND_JSON="$HOME/.config/bdwind.json"
 if [ -f "$BDWIND_JSON" ]; then
-    USER_FPS=$(python3 -c "
+	USER_FPS=$(python3 -c "
 import json, sys
 try:
     with open('$BDWIND_JSON') as f:
@@ -167,22 +164,22 @@ try:
 except:
     pass
 " 2>/dev/null)
-    if [ -n "$USER_FPS" ]; then
-        export DISPLAY_REFRESH="$USER_FPS"
-        echo "Using user-configured refresh rate: ${DISPLAY_REFRESH}Hz (from bdwind.json)"
-    fi
+	if [ -n "$USER_FPS" ]; then
+		export DISPLAY_REFRESH="$USER_FPS"
+		echo "Using user-configured refresh rate: ${DISPLAY_REFRESH}Hz (from bdwind.json)"
+	fi
 fi
 
 # Generate EDID binary matching the target refresh rate
 # This ensures NVIDIA driver's VBlank frequency matches the desired framerate
 EDID_SCRIPT="/etc/beagle-wind-vnc/generate-edid.py"
 if [ ! -f "$EDID_SCRIPT" ]; then
-    EDID_SCRIPT="$(dirname "$0")/generate-edid.py"
+	EDID_SCRIPT="$(dirname "$0")/generate-edid.py"
 fi
 if [ -f "$EDID_SCRIPT" ]; then
-    sudo python3 "$EDID_SCRIPT" "${DISPLAY_REFRESH}" "/etc/X11/edid.bin" && \
-        echo "Generated EDID for ${DISPLAY_REFRESH}Hz" || \
-        echo "WARNING: Failed to generate EDID, using existing edid.bin if available"
+	sudo python3 "$EDID_SCRIPT" "${DISPLAY_REFRESH}" "/etc/X11/edid.bin" &&
+		echo "Generated EDID for ${DISPLAY_REFRESH}Hz" ||
+		echo "WARNING: Failed to generate EDID, using existing edid.bin if available"
 fi
 
 # A custom modeline should be generated because there is no monitor to fetch this information normally
@@ -191,31 +188,30 @@ export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | se
 # Load EDID into Xorg config (Fixes Headless 30FPS lock for games like Dota 2)
 export EDID_OPTIONS=""
 if [ -f "/etc/X11/edid.bin" ]; then
-    export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
+	export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
     Option         \"IgnoreEDID\" \"False\"
     Option         \"UseEDID\" \"True\""
 fi
-
 
 export MODE_NAME="$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
 
 # Generate /etc/X11/xorg.conf
 XORG_TEMPLATE="/etc/beagle-wind-vnc/xorg.conf.template"
 if [ ! -f "$XORG_TEMPLATE" ]; then
-    XORG_TEMPLATE="$(dirname "$0")/xorg.conf.template"
+	XORG_TEMPLATE="$(dirname "$0")/xorg.conf.template"
 fi
 
 if [ -f "$XORG_TEMPLATE" ]; then
-    envsubst < "$XORG_TEMPLATE" | sudo tee /etc/X11/xorg.conf >/dev/null
-    echo "Generated /etc/X11/xorg.conf from template: $XORG_TEMPLATE"
+	envsubst <"$XORG_TEMPLATE" | sudo tee /etc/X11/xorg.conf >/dev/null
+	echo "Generated /etc/X11/xorg.conf from template: $XORG_TEMPLATE"
 else
-    echo "ERROR: xorg.conf.template not found!"
-    exit 1
+	echo "ERROR: xorg.conf.template not found!"
+	exit 1
 fi
 
 # Add virtual display support to Xorg config as requested by P8-H
 if command -v nvidia-xconfig >/dev/null 2>&1; then
-    sudo nvidia-xconfig --virtual-display || echo 'Failed to set virtual display'
+	sudo nvidia-xconfig --virtual-display || echo 'Failed to set virtual display'
 fi
 
 # Real sudo (sudo) is required in Ubuntu 20.04 but not in newer Ubuntu, this symbolic link enables running Xorg inside a container with `-sharevts`
@@ -243,7 +239,7 @@ export vblank_mode=0
 
 # Inject NVIDIA Vulkan Present race condition fix globally
 if [ -f "/opt/gstreamer/hooks/nvglx_xsync_hook.so" ]; then
-    export LD_PRELOAD="/opt/gstreamer/hooks/nvglx_xsync_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+	export LD_PRELOAD="/opt/gstreamer/hooks/nvglx_xsync_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
 fi
 
 # 彻底禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)

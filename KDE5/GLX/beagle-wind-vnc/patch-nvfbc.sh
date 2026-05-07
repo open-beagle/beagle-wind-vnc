@@ -19,7 +19,7 @@
 set -euo pipefail
 
 NVFBC_LIB_DIR="/usr/lib/x86_64-linux-gnu"
-PATCH_LIB_DIR="/opt/gstreamer/hooks/lib"
+PATCH_LIB_DIR="/opt/gstreamer/nvfbc-patch/lib"
 MARKER_FILE="/tmp/.nvfbc-patched"
 
 # 幂等: 如果已经打过补丁，跳过

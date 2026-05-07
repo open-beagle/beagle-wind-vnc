@@ -43,11 +43,10 @@ Section "Device"
     Option         "ModeDebug" "True"
     Option         "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,NoExtendedGpuCapabilitiesCheck,NoTotalSizeCheck,NoDualLinkDVICheck,NoDisplayPortBandwidthCheck,AllowNon3DVisionModes,AllowNonHDMI3DModes,AllowNonEdidModes,NoEdidHDMI2Check,AllowDpInterlaced"
     Option         "AllowExternalGpus" "True"
-#    Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
-#    Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
+    Option         "ConnectedMonitor" "${CONNECTED_MONITOR}"
+    Option         "UseDisplayDevice" "${USE_DISPLAY_DEVICE}"
     Option         "AllowFlipping" "False"
-    Option         "VirtualDisplays" "${DISPLAY_SIZEW}x${DISPLAY_SIZEH}"
-# ${EDID_OPTIONS}
+${EDID_OPTIONS}
 EndSection
 
 Section "Screen"

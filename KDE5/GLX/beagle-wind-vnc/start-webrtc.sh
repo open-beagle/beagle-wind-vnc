@@ -40,9 +40,29 @@ if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
     . "${HOME}/.config/bdwind_encoder.conf"
 fi
 
-# Apply dynamic display config if it exists
-if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
-    . "${HOME}/.config/bdwind_display.conf"
+# bdwind.json is the UI source of truth.
+if [ -f "${HOME}/.config/bdwind.json" ]; then
+    eval "$(python3 - <<'PY'
+import json
+import os
+import shlex
+
+conf = os.path.expanduser("~/.config/bdwind.json")
+try:
+    with open(conf) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+
+res = data.get("BDWIND_RESOLUTION")
+phys = data.get("BDWIND_PHYSICAL_RESOLUTION")
+if res:
+    print("export BDWIND_RESOLUTION={}".format(shlex.quote(str(res))))
+if phys:
+    print("export BDWIND_PHYSICAL_RESOLUTION={}".format(shlex.quote(str(phys))))
+    print("export RESOLUTION={}".format(shlex.quote(str(phys))))
+PY
+)"
 fi
 
 # Dependencies are pre-extracted natively in dist-packages/ in the GStreamer 1.28.2 tarball.
@@ -223,11 +243,42 @@ server {
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 
+detect_physical_nvidia_index() {
+    local node target
+
+    target="$(readlink -f /dev/nvidia0 2>/dev/null || true)"
+    if [ -n "${target}" ] && [[ "${target}" =~ /dev/nvidia([0-9]+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+
+    for node in /dev/nvidia[0-9]*; do
+        [ -e "${node}" ] || continue
+        if [[ "${node}" =~ /dev/nvidia([0-9]+)$ ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    done
+
+    echo "0"
+}
+
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
-if [ -f "/opt/gstreamer/hooks/nvenc_ioctl_hook.so" ]; then
-    # In X11/GLX explicitly disable the nvenc DRM hook which causes NvFBC GLX context creation to fail with BadValue
-    # export LD_PRELOAD="/opt/gstreamer/hooks/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+NVENC_HOOK="/opt/gstreamer/hooks/nvenc_ioctl_hook.so"
+if [ -f "$NVENC_HOOK" ]; then
+    # CDI single-GPU containers expose CUDA device 0 while the actual character
+    # device can still be /dev/nvidiaN. Keep docker run free of NVENC_GPU_INDEX
+    # and derive the hook target from the injected device node instead.
+    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-$(detect_physical_nvidia_index)}"
+    case ":${LD_PRELOAD:-}:" in
+        *:"${NVENC_HOOK}":*) ;;
+        *) export LD_PRELOAD="${NVENC_HOOK}${LD_PRELOAD:+:${LD_PRELOAD}}" ;;
+    esac
+
+    # Keep the hook scoped to the WebRTC process and make the target explicit.
+    # If a specific driver/GStreamer pair still rejects the hook, disable it
+    # here rather than passing hook state via Docker.
     
     # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
     nvidia-smi -L >/dev/null 2>&1 || true

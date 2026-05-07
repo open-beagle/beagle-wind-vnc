@@ -119,8 +119,8 @@ if [ "$(echo ${VIDEO_PORT} | tr '[:upper:]' '[:lower:]')" = "none" ]; then
 	export USE_DISPLAY_DEVICE="None"
 # The X server is otherwise deliberately set to a specific video port despite not being plugged to enable RANDR/XRANDR, monitor will display the screen if plugged to the specific port
 else
-	export CONNECTED_MONITOR="${VIDEO_PORT:-DP-0}"
-	export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DP-0}"
+	export CONNECTED_MONITOR="${VIDEO_PORT:-DFP}"
+	export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DFP}"
 fi
 
 # Bus ID from nvidia-smi is in hexadecimal format and should be converted to
@@ -189,11 +189,11 @@ export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | se
 
 # Load EDID into Xorg config (Fixes Headless 30FPS lock for games like Dota 2)
 export EDID_OPTIONS=""
-#if [ -f "/etc/X11/edid.bin" ]; then
-#	export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
-#    Option         \"IgnoreEDID\" \"False\"
-#    Option         \"UseEDID\" \"True\""
-#fi
+if [ -f "/etc/X11/edid.bin" ]; then
+	export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
+    Option         \"IgnoreEDID\" \"False\"
+    Option         \"UseEDID\" \"True\""
+fi
 
 export MODE_NAME="$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
 

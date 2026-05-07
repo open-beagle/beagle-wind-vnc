@@ -232,14 +232,6 @@ if [ -f "/opt/gstreamer/hooks/nvenc_ioctl_hook.so" ]; then
     # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
     nvidia-smi -L >/dev/null 2>&1 || true
 
-    # export NVENC_HOOK_DEBUG=1
-    # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
-    if [ -L /dev/nvidia0 ]; then
-        DETECTED_GPU=$(readlink /dev/nvidia0 | grep -Eo '[0-9]+$' | head -n 1)
-    else
-        DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
-    fi
-    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
 fi
 
 # Apply NVFBC GeForce unlock patch (requires root for binary patching)

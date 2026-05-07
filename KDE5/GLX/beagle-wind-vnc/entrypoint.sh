@@ -90,8 +90,8 @@ if [ -f "/etc/X11/xorg.conf" ]; then
 	sudo rm -f "/etc/X11/xorg.conf"
 fi
 
-# When using --gpus all, we need to select the specific GPU to bind Xorg and Vulkan to.
-# Default to GPU 0 if GPU_INDEX is not passed by the run command.
+# Select the GPU to bind Xorg and Vulkan to. In CDI single-GPU containers
+# this is normally the only visible device, mapped to index 0.
 export GPU_INDEX="${GPU_INDEX:-0}"
 export GPU_SELECT="$(nvidia-smi --query-gpu=uuid --id="${GPU_INDEX}" --format=csv,noheader | head -n1)"
 
@@ -119,12 +119,14 @@ if [ "$(echo ${VIDEO_PORT} | tr '[:upper:]' '[:lower:]')" = "none" ]; then
 	export USE_DISPLAY_DEVICE="None"
 # The X server is otherwise deliberately set to a specific video port despite not being plugged to enable RANDR/XRANDR, monitor will display the screen if plugged to the specific port
 else
-	export CONNECTED_MONITOR="${VIDEO_PORT:-DFP}"
-	export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DFP}"
+	export CONNECTED_MONITOR="${VIDEO_PORT:-DP-0}"
+	export USE_DISPLAY_DEVICE="${VIDEO_PORT:-DP-0}"
 fi
 
-# Bus ID from nvidia-smi is in hexadecimal format and should be converted to decimal format (including the domain) which Xorg understands, required because nvidia-xconfig doesn't work as intended in a container
-HEX_ID="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader | head -n1)"
+# Bus ID from nvidia-smi is in hexadecimal format and should be converted to
+# decimal format (including the domain) which Xorg understands. Query by the
+# selected GPU index; using head -n1 breaks multi-GPU CDI/all deployments.
+HEX_ID="$(nvidia-smi --query-gpu=pci.bus_id --id="${GPU_INDEX}" --format=csv,noheader | head -n1)"
 IFS=":." ARR_ID=(${HEX_ID})
 unset IFS
 export BUS_ID="PCI:$(printf '%u' 0x${ARR_ID[1]:-0}):$(printf '%u' 0x${ARR_ID[2]:-0}):$(printf '%u' 0x${ARR_ID[3]:-0})"
@@ -187,11 +189,11 @@ export MODELINE="$(cvt ${DISPLAY_SIZEW} ${DISPLAY_SIZEH} ${DISPLAY_REFRESH} | se
 
 # Load EDID into Xorg config (Fixes Headless 30FPS lock for games like Dota 2)
 export EDID_OPTIONS=""
-if [ -f "/etc/X11/edid.bin" ]; then
-	export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
-    Option         \"IgnoreEDID\" \"False\"
-    Option         \"UseEDID\" \"True\""
-fi
+#if [ -f "/etc/X11/edid.bin" ]; then
+#	export EDID_OPTIONS="    Option         \"CustomEDID\" \"${CONNECTED_MONITOR}:/etc/X11/edid.bin\"
+#    Option         \"IgnoreEDID\" \"False\"
+#    Option         \"UseEDID\" \"True\""
+#fi
 
 export MODE_NAME="$(echo ${MODELINE} | awk '{print $2}' | tr -d '\"')"
 

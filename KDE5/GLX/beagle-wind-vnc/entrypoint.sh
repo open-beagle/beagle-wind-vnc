@@ -151,23 +151,43 @@ if [ -f "$MANGOHUD_CONF" ]; then
 	sudo -u beagle sed -i "/^nvml_gpu_index=/d" "$MANGOHUD_CONF"
 fi
 
-# Read user-persisted framerate from ~/.config/bdwind.json (set by frontend)
-# This overrides the container-level DISPLAY_REFRESH environment variable
+# Read user-persisted display settings from ~/.config/bdwind.json (set by frontend).
+# This must happen before xorg.conf generation so NVIDIA Xorg starts with a
+# virtual screen large enough for the requested RandR/NVFBC capture size.
 BDWIND_JSON="$HOME/.config/bdwind.json"
 if [ -f "$BDWIND_JSON" ]; then
-	USER_FPS=$(python3 -c "
-import json, sys
+	eval "$(python3 - <<'PY'
+import json
+import os
+import re
+import shlex
+
+conf = os.path.expanduser("~/.config/bdwind.json")
 try:
-    with open('$BDWIND_JSON') as f:
+    with open(conf) as f:
         d = json.load(f)
-    fps = int(d.get('BDWIND_FRAMERATE', 0))
-    if fps in (30, 60, 120, 144):
-        print(fps)
-except:
-    pass
-" 2>/dev/null)
-	if [ -n "$USER_FPS" ]; then
-		export DISPLAY_REFRESH="$USER_FPS"
+except Exception:
+    d = {}
+
+res = str(d.get("BDWIND_PHYSICAL_RESOLUTION") or d.get("BDWIND_RESOLUTION") or "")
+match = re.match(r"^([1-9][0-9]{2,4})x([1-9][0-9]{2,4})$", res)
+if match:
+    print("export DISPLAY_SIZEW={}".format(shlex.quote(match.group(1))))
+    print("export DISPLAY_SIZEH={}".format(shlex.quote(match.group(2))))
+    print("export RESOLUTION={}".format(shlex.quote(res)))
+
+try:
+    fps = int(d.get("BDWIND_FRAMERATE", 0))
+except Exception:
+    fps = 0
+if fps in (30, 60, 120, 144):
+    print("export DISPLAY_REFRESH={}".format(fps))
+PY
+)"
+	if [ -n "${RESOLUTION:-}" ]; then
+		echo "Using user-configured display size: ${DISPLAY_SIZEW}x${DISPLAY_SIZEH} (from bdwind.json)"
+	fi
+	if [ -n "${DISPLAY_REFRESH:-}" ]; then
 		echo "Using user-configured refresh rate: ${DISPLAY_REFRESH}Hz (from bdwind.json)"
 	fi
 fi

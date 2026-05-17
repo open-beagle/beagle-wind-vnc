@@ -43,7 +43,7 @@ jobs:
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest-glx
           platforms: linux/amd64
           build-args: |
-            BASE=ghcr.io/open-beagle/beagle-wind-vnc:1.0.15-desktop
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:latest-desktop
             RENDER_ENGINE=GLX
 
       - name: Image push success

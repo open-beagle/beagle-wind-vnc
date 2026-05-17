@@ -34,7 +34,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest-desktop
           platforms: linux/amd64
           build-args: |
-            BASE=ghcr.io/open-beagle/beagle-wind-vnc:1.0.14-base
+            BASE=ghcr.io/open-beagle/beagle-wind-vnc:latest-base
 
       - name: Image push success
         run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.14-desktop"

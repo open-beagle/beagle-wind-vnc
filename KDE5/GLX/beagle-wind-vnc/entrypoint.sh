@@ -220,7 +220,7 @@ fi
 ln -snf /dev/ptmx /dev/tty7 || sudo ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
 
 # Run Xorg server with required extensions
-sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -nolisten "local" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "DRI3" &
+sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -nolisten "local" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" -extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "DRI3" &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
@@ -238,6 +238,21 @@ export __GL_THREADED_OPTIMIZATIONS=0
 # and causing 1000%+ CPU spin-lock overhead in Vulkan presentation queues.
 export __GL_SYNC_TO_VBLANK=0
 export vblank_mode=0
+
+# A crashed/restarted KDE session can leave runtime sockets behind. When these
+# stale markers exist without the real KDE processes, startplasma-x11 exits with
+# "Plasma seems to be already running on this display", leaving only a black X11
+# root window for NVFBC to stream.
+KDE_DISPLAY_TOKEN="${DISPLAY//[:.]/_}"
+if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
+	&& ! pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 \
+	&& ! pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
+	rm -f "${XDG_RUNTIME_DIR}/KSMserver_${KDE_DISPLAY_TOKEN}" \
+		"${XDG_RUNTIME_DIR}/kdeinit5_${KDE_DISPLAY_TOKEN}" \
+		"${XDG_RUNTIME_DIR}"/klauncher*.socket \
+		"${XDG_RUNTIME_DIR}"/klauncher* 2>/dev/null || true
+fi
+unset KDE_DISPLAY_TOKEN
 
 # Inject NVIDIA Vulkan Present race condition fix globally
 if [ -f "/opt/gstreamer/hooks/nvglx_xsync_hook.so" ]; then

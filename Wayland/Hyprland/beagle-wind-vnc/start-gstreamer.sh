@@ -228,18 +228,17 @@ sudo nginx -s reload || true
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
-# Prepare BDWIND NVENC Multi-GPU Workaround Hook
-if [ -f "/opt/gstreamer/patches/nvenc_ioctl_hook.so" ]; then
-    # Unlock hardware encoders dynamically across identical GPUs
-    export LD_PRELOAD="/opt/gstreamer/patches/nvenc_ioctl_hook.so"
-    
-    # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
-    nvidia-smi -L >/dev/null 2>&1 || true
-
-    # export NVENC_HOOK_DEBUG=1
-    # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
-    DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
-    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
+# Wayland DMABuf/render-node paths were historically sensitive to the NVENC
+# topology hook. Keep it opt-in unless a deployment explicitly selects the
+# narrow wayland profile.
+NVENC_HOOK="/opt/gstreamer/patches/nvenc_ioctl_hook.so"
+if [ -f "$NVENC_HOOK" ] && [ -n "${NVENC_HOOK_PROFILE:-}" ] && [ "${NVENC_HOOK_PROFILE}" != "off" ]; then
+    export NVENC_HOOK_PROFILE
+    env -u LD_PRELOAD nvidia-smi -L >/dev/null 2>&1 || true
+    case ":${LD_PRELOAD:-}:" in
+        *:"${NVENC_HOOK}":*) ;;
+        *) export LD_PRELOAD="${NVENC_HOOK}${LD_PRELOAD:+:${LD_PRELOAD}}" ;;
+    esac
 fi
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified

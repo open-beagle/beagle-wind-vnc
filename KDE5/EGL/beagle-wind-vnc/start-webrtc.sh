@@ -224,22 +224,39 @@ rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 
 
-# Prepare BDWIND NVENC Multi-GPU Workaround Hook
-if [ -f "/opt/gstreamer/hooks/nvenc_ioctl_hook.so" ]; then
-    # In X11/GLX explicitly disable the nvenc DRM hook which causes NvFBC GLX context creation to fail with BadValue
-    export LD_PRELOAD="/opt/gstreamer/hooks/nvenc_ioctl_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
-    
-    # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
-    nvidia-smi -L >/dev/null 2>&1 || true
-
-    # export NVENC_HOOK_DEBUG=1
-    # Dynamically find the available nvidia GPU index so the wrapper can redirect /dev/nvidia0
-    if [ -L /dev/nvidia0 ]; then
-        DETECTED_GPU=$(readlink /dev/nvidia0 | grep -Eo '[0-9]+$' | head -n 1)
-    else
-        DETECTED_GPU=$(ls /dev/nvidia[0-9]* 2>/dev/null | grep -Eo '[0-9]+$' | head -n 1)
+# EGL defaults to software encoding and should not inherit the NVENC topology
+# hook. It can still be explicitly enabled for experiments.
+NVENC_HOOK="/opt/gstreamer/hooks/nvenc_ioctl_hook.so"
+export NVENC_HOOK_PROFILE="${NVENC_HOOK_PROFILE:-off}"
+if [ "${NVENC_HOOK_PROFILE}" = "off" ]; then
+    if [ -n "${LD_PRELOAD:-}" ]; then
+        _CLEAN_LD_PRELOAD=""
+        _OLD_IFS="$IFS"
+        IFS=":"
+        for _PRELOAD_ENTRY in ${LD_PRELOAD}; do
+            IFS="$_OLD_IFS"
+            if [ -n "$_PRELOAD_ENTRY" ] \
+                && [ "$_PRELOAD_ENTRY" != "$NVENC_HOOK" ] \
+                && [ "${_PRELOAD_ENTRY##*/}" != "nvenc_ioctl_hook.so" ]; then
+                _CLEAN_LD_PRELOAD="${_CLEAN_LD_PRELOAD:+${_CLEAN_LD_PRELOAD}:}${_PRELOAD_ENTRY}"
+            fi
+            IFS=":"
+        done
+        IFS="$_OLD_IFS"
+        if [ -n "$_CLEAN_LD_PRELOAD" ]; then
+            export LD_PRELOAD="$_CLEAN_LD_PRELOAD"
+        else
+            unset LD_PRELOAD
+        fi
+        unset _CLEAN_LD_PRELOAD _OLD_IFS _PRELOAD_ENTRY
     fi
-    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
+elif [ -f "$NVENC_HOOK" ]; then
+    export NVENC_HOOK_PROFILE
+    env -u LD_PRELOAD nvidia-smi -L >/dev/null 2>&1 || true
+    case ":${LD_PRELOAD:-}:" in
+        *:"${NVENC_HOOK}":*) ;;
+        *) export LD_PRELOAD="${NVENC_HOOK}${LD_PRELOAD:+:${LD_PRELOAD}}" ;;
+    esac
 fi
 
 # Apply NVFBC GeForce unlock patch (requires root for binary patching)

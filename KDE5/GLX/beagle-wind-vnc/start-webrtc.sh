@@ -40,6 +40,17 @@ if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
     . "${HOME}/.config/bdwind_encoder.conf"
 fi
 
+# GLX is an NVFBC profile. A stale legacy encoder config must not silently
+# downgrade it to ximagesrc; EGL owns that capture path.
+case "${BDWIND_CAPTURE_SOURCE:-}" in
+    ximage|ximagesrc)
+        if [ "${BDWIND_GLX_ALLOW_XIMAGESRC:-false}" != "true" ]; then
+            echo "Ignoring BDWIND_CAPTURE_SOURCE=${BDWIND_CAPTURE_SOURCE} for GLX; using nvfbcsrc."
+            unset BDWIND_CAPTURE_SOURCE
+        fi
+        ;;
+esac
+
 # bdwind.json is the UI source of truth.
 if [ -f "${HOME}/.config/bdwind.json" ]; then
     eval "$(python3 - <<'PY'
@@ -71,6 +82,12 @@ fi
 # Render engine identity — drives pipeline builder selection in Python
 export BDWIND_RENDER_ENGINE="glx"
 
+# NvFBC talks to the NVIDIA X/GLX driver interface. In this CDI/container
+# layout GLVND can otherwise fall back to Mesa llvmpipe, which makes
+# NvFBCCreateHandle fail with an X driver interface version mismatch.
+export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-nvidia}"
+export __NV_PRIME_RENDER_OFFLOAD="${__NV_PRIME_RENDER_OFFLOAD:-1}"
+
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
@@ -98,21 +115,55 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${BDWIND_PASSWORD:-${PASSWD}}}"; fi
 
-# 端口持久化复用：容器内重启时保持端口不变
+_bdwind_port_available() {
+    python3 - "$1" <<'PY'
+import socket
+import sys
+
+try:
+    port = int(sys.argv[1])
+    if port <= 0 or port > 65535:
+        raise ValueError(port)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", port))
+    sock.close()
+except Exception:
+    sys.exit(1)
+PY
+}
+
+_bdwind_allocate_ports() {
+    python3 - <<'PY'
+import socket
+
+sockets = []
+for _ in range(2):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    sockets.append(sock)
+
+print(f"{sockets[0].getsockname()[1]} {sockets[1].getsockname()[1]}")
+
+for sock in sockets:
+    sock.close()
+PY
+}
+
+# 端口持久化复用：容器内重启时保持端口不变；host network 下缓存端口可能已被其它实例占用。
 if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
-    # 优先从缓存文件读取上次分配的端口
     CACHED_GSTREAMER_PORT=$(cat /tmp/gstreamer-port 2>/dev/null || true)
     CACHED_METRICS_PORT=$(cat /tmp/metrics-port 2>/dev/null || true)
 
-    if [ -n "$CACHED_GSTREAMER_PORT" ] && [ -n "$CACHED_METRICS_PORT" ]; then
-        # 容器内重启：复用上次端口
+    if [ -n "$CACHED_GSTREAMER_PORT" ] && [ -n "$CACHED_METRICS_PORT" ] &&
+        _bdwind_port_available "$CACHED_GSTREAMER_PORT" &&
+        _bdwind_port_available "$CACHED_METRICS_PORT"; then
         export BDWIND_PORT_GSTREAMER="$CACHED_GSTREAMER_PORT"
         export BDWIND_PORT_METRICS="$CACHED_METRICS_PORT"
     else
-        # 容器首次启动：动态分配
-        _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')
+        _PORTS=$(_bdwind_allocate_ports)
         export BDWIND_PORT_GSTREAMER="$(echo $_PORTS | awk '{print $1}')"
         export BDWIND_PORT_METRICS="$(echo $_PORTS | awk '{print $2}')"
+        echo "Allocated BDWIND ports: gstreamer=${BDWIND_PORT_GSTREAMER}, metrics=${BDWIND_PORT_METRICS}"
     fi
 fi
 echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
@@ -239,38 +290,30 @@ server {
     }
 }" | tee /etc/nginx/sites-available/default > /dev/null
 
+# start-webrtc can be restarted independently while nginx keeps running under
+# supervisord. Reload nginx so proxy_pass follows any regenerated dynamic ports.
+if pgrep -x nginx >/dev/null 2>&1; then
+    nginx -t && nginx -s reload || echo "WARNING: nginx reload failed; proxy may still use old backend ports"
+fi
+
 # Clear the cache registry
 rm -rf "${HOME}/.cache/gstreamer-1.0"
-
-
-detect_physical_nvidia_index() {
-    local node target
-
-    target="$(readlink -f /dev/nvidia0 2>/dev/null || true)"
-    if [ -n "${target}" ] && [[ "${target}" =~ /dev/nvidia([0-9]+)$ ]]; then
-        echo "${BASH_REMATCH[1]}"
-        return 0
-    fi
-
-    for node in /dev/nvidia[0-9]*; do
-        [ -e "${node}" ] || continue
-        if [[ "${node}" =~ /dev/nvidia([0-9]+)$ ]]; then
-            echo "${BASH_REMATCH[1]}"
-            return 0
-        fi
-    done
-
-    echo "0"
-}
 
 
 # Prepare BDWIND NVENC Multi-GPU Workaround Hook
 NVENC_HOOK="/opt/gstreamer/hooks/nvenc_ioctl_hook.so"
 if [ -f "$NVENC_HOOK" ]; then
-    # CDI single-GPU containers expose CUDA device 0 while the actual character
-    # device can still be /dev/nvidiaN. Keep docker run free of NVENC_GPU_INDEX
-    # and derive the hook target from the injected device node instead.
-    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-$(detect_physical_nvidia_index)}"
+    export NVENC_HOOK_PROFILE="${NVENC_HOOK_PROFILE:-glx-nvenc}"
+
+    # Keep a legacy override for old deployments, but the hook can now discover
+    # the CDI target from /dev/nvidia0 by itself.
+    if [ -n "${NVENC_GPU_INDEX:-}" ]; then
+        export NVENC_GPU_INDEX
+    fi
+
+    # Pre-warm GSP without letting the hook affect NVML/nvidia-smi output.
+    env -u LD_PRELOAD nvidia-smi -L >/dev/null 2>&1 || true
+
     case ":${LD_PRELOAD:-}:" in
         *:"${NVENC_HOOK}":*) ;;
         *) export LD_PRELOAD="${NVENC_HOOK}${LD_PRELOAD:+:${LD_PRELOAD}}" ;;
@@ -279,9 +322,6 @@ if [ -f "$NVENC_HOOK" ]; then
     # Keep the hook scoped to the WebRTC process and make the target explicit.
     # If a specific driver/GStreamer pair still rejects the hook, disable it
     # here rather than passing hook state via Docker.
-    
-    # 预热 GSP 固件，避免 Hook 拦截到未初始化的上下文
-    nvidia-smi -L >/dev/null 2>&1 || true
 
 fi
 

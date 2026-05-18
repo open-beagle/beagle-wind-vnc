@@ -248,6 +248,7 @@ echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache
 chmod 700 ~/.config ~/.local ~/.cache
+sudo chown -R "$(id -u):$(id -g)" ~/.config ~/.local ~/.cache || echo 'Failed to fix user config permissions'
 
 # Start KDE desktop environment
 export XDG_SESSION_ID="${DISPLAY#*:}"

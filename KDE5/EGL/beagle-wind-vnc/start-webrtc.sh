@@ -45,6 +45,28 @@ if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
     . "${HOME}/.config/bdwind_display.conf"
 fi
 
+# Align shell-level defaults with persisted UI settings before deciding whether
+# the EGL NVENC hook is needed.
+if [ -f "${HOME}/.config/bdwind.json" ]; then
+    _BDWIND_CONFIG_ENCODER="$(python3 - "${HOME}/.config/bdwind.json" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as f:
+        value = json.load(f).get("BDWIND_ENCODER", "")
+    if isinstance(value, str):
+        print(value)
+except Exception:
+    pass
+PY
+)"
+    if [ -n "${_BDWIND_CONFIG_ENCODER}" ]; then
+        export BDWIND_ENCODER="${_BDWIND_CONFIG_ENCODER}"
+    fi
+    unset _BDWIND_CONFIG_ENCODER
+fi
+
 # Dependencies are pre-extracted natively in dist-packages/ in the GStreamer 1.28.2 tarball.
 # We no longer need to unzip .whl files at runtime.
 
@@ -225,9 +247,16 @@ rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 
 # EGL defaults to software encoding and should not inherit the NVENC topology
-# hook. It can still be explicitly enabled for experiments.
+# hook. NVENC encoders opt into the narrower EGL NVENC profile.
 NVENC_HOOK="/opt/gstreamer/hooks/nvenc_ioctl_hook.so"
-export NVENC_HOOK_PROFILE="${NVENC_HOOK_PROFILE:-off}"
+if [ -z "${NVENC_HOOK_PROFILE+x}" ]; then
+    case "${BDWIND_ENCODER:-x264enc}" in
+        nv*|nvcuda*) export NVENC_HOOK_PROFILE="egl-nvenc" ;;
+        *) export NVENC_HOOK_PROFILE="off" ;;
+    esac
+else
+    export NVENC_HOOK_PROFILE
+fi
 if [ "${NVENC_HOOK_PROFILE}" = "off" ]; then
     if [ -n "${LD_PRELOAD:-}" ]; then
         _CLEAN_LD_PRELOAD=""

@@ -120,6 +120,7 @@ echo "Viewport scaled successfully."
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache
 chmod 700 ~/.config ~/.local ~/.cache
+sudo chown -R "$(id -u):$(id -g)" ~/.config ~/.local ~/.cache || echo 'Failed to fix user config permissions'
 
 # Auto-detect Compute-only GPUs (like A100/H100) or missing GPUs and fallback to Software Encoding
 if [ -n "$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | grep -i 'A100\|H100')" ] || [ -z "$(ls -A /dev/dri 2>/dev/null)" ] && [ -z "$(nvidia-smi 2>/dev/null)" ]; then

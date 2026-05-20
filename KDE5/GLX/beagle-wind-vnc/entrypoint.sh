@@ -6,6 +6,10 @@
 
 set -e
 
+if [ -f /etc/beagle-wind-vnc/runtime-env.sh ]; then
+	. /etc/beagle-wind-vnc/runtime-env.sh
+fi
+
 # Support unified BDWIND_PASSWORD with legacy PASSWD fallback
 export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
 
@@ -270,8 +274,10 @@ if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
 	&& ! pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
 	rm -f "${XDG_RUNTIME_DIR}/KSMserver_${KDE_DISPLAY_TOKEN}" \
 		"${XDG_RUNTIME_DIR}/kdeinit5_${KDE_DISPLAY_TOKEN}" \
+		"${XDG_RUNTIME_DIR}"/iceauth_* \
 		"${XDG_RUNTIME_DIR}"/klauncher*.socket \
-		"${XDG_RUNTIME_DIR}"/klauncher* 2>/dev/null || true
+		"${XDG_RUNTIME_DIR}"/klauncher* \
+		/tmp/.ICE-unix/* 2>/dev/null || true
 fi
 unset KDE_DISPLAY_TOKEN
 

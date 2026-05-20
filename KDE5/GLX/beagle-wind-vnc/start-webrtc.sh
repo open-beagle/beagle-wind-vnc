@@ -6,6 +6,10 @@
 
 set -e
 
+if [ -f /etc/beagle-wind-vnc/runtime-env.sh ]; then
+    . /etc/beagle-wind-vnc/runtime-env.sh
+fi
+
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 
@@ -40,14 +44,15 @@ if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
     . "${HOME}/.config/bdwind_encoder.conf"
 fi
 
-# GLX is an NVFBC profile. A stale legacy encoder config must not silently
-# downgrade it to ximagesrc; EGL owns that capture path.
+# GLX is an NVFBC profile. Do not silently downgrade it to ximagesrc; EGL owns
+# that compatibility path.
 case "${BDWIND_CAPTURE_SOURCE:-}" in
     ximage|ximagesrc)
-        if [ "${BDWIND_GLX_ALLOW_XIMAGESRC:-false}" != "true" ]; then
-            echo "Ignoring BDWIND_CAPTURE_SOURCE=${BDWIND_CAPTURE_SOURCE} for GLX; using nvfbcsrc."
-            unset BDWIND_CAPTURE_SOURCE
-        fi
+        echo "Ignoring BDWIND_CAPTURE_SOURCE=${BDWIND_CAPTURE_SOURCE} for GLX; using nvfbcsrc."
+        unset BDWIND_CAPTURE_SOURCE
+        ;;
+    nvfbc|nvfbcsrc)
+        export BDWIND_CAPTURE_SOURCE="nvfbc"
         ;;
 esac
 
@@ -89,7 +94,7 @@ export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-nvidia}"
 export __NV_PRIME_RENDER_OFFLOAD="${__NV_PRIME_RENDER_OFFLOAD:-1}"
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
-export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
+export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-true}"
 if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] && { { [ -z "${BDWIND_TURN_USERNAME}" ] || [ -z "${BDWIND_TURN_PASSWORD}" ]; } && [ -z "${BDWIND_TURN_SHARED_SECRET}" ] || [ -z "${BDWIND_TURN_HOST}" ] || [ -z "${BDWIND_TURN_PORT}" ]; }; then
   export TURN_RANDOM_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
   export BDWIND_TURN_HOST="${BDWIND_TURN_HOST:-$(dig -4 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "$(echo $output | sed 's,\",,g')"; fi } || dig -6 TXT +short @ns1.google.com o-o.myaddr.l.google.com 2>/dev/null | { read output; if [ -z "$output" ] || echo "$output" | grep -q '^;;'; then exit 1; else echo "[$(echo $output | sed 's,\",,g')]"; fi } || hostname -I 2>/dev/null | awk '{print $1; exit}' || echo '127.0.0.1')}"
@@ -115,59 +120,13 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${BDWIND_PASSWORD:-${PASSWD}}}"; fi
 
-_bdwind_port_available() {
-    python3 - "$1" <<'PY'
-import socket
-import sys
-
-try:
-    port = int(sys.argv[1])
-    if port <= 0 or port > 65535:
-        raise ValueError(port)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(("127.0.0.1", port))
-    sock.close()
-except Exception:
-    sys.exit(1)
-PY
-}
-
-_bdwind_allocate_ports() {
-    python3 - <<'PY'
-import socket
-
-sockets = []
-for _ in range(2):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(("127.0.0.1", 0))
-    sockets.append(sock)
-
-print(f"{sockets[0].getsockname()[1]} {sockets[1].getsockname()[1]}")
-
-for sock in sockets:
-    sock.close()
-PY
-}
-
-# 端口持久化复用：容器内重启时保持端口不变；host network 下缓存端口可能已被其它实例占用。
-if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
-    CACHED_GSTREAMER_PORT=$(cat /tmp/gstreamer-port 2>/dev/null || true)
-    CACHED_METRICS_PORT=$(cat /tmp/metrics-port 2>/dev/null || true)
-
-    if [ -n "$CACHED_GSTREAMER_PORT" ] && [ -n "$CACHED_METRICS_PORT" ] &&
-        _bdwind_port_available "$CACHED_GSTREAMER_PORT" &&
-        _bdwind_port_available "$CACHED_METRICS_PORT"; then
-        export BDWIND_PORT_GSTREAMER="$CACHED_GSTREAMER_PORT"
-        export BDWIND_PORT_METRICS="$CACHED_METRICS_PORT"
-    else
-        _PORTS=$(_bdwind_allocate_ports)
-        export BDWIND_PORT_GSTREAMER="$(echo $_PORTS | awk '{print $1}')"
-        export BDWIND_PORT_METRICS="$(echo $_PORTS | awk '{print $2}')"
-        echo "Allocated BDWIND ports: gstreamer=${BDWIND_PORT_GSTREAMER}, metrics=${BDWIND_PORT_METRICS}"
-    fi
-fi
-echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
-echo "${BDWIND_PORT_METRICS}" > /tmp/metrics-port
+export BDWIND_RUNTIME_DIR="${BDWIND_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/bdwind}"
+export BDWIND_SIGNALLING_SOCKET="${BDWIND_SIGNALLING_SOCKET:-${BDWIND_RUNTIME_DIR}/signalling.sock}"
+export BDWIND_API_SOCKET="${BDWIND_API_SOCKET:-${BDWIND_RUNTIME_DIR}/api.sock}"
+export BDWIND_METRICS_SOCKET="${BDWIND_METRICS_SOCKET:-${BDWIND_RUNTIME_DIR}/metrics.sock}"
+mkdir -p "${BDWIND_RUNTIME_DIR}"
+chmod 777 "${BDWIND_RUNTIME_DIR}" || true
+rm -f "${BDWIND_SIGNALLING_SOCKET}" "${BDWIND_API_SOCKET}" "${BDWIND_METRICS_SOCKET}"
 
 echo "# BDWIND-GStreamer NGINX Configuration
 server {
@@ -205,7 +164,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /turn {
@@ -217,7 +176,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /settings {
@@ -229,7 +188,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /ws {
@@ -249,7 +208,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_SIGNALLING_SOCKET}:;
     }
 
     location /webrtc/signalling {
@@ -269,7 +228,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_SIGNALLING_SOCKET}:;
     }
 
     location /metrics {
@@ -281,7 +240,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_METRICS:-9081};
+        proxy_pass http://unix:${BDWIND_METRICS_SOCKET}:;
     }
 
     error_page 500 502 503 504 /50x.html;
@@ -291,7 +250,7 @@ server {
 }" | tee /etc/nginx/sites-available/default > /dev/null
 
 # start-webrtc can be restarted independently while nginx keeps running under
-# supervisord. Reload nginx so proxy_pass follows any regenerated dynamic ports.
+# supervisord. Reload nginx so proxy_pass follows regenerated UDS paths.
 if pgrep -x nginx >/dev/null 2>&1; then
     nginx -t && nginx -s reload || echo "WARNING: nginx reload failed; proxy may still use old backend ports"
 fi
@@ -353,11 +312,11 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
 
 python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-x264enc}" \
-    --addr="127.0.0.1" \
-    --port="${BDWIND_PORT_GSTREAMER:-8081}" \
+    --signalling_socket="${BDWIND_SIGNALLING_SOCKET}" \
+    --api_socket="${BDWIND_API_SOCKET}" \
+    --metrics_socket="${BDWIND_METRICS_SOCKET}" \
     --enable_basic_auth="false" \
     --enable_metrics_http="true" \
-    --metrics_http_port="${BDWIND_PORT_METRICS:-9081}" \
     --udp_port_min="${BDWIND_UDP_PORT_MIN:-0}" \
     --udp_port_max="${BDWIND_UDP_PORT_MAX:-0}" \
     $@

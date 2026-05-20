@@ -6,6 +6,10 @@
 
 set -e
 
+if [ -f /etc/beagle-wind-vnc/runtime-env.sh ]; then
+    . /etc/beagle-wind-vnc/runtime-env.sh
+fi
+
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 
@@ -100,25 +104,13 @@ fi
 # Configure NGINX
 if [ "$(echo ${BDWIND_ENABLE_BASIC_AUTH} | tr '[:upper:]' '[:lower:]')" != "false" ]; then htpasswd -bcm "${XDG_RUNTIME_DIR}/.htpasswd" "${BDWIND_BASIC_AUTH_USER:-${USER}}" "${BDWIND_BASIC_AUTH_PASSWORD:-${BDWIND_PASSWORD:-${PASSWD}}}"; fi
 
-# 端口持久化复用：容器内重启时保持端口不变
-if [ -z "$BDWIND_PORT_GSTREAMER" ] || [ -z "$BDWIND_PORT_METRICS" ]; then
-    # 优先从缓存文件读取上次分配的端口
-    CACHED_GSTREAMER_PORT=$(cat /tmp/gstreamer-port 2>/dev/null || true)
-    CACHED_METRICS_PORT=$(cat /tmp/metrics-port 2>/dev/null || true)
-
-    if [ -n "$CACHED_GSTREAMER_PORT" ] && [ -n "$CACHED_METRICS_PORT" ]; then
-        # 容器内重启：复用上次端口
-        export BDWIND_PORT_GSTREAMER="$CACHED_GSTREAMER_PORT"
-        export BDWIND_PORT_METRICS="$CACHED_METRICS_PORT"
-    else
-        # 容器首次启动：动态分配
-        _PORTS=$(python3 -c 'import socket; s1=socket.socket(); s1.bind(("",0)); s2=socket.socket(); s2.bind(("",0)); print(f"{s1.getsockname()[1]} {s2.getsockname()[1]}"); s1.close(); s2.close()')
-        export BDWIND_PORT_GSTREAMER="$(echo $_PORTS | awk '{print $1}')"
-        export BDWIND_PORT_METRICS="$(echo $_PORTS | awk '{print $2}')"
-    fi
-fi
-echo "${BDWIND_PORT_GSTREAMER}" > /tmp/gstreamer-port
-echo "${BDWIND_PORT_METRICS}" > /tmp/metrics-port
+export BDWIND_RUNTIME_DIR="${BDWIND_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/bdwind}"
+export BDWIND_SIGNALLING_SOCKET="${BDWIND_SIGNALLING_SOCKET:-${BDWIND_RUNTIME_DIR}/signalling.sock}"
+export BDWIND_API_SOCKET="${BDWIND_API_SOCKET:-${BDWIND_RUNTIME_DIR}/api.sock}"
+export BDWIND_METRICS_SOCKET="${BDWIND_METRICS_SOCKET:-${BDWIND_RUNTIME_DIR}/metrics.sock}"
+mkdir -p "${BDWIND_RUNTIME_DIR}"
+chmod 777 "${BDWIND_RUNTIME_DIR}" || true
+rm -f "${BDWIND_SIGNALLING_SOCKET}" "${BDWIND_API_SOCKET}" "${BDWIND_METRICS_SOCKET}"
 
 echo "# BDWIND-GStreamer NGINX Configuration
 server {
@@ -156,7 +148,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /turn {
@@ -168,7 +160,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /settings {
@@ -180,7 +172,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
     location /ws {
@@ -200,7 +192,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_SIGNALLING_SOCKET}:;
     }
 
     location /webrtc/signalling {
@@ -220,7 +212,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_GSTREAMER:-8081};
+        proxy_pass http://unix:${BDWIND_SIGNALLING_SOCKET}:;
     }
 
     location /metrics {
@@ -232,7 +224,7 @@ server {
 
         client_max_body_size    10M;
 
-        proxy_pass http$(if [ \"$(echo ${BDWIND_ENABLE_HTTPS} | tr '[:upper:]' '[:lower:]')\" = \"true\" ]; then echo -n "s"; fi)://127.0.0.1:${BDWIND_PORT_METRICS:-9081};
+        proxy_pass http://unix:${BDWIND_METRICS_SOCKET}:;
     }
 
     error_page 500 502 503 504 /50x.html;
@@ -316,11 +308,11 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/dbus-session-bus"
 
 python3 -m bdwind_gstreamer \
     --encoder="${BDWIND_ENCODER:-x264enc}" \
-    --addr="127.0.0.1" \
-    --port="${BDWIND_PORT_GSTREAMER:-8081}" \
+    --signalling_socket="${BDWIND_SIGNALLING_SOCKET}" \
+    --api_socket="${BDWIND_API_SOCKET}" \
+    --metrics_socket="${BDWIND_METRICS_SOCKET}" \
     --enable_basic_auth="false" \
     --enable_metrics_http="true" \
-    --metrics_http_port="${BDWIND_PORT_METRICS:-9081}" \
     --udp_port_min="${BDWIND_UDP_PORT_MIN:-0}" \
     --udp_port_max="${BDWIND_UDP_PORT_MAX:-0}" \
     $@

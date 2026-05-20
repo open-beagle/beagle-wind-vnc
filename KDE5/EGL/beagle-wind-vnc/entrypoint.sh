@@ -6,10 +6,27 @@
 
 set -e
 
+if [ -f /etc/beagle-wind-vnc/runtime-env.sh ]; then
+    . /etc/beagle-wind-vnc/runtime-env.sh
+fi
+
 # Support unified BDWIND_PASSWORD with legacy PASSWD fallback
 export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
 
-trap "echo TRAPed signal" HUP INT QUIT TERM
+XVFB_PID=""
+PLASMA_PID=""
+
+cleanup() {
+    echo "Stopping desktop session..."
+    if [ -n "${PLASMA_PID}" ]; then
+        kill "${PLASMA_PID}" 2>/dev/null || true
+    fi
+    if [ -n "${XVFB_PID}" ]; then
+        kill "${XVFB_PID}" 2>/dev/null || true
+    fi
+}
+
+trap "cleanup; exit 0" HUP INT QUIT TERM
 
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
@@ -104,6 +121,7 @@ TARGET_H="${DISPLAY_SIZEH:-1080}"
 # This allocates ~126MB RAM and sets the maximum RandR bounds to 8K,
 # allowing us to dynamically scale up to 4K/8K without restarting Xvfb.
 /usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
+XVFB_PID="$!"
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
@@ -131,12 +149,27 @@ fi
 # Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
+
+KDE_DISPLAY_TOKEN="${DISPLAY//[:.]/_}"
+if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
+    && ! pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 \
+    && ! pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
+    rm -f "${XDG_RUNTIME_DIR}/KSMserver_${KDE_DISPLAY_TOKEN}" \
+        "${XDG_RUNTIME_DIR}/kdeinit5_${KDE_DISPLAY_TOKEN}" \
+        "${XDG_RUNTIME_DIR}"/iceauth_* \
+        "${XDG_RUNTIME_DIR}"/klauncher*.socket \
+        "${XDG_RUNTIME_DIR}"/klauncher* \
+        /tmp/.ICE-unix/* 2>/dev/null || true
+fi
+unset KDE_DISPLAY_TOKEN
+
 if [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)" ] || [ -n "$(ls -A /dev/dri 2>/dev/null)" ]; then
   export VGL_FPS="${DISPLAY_REFRESH}"
   /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/startplasma-x11 &
 else
   /usr/bin/startplasma-x11 &
 fi
+PLASMA_PID="$!"
 
 # Start Fcitx5 input method framework (will be auto-started by KDE autostart)
 # /usr/bin/fcitx5 &
@@ -144,4 +177,23 @@ fi
 # Add custom processes right below this line, or within `supervisord.conf` to perform service management similar to systemd
 
 echo "Session Running. Press [Return] to exit."
-read
+while true; do
+    if ! kill -0 "${XVFB_PID}" 2>/dev/null; then
+        echo "Xvfb exited; restarting desktop through supervisor."
+        wait "${XVFB_PID}" 2>/dev/null || true
+        exit 1
+    fi
+
+    if ! kill -0 "${PLASMA_PID}" 2>/dev/null; then
+        echo "Plasma session exited; restarting desktop through supervisor."
+        wait "${PLASMA_PID}" 2>/dev/null || true
+        exit 1
+    fi
+
+    if [ ! -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; then
+        echo "X11 socket disappeared; restarting desktop through supervisor."
+        exit 1
+    fi
+
+    sleep 2
+done

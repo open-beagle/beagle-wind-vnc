@@ -76,7 +76,7 @@ export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"
 export LD_LIBRARY_PATH="/usr/lib/libreoffice/program${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 # Set default display
-export DISPLAY="${DISPLAY:-:20}"
+export DISPLAY="${BDWIND_DISPLAY:-${DISPLAY:-:21}}"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
@@ -286,10 +286,8 @@ if [ -f "/opt/gstreamer/hooks/nvglx_xsync_hook.so" ]; then
 	export LD_PRELOAD="/opt/gstreamer/hooks/nvglx_xsync_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
 fi
 
-# 彻底禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)
-# 在无头的 NVIDIA 云推流环境内，KWin Compositing 会导致严重的画面延迟、与 ximagesrc/NVENC 争抢显存，
-# 更会导致浏览器引擎（如 Steam CEF）在软件回落时发生严重的 XWindow 销毁冲突和彻底黑屏！
-# 必须使用硬切断方式保证所有层在原生 Xorg 驱动直接被画出来，再配合 AllowFlipping=False 根治所有撕裂。
+# 禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)
+# 禁用合成器能消除画面延迟、避免与 NVENC 的显存争夺并防止 Steam CEF 浏览器冲突。
 sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig5 --file kwinrc --group Compositing --key Enabled false || true"
 sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig6 --file kwinrc --group Compositing --key Enabled false || true"
 

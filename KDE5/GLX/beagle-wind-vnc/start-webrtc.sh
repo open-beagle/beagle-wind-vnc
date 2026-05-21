@@ -20,7 +20,7 @@ until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
 
 # Set default display
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
-export DISPLAY="${DISPLAY:-:20}"
+export DISPLAY="${BDWIND_DISPLAY:-${DISPLAY:-:21}}"
 # PipeWire-Pulse server socket path
 export PIPEWIRE_LATENCY="128/48000"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
@@ -88,10 +88,11 @@ fi
 export BDWIND_RENDER_ENGINE="glx"
 
 # NvFBC talks to the NVIDIA X/GLX driver interface. In this CDI/container
-# layout GLVND can otherwise fall back to Mesa llvmpipe, which makes
-# NvFBCCreateHandle fail with an X driver interface version mismatch.
+# layout GLVND can otherwise fall back to Mesa llvmpipe. This is a direct Xorg
+# profile, not a PRIME render-offload profile; enabling PRIME offload can break
+# the GLX client/server contract and make NvFBCCreateHandle fail.
 export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-nvidia}"
-export __NV_PRIME_RENDER_OFFLOAD="${__NV_PRIME_RENDER_OFFLOAD:-1}"
+unset __NV_PRIME_RENDER_OFFLOAD
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-true}"
@@ -108,7 +109,7 @@ if [ "${BDWIND_TURN_DISABLE}" != "true" ] && [ -z "${BDWIND_TURN_REST_URI}" ] &&
 fi
 
 # Wait for Display server to start
-export DISPLAY="${DISPLAY:-:20}"
+export DISPLAY="${BDWIND_DISPLAY:-${DISPLAY:-:21}}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
 if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
     export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"

@@ -15,9 +15,13 @@ export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
 
 XVFB_PID=""
 PLASMA_PID=""
+APP_PID=""
 
 cleanup() {
     echo "Stopping desktop session..."
+    if [ -n "${APP_PID}" ]; then
+        kill "${APP_PID}" 2>/dev/null || true
+    fi
     if [ -n "${PLASMA_PID}" ]; then
         kill "${PLASMA_PID}" 2>/dev/null || true
     fi
@@ -30,6 +34,26 @@ trap "cleanup; exit 0" HUP INT QUIT TERM
 
 # Wait for XDG_RUNTIME_DIR
 until [ -d "${XDG_RUNTIME_DIR}" ]; do sleep 0.5; done
+
+DBUS_SESSION_SOCKET="${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
+if [ "${DBUS_SESSION_SOCKET}" != "${DBUS_SESSION_BUS_ADDRESS}" ]; then
+    echo "Waiting for session D-Bus socket: ${DBUS_SESSION_SOCKET}"
+    until [ -S "${DBUS_SESSION_SOCKET}" ]; do sleep 0.5; done
+fi
+
+# Supervisor restarts only stop this script process; KDE/X11 descendants can
+# survive and later attach to the next Xvfb session. Clear the old desktop
+# session before recreating DISPLAY so hot updates start from one clean shell.
+pkill -u "$(id -u)" -f "/usr/games/lutris" 2>/dev/null || true
+pkill -u "$(id -u)" -x plasmashell 2>/dev/null || true
+pkill -u "$(id -u)" -x kwin_x11 2>/dev/null || true
+pkill -u "$(id -u)" -x ksmserver 2>/dev/null || true
+pkill -u "$(id -u)" -f "kactivitymanagerd" 2>/dev/null || true
+pkill -u "$(id -u)" -x kded5 2>/dev/null || true
+pkill -u "$(id -u)" -x kdeinit5 2>/dev/null || true
+pkill -u "$(id -u)" -x klauncher 2>/dev/null || true
+pkill -u "$(id -u)" -x xsettingsd 2>/dev/null || true
+
 # Make user directory owned by the default user
 if [ "$(stat -c '%u:%g' ~)" != "$(id -u):$(id -g)" ]; then
     echo "Detected incorrect permissions on $HOME, fixing with sudo..."
@@ -44,8 +68,14 @@ fi
   echo "${PASSWD}"
   echo "${PASSWD}"
 ) | passwd "$(id -nu)" || echo 'Password change failed, using default password'
-# Remove directories to make sure the desktop environment starts
-rm -rf /tmp/.X* ~/.cache || echo 'Failed to clean X11 paths'
+# Remove stale X11 files without deleting /tmp/.X11-unix itself. Xvfb runs as
+# the unprivileged desktop user here; if the directory is deleted it cannot
+# recreate it and ximagesrc will later fail to open DISPLAY.
+sudo mkdir -p /tmp/.X11-unix || mkdir -p /tmp/.X11-unix || echo 'Failed to create X11 socket directory'
+sudo chown root:root /tmp/.X11-unix || echo 'Failed to chown X11 socket directory'
+sudo chmod 1777 /tmp/.X11-unix || chmod 1777 /tmp/.X11-unix || echo 'Failed to chmod X11 socket directory'
+rm -f "/tmp/.X${DISPLAY#*:}-lock" "/tmp/.X11-unix/X${DISPLAY#*:}" || echo 'Failed to clean stale X11 lock/socket'
+rm -rf ~/.cache || echo 'Failed to clean desktop cache'
 
 # Fix NVENC Error Code 2 (OOM) by symlinking isolated NVIDIA devices to index 0 interfaces
 if [ ! -e /dev/nvidia0 ]; then
@@ -149,6 +179,12 @@ fi
 # Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
+# Plasma's panel and desktop icons are Qt Quick surfaces. In the EGL/Xvfb
+# capture path, the default scene graph backend can create valid X windows
+# without painting them into the Xvfb framebuffer. Use software Qt Quick for
+# the desktop shell; accelerated rendering remains available to launched apps.
+export QT_QUICK_BACKEND="${BDWIND_PLASMA_QT_QUICK_BACKEND:-software}"
+export QSG_RENDER_LOOP="${BDWIND_PLASMA_QSG_RENDER_LOOP:-basic}"
 
 KDE_DISPLAY_TOKEN="${DISPLAY//[:.]/_}"
 if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
@@ -163,13 +199,80 @@ if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
 fi
 unset KDE_DISPLAY_TOKEN
 
-if [ -n "$(nvidia-smi --query-gpu=uuid --format=csv,noheader | head -n1)" ] || [ -n "$(ls -A /dev/dri 2>/dev/null)" ]; then
+KACTIVITY_BIN="/usr/lib/x86_64-linux-gnu/libexec/kactivitymanagerd"
+if [ -x "${KACTIVITY_BIN}" ] && ! pgrep -u "$(id -u)" -f "${KACTIVITY_BIN}" >/dev/null 2>&1; then
+  "${KACTIVITY_BIN}" >/tmp/kactivitymanagerd.log 2>&1 &
+  sleep 2
+fi
+
+if [ "${BDWIND_DESKTOP_VGL:-false}" = "true" ]; then
   export VGL_FPS="${DISPLAY_REFRESH}"
   /usr/bin/vglrun -d "${VGL_DISPLAY:-egl}" +wm /usr/bin/startplasma-x11 &
 else
   /usr/bin/startplasma-x11 &
 fi
 PLASMA_PID="$!"
+
+# In this EGL/Xvfb desktop path, the plasmashell instance started by
+# startplasma-x11 can race early KDE services and create an empty panel window.
+# Restart it once after the session settles; the restarted shell paints the
+# panel and desktop icons correctly into the Xvfb framebuffer.
+if [ "${BDWIND_PLASMA_RESTART_AFTER_START:-true}" = "true" ]; then
+    (
+        sleep "${BDWIND_PLASMA_RESTART_DELAY:-25}"
+        WAIT_KWIN=0
+        while ! pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 && [ "${WAIT_KWIN}" -lt 30 ]; do
+            WAIT_KWIN=$((WAIT_KWIN + 1))
+            sleep 1
+        done
+        pkill -u "$(id -u)" -x plasmashell 2>/dev/null || true
+        WAIT_SHELL=0
+        while pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 && [ "${WAIT_SHELL}" -lt 10 ]; do
+            WAIT_SHELL=$((WAIT_SHELL + 1))
+            sleep 1
+        done
+        echo "Restarting plasmashell after KDE session warmup"
+        exec env -i \
+            HOME="${HOME}" \
+            USER="$(id -nu)" \
+            LOGNAME="$(id -nu)" \
+            SHELL="${SHELL:-/bin/bash}" \
+            PATH="${PATH}" \
+            LANG="${LANG:-C.UTF-8}" \
+            DISPLAY="${DISPLAY}" \
+            XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}" \
+            DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS}" \
+            QT_QUICK_BACKEND="${QT_QUICK_BACKEND}" \
+            QSG_RENDER_LOOP="${QSG_RENDER_LOOP}" \
+            QT_LOGGING_RULES="${QT_LOGGING_RULES}" \
+            /usr/bin/plasmashell
+    ) >/tmp/plasmashell-restart.log 2>&1 &
+fi
+
+STARTUP_COMMAND="${BDWIND_STARTUP_COMMAND:-${BDWIND_APP_COMMAND:-}}"
+if [ -z "${STARTUP_COMMAND}" ] && command -v lutris >/dev/null 2>&1; then
+    STARTUP_COMMAND="$(command -v lutris)"
+fi
+
+if [ -n "${STARTUP_COMMAND}" ]; then
+    (
+        sleep "${BDWIND_STARTUP_DELAY:-38}"
+        PANEL_WAIT=0
+        while [ "${PANEL_WAIT}" -lt 30 ]; do
+            if DISPLAY="${DISPLAY}" xwininfo -root -tree 2>/dev/null | grep -qE 'plasmashell.*1920x44|plasmashell.*[0-9]+x4[0-9][+][0-9]+[+][0-9]+'; then
+                break
+            fi
+            PANEL_WAIT=$((PANEL_WAIT + 1))
+            sleep 1
+        done
+        if ! pgrep -u "$(id -u)" -f "${STARTUP_COMMAND%% *}" >/dev/null 2>&1; then
+            echo "Starting desktop application: ${STARTUP_COMMAND}"
+            export APPIMAGE_EXTRACT_AND_RUN="${APPIMAGE_EXTRACT_AND_RUN:-1}"
+            exec bash -lc "exec ${STARTUP_COMMAND}"
+        fi
+    ) >/tmp/bdwind-startup-app.log 2>&1 &
+    APP_PID="$!"
+fi
 
 # Start Fcitx5 input method framework (will be auto-started by KDE autostart)
 # /usr/bin/fcitx5 &

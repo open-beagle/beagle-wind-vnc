@@ -115,7 +115,8 @@ export VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd
 export VK_DRIVER_FILES="/etc/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json"
 
 # Force OpenGL to use NVIDIA driver
-export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-}"
+export LIBGL_ALWAYS_INDIRECT="${LIBGL_ALWAYS_INDIRECT:-1}"
 
 # Setting `VIDEO_PORT` to none disables RANDR/XRANDR, causing potential compatibility issues, set to DFP if using datacenter GPUs
 if [ "$(echo ${VIDEO_PORT} | tr '[:upper:]' '[:lower:]')" = "none" ]; then
@@ -244,7 +245,7 @@ fi
 ln -snf /dev/ptmx /dev/tty7 || sudo ln -snf /dev/ptmx /dev/tty7 || echo 'Failed to create /dev/tty7 device'
 
 # Run Xorg server with required extensions
-sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts -nolisten "tcp" -nolisten "local" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" -extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "DRI3" &
+sudo /usr/lib/xorg/Xorg "${DISPLAY}" vt7 -noreset -novtswitch -sharevts +iglx -nolisten "tcp" -nolisten "local" -ac -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" -extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "DRI3" &
 
 # Wait for X server to start
 echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
@@ -268,22 +269,40 @@ export vblank_mode=0
 # stale markers exist without the real KDE processes, startplasma-x11 exits with
 # "Plasma seems to be already running on this display", leaving only a black X11
 # root window for NVFBC to stream.
-KDE_DISPLAY_TOKEN="${DISPLAY//[:.]/_}"
-if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
-	&& ! pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 \
-	&& ! pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
-	rm -f "${XDG_RUNTIME_DIR}/KSMserver_${KDE_DISPLAY_TOKEN}" \
-		"${XDG_RUNTIME_DIR}/kdeinit5_${KDE_DISPLAY_TOKEN}" \
+cleanup_stale_kde_session() {
+	local kde_display_token="${DISPLAY//[:.]/_}"
+	rm -f "${XDG_RUNTIME_DIR}/KSMserver_${kde_display_token}" \
+		"${XDG_RUNTIME_DIR}/kdeinit5_${kde_display_token}" \
 		"${XDG_RUNTIME_DIR}"/iceauth_* \
 		"${XDG_RUNTIME_DIR}"/klauncher*.socket \
 		"${XDG_RUNTIME_DIR}"/klauncher* \
+		"${HOME}"/.cache/ksycoca* \
 		/tmp/.ICE-unix/* 2>/dev/null || true
+	unset kde_display_token
+}
+
+wait_for_kde_session() {
+	local deadline=$((SECONDS + 20))
+	while [ "$SECONDS" -lt "$deadline" ]; do
+		if pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
+			&& pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 \
+			&& pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.5
+	done
+	return 1
+}
+
+if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
+	&& ! pgrep -u "$(id -u)" -x kwin_x11 >/dev/null 2>&1 \
+	&& ! pgrep -u "$(id -u)" -x ksmserver >/dev/null 2>&1; then
+	cleanup_stale_kde_session
 fi
-unset KDE_DISPLAY_TOKEN
 
 # Inject NVIDIA Vulkan Present race condition fix globally
 if [ -f "/opt/gstreamer/hooks/nvglx_xsync_hook.so" ]; then
-	export LD_PRELOAD="/opt/gstreamer/hooks/nvglx_xsync_hook.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+	export BDWIND_NVGLX_XSYNC_HOOK="/opt/gstreamer/hooks/nvglx_xsync_hook.so"
 fi
 
 # 禁用 KDE Plasma 的 X11 桌面特效合成器 (Compositor)
@@ -291,7 +310,37 @@ fi
 sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig5 --file kwinrc --group Compositing --key Enabled false || true"
 sudo -u beagle bash -c "mkdir -p ~/.config && kwriteconfig6 --file kwinrc --group Compositing --key Enabled false || true"
 
-/usr/bin/startplasma-x11 &
+PLASMA_LOG="${XDG_RUNTIME_DIR}/bdwind/startplasma-x11.log"
+mkdir -p "$(dirname "$PLASMA_LOG")"
+
+(
+	unset LD_PRELOAD
+	unset SESSION_MANAGER
+	/usr/bin/startplasma-x11
+) >"$PLASMA_LOG" 2>&1 &
+PLASMA_PID=$!
+
+if ! wait_for_kde_session; then
+	echo "WARNING: KDE Plasma did not become ready, retrying once. Last log lines:"
+	tail -n 80 "$PLASMA_LOG" || true
+	kill "$PLASMA_PID" 2>/dev/null || true
+	pkill -u "$(id -u)" -x plasmashell 2>/dev/null || true
+	pkill -u "$(id -u)" -x kwin_x11 2>/dev/null || true
+	pkill -u "$(id -u)" -x ksmserver 2>/dev/null || true
+	cleanup_stale_kde_session
+	(
+		unset LD_PRELOAD
+		unset SESSION_MANAGER
+		/usr/bin/startplasma-x11
+	) >>"$PLASMA_LOG" 2>&1 &
+	PLASMA_PID=$!
+	if ! wait_for_kde_session; then
+		echo "ERROR: KDE Plasma failed to start. Last log lines:"
+		tail -n 120 "$PLASMA_LOG" || true
+		exit 1
+	fi
+fi
+echo "KDE Plasma is ready."
 
 # Start Fcitx input method framework (will be auto-started by KDE autostart)
 # /usr/bin/fcitx &

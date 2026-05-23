@@ -172,7 +172,23 @@ sudo chown -R "$(id -u):$(id -g)" ~/.config ~/.local ~/.cache || echo 'Failed to
 
 # Auto-detect Compute-only GPUs (like A100/H100) or missing GPUs and fallback to Software Encoding
 if [ -n "$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | grep -i 'A100\|H100')" ] || [ -z "$(ls -A /dev/dri 2>/dev/null)" ] && [ -z "$(nvidia-smi 2>/dev/null)" ]; then
-    echo "export BDWIND_ENCODER=x264enc" > ~/.config/bdwind_encoder.conf
+    python3 - <<'PY'
+import json
+import os
+
+conf = os.path.expanduser("~/.config/bdwind.json")
+os.makedirs(os.path.dirname(conf), exist_ok=True)
+settings = {}
+if os.path.exists(conf):
+    try:
+        with open(conf, encoding="utf-8") as f:
+            settings = json.load(f)
+    except Exception:
+        settings = {}
+settings["BDWIND_ENCODER"] = "x264enc"
+with open(conf, "w", encoding="utf-8") as f:
+    json.dump(settings, f)
+PY
     echo "Detected compute-only GPU or No GPU. Falling back to software encoding (x264enc)."
 fi
 

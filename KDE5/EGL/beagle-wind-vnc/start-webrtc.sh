@@ -38,37 +38,82 @@ export GSTREAMER_PATH=/opt/gstreamer
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
 
-# Apply dynamic encoder config if it exists
-# Apply dynamic encoder config if it exists
-if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
-    . "${HOME}/.config/bdwind_encoder.conf"
-fi
-
 # Apply dynamic display config if it exists
 if [ -f "${HOME}/.config/bdwind_display.conf" ]; then
     . "${HOME}/.config/bdwind_display.conf"
 fi
 
-# Align shell-level defaults with persisted UI settings before deciding whether
-# the EGL NVENC hook is needed.
-if [ -f "${HOME}/.config/bdwind.json" ]; then
-    _BDWIND_CONFIG_ENCODER="$(python3 - "${HOME}/.config/bdwind.json" <<'PY'
+# One-time migration for old shell-style runtime settings.
+if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
+    python3 - "${HOME}/.config/bdwind_encoder.conf" "${HOME}/.config/bdwind.json" <<'PY'
 import json
+import os
+import re
+import shlex
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+settings = {}
+if os.path.exists(dst):
+    try:
+        with open(dst, encoding="utf-8") as f:
+            settings = json.load(f)
+    except Exception:
+        settings = {}
+
+assignment = re.compile(r"^(?:export\s+)?(BDWIND_[A-Za-z0-9_]+)=(.*)$")
+try:
+    with open(src, encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            match = assignment.match(line)
+            if not match:
+                continue
+            key, raw_value = match.groups()
+            try:
+                value = shlex.split(raw_value, comments=False, posix=True)
+                settings[key] = value[0] if value else ""
+            except Exception:
+                settings[key] = raw_value.strip().strip("'\"")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "w", encoding="utf-8") as f:
+        json.dump(settings, f)
+    os.unlink(src)
+except Exception as e:
+    print(f"WARNING: failed to migrate {src} to {dst}: {e}")
+PY
+fi
+
+# bdwind.json is the UI source of truth. Export persisted BDWIND_* settings
+# before deciding whether the EGL NVENC hook is needed.
+if [ -f "${HOME}/.config/bdwind.json" ]; then
+    eval "$(python3 - "${HOME}/.config/bdwind.json" <<'PY'
+import json
+import shlex
 import sys
 
 try:
-    with open(sys.argv[1], "r", encoding="utf-8") as f:
-        value = json.load(f).get("BDWIND_ENCODER", "")
-    if isinstance(value, str):
-        print(value)
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = json.load(f)
 except Exception:
-    pass
+    data = {}
+
+def value_to_env(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+for key, value in sorted(data.items()):
+    if key.startswith("BDWIND_") and value is not None:
+        print("export {}={}".format(key, shlex.quote(value_to_env(value))))
+
+phys = data.get("BDWIND_PHYSICAL_RESOLUTION")
+if phys:
+    print("export RESOLUTION={}".format(shlex.quote(value_to_env(phys))))
 PY
 )"
-    if [ -n "${_BDWIND_CONFIG_ENCODER}" ]; then
-        export BDWIND_ENCODER="${_BDWIND_CONFIG_ENCODER}"
-    fi
-    unset _BDWIND_CONFIG_ENCODER
 fi
 
 # Dependencies are pre-extracted natively in dist-packages/ in the GStreamer 1.28.2 tarball.

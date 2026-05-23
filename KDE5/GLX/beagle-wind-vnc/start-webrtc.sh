@@ -38,23 +38,48 @@ export GSTREAMER_PATH=/opt/gstreamer
 # Source environment for GStreamer
 . /opt/gstreamer/gst-env
 
-# Apply dynamic encoder config if it exists
-# Apply dynamic encoder config if it exists
+# One-time migration for old shell-style runtime settings.
 if [ -f "${HOME}/.config/bdwind_encoder.conf" ]; then
-    . "${HOME}/.config/bdwind_encoder.conf"
-fi
+    python3 - "${HOME}/.config/bdwind_encoder.conf" "${HOME}/.config/bdwind.json" <<'PY'
+import json
+import os
+import re
+import shlex
+import sys
 
-# GLX is an NVFBC profile. Do not silently downgrade it to ximagesrc; EGL owns
-# that compatibility path.
-case "${BDWIND_CAPTURE_SOURCE:-}" in
-    ximage|ximagesrc)
-        echo "Ignoring BDWIND_CAPTURE_SOURCE=${BDWIND_CAPTURE_SOURCE} for GLX; using nvfbcsrc."
-        unset BDWIND_CAPTURE_SOURCE
-        ;;
-    nvfbc|nvfbcsrc)
-        export BDWIND_CAPTURE_SOURCE="nvfbc"
-        ;;
-esac
+src, dst = sys.argv[1], sys.argv[2]
+settings = {}
+if os.path.exists(dst):
+    try:
+        with open(dst, encoding="utf-8") as f:
+            settings = json.load(f)
+    except Exception:
+        settings = {}
+
+assignment = re.compile(r"^(?:export\s+)?(BDWIND_[A-Za-z0-9_]+)=(.*)$")
+try:
+    with open(src, encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            match = assignment.match(line)
+            if not match:
+                continue
+            key, raw_value = match.groups()
+            try:
+                value = shlex.split(raw_value, comments=False, posix=True)
+                settings[key] = value[0] if value else ""
+            except Exception:
+                settings[key] = raw_value.strip().strip("'\"")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "w", encoding="utf-8") as f:
+        json.dump(settings, f)
+    os.unlink(src)
+except Exception as e:
+    print(f"WARNING: failed to migrate {src} to {dst}: {e}")
+PY
+fi
 
 # bdwind.json is the UI source of truth.
 if [ -f "${HOME}/.config/bdwind.json" ]; then
@@ -65,21 +90,39 @@ import shlex
 
 conf = os.path.expanduser("~/.config/bdwind.json")
 try:
-    with open(conf) as f:
+    with open(conf, encoding="utf-8") as f:
         data = json.load(f)
 except Exception:
     data = {}
 
-res = data.get("BDWIND_RESOLUTION")
+def value_to_env(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+for key, value in sorted(data.items()):
+    if key.startswith("BDWIND_") and value is not None:
+        print("export {}={}".format(key, shlex.quote(value_to_env(value))))
+
 phys = data.get("BDWIND_PHYSICAL_RESOLUTION")
-if res:
-    print("export BDWIND_RESOLUTION={}".format(shlex.quote(str(res))))
 if phys:
-    print("export BDWIND_PHYSICAL_RESOLUTION={}".format(shlex.quote(str(phys))))
-    print("export RESOLUTION={}".format(shlex.quote(str(phys))))
+    print("export RESOLUTION={}".format(shlex.quote(value_to_env(phys))))
 PY
 )"
 fi
+
+# GLX is an NVFBC profile. Do not silently downgrade it to ximagesrc; EGL owns
+# that compatibility path. Run this after bdwind.json import so stale UI state
+# cannot override the GLX capture source.
+case "${BDWIND_CAPTURE_SOURCE:-}" in
+    ximage|ximagesrc)
+        echo "Ignoring BDWIND_CAPTURE_SOURCE=${BDWIND_CAPTURE_SOURCE} for GLX; using nvfbcsrc."
+        unset BDWIND_CAPTURE_SOURCE
+        ;;
+    nvfbc|nvfbcsrc)
+        export BDWIND_CAPTURE_SOURCE="nvfbc"
+        ;;
+esac
 
 # Dependencies are pre-extracted natively in dist-packages/ in the GStreamer 1.28.2 tarball.
 # We no longer need to unzip .whl files at runtime.
@@ -87,11 +130,13 @@ fi
 # Render engine identity — drives pipeline builder selection in Python
 export BDWIND_RENDER_ENGINE="glx"
 
-# NvFBC talks to the NVIDIA X/GLX driver interface. In this CDI/container
-# layout GLVND can otherwise fall back to Mesa llvmpipe. This is a direct Xorg
+# NvFBC talks to the NVIDIA X/GLX driver interface. This is a direct Xorg
 # profile, not a PRIME render-offload profile; enabling PRIME offload can break
-# the GLX client/server contract and make NvFBCCreateHandle fail.
-export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-nvidia}"
+# the GLX client/server contract and make NvFBCCreateHandle fail. Do not force
+# __GLX_VENDOR_LIBRARY_NAME=nvidia here: in this GLX/NVFBC profile that can make
+# GLX clients abort. Indirect GLX keeps clients on the NVIDIA Xorg vendor.
+export __GLX_VENDOR_LIBRARY_NAME="${__GLX_VENDOR_LIBRARY_NAME:-}"
+export LIBGL_ALWAYS_INDIRECT="${LIBGL_ALWAYS_INDIRECT:-1}"
 unset __NV_PRIME_RENDER_OFFLOAD
 
 export BDWIND_ENCODER="${BDWIND_ENCODER:-x264enc}"
@@ -260,30 +305,47 @@ fi
 rm -rf "${HOME}/.cache/gstreamer-1.0"
 
 
-# Prepare BDWIND NVENC Multi-GPU Workaround Hook
+# Prepare BDWIND NVENC Multi-GPU metadata. In the default single-process GLX
+# mode the WebRTC process must remain preload-clean because NvFBC fails
+# NvFBCCreateHandle if any LD_PRELOAD library is present. In split-capture mode
+# NvFBC runs in a clean child process, so the WebRTC/encode process may preload
+# the NVENC hook.
 NVENC_HOOK="/opt/gstreamer/hooks/nvenc_ioctl_hook.so"
 if [ -f "$NVENC_HOOK" ]; then
-    export NVENC_HOOK_PROFILE="${NVENC_HOOK_PROFILE:-glx-nvenc}"
-
-    # Keep a legacy override for old deployments, but the hook can now discover
-    # the CDI target from /dev/nvidia0 by itself.
-    if [ -n "${NVENC_GPU_INDEX:-}" ]; then
-        export NVENC_GPU_INDEX
-    fi
-
-    # Pre-warm GSP without letting the hook affect NVML/nvidia-smi output.
     env -u LD_PRELOAD nvidia-smi -L >/dev/null 2>&1 || true
 
+    DETECTED_GPU="$(readlink -f /dev/nvidia0 2>/dev/null | grep -Eo '[0-9]+$' || true)"
+    export NVENC_GPU_INDEX="${NVENC_GPU_INDEX:-${DETECTED_GPU:-0}}"
+fi
+
+if [ -f "$NVENC_HOOK" ] && [ "$(echo "${BDWIND_GLX_SPLIT_CAPTURE:-false}" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+    export NVENC_HOOK_PROFILE="${NVENC_HOOK_PROFILE:-glx-nvenc}"
+    export NVENC_HOOK_BYPASS_NVFBC="${NVENC_HOOK_BYPASS_NVFBC:-1}"
+    export NVENC_HOOK_RM_ALLOW_ANY="${NVENC_HOOK_RM_ALLOW_ANY:-1}"
+    export NVENC_HOOK_NARROW_NVENC="${NVENC_HOOK_NARROW_NVENC:-0}"
     case ":${LD_PRELOAD:-}:" in
         *:"${NVENC_HOOK}":*) ;;
         *) export LD_PRELOAD="${NVENC_HOOK}${LD_PRELOAD:+:${LD_PRELOAD}}" ;;
     esac
+elif [ -n "${LD_PRELOAD:-}" ]; then
+    _OLD_IFS="$IFS"
+    IFS=:
+    _CLEAN_LD_PRELOAD=""
+    for _PRELOAD_ENTRY in ${LD_PRELOAD}; do
+        if [ "${_PRELOAD_ENTRY##*/}" != "nvenc_ioctl_hook.so" ]; then
+            _CLEAN_LD_PRELOAD="${_CLEAN_LD_PRELOAD:+${_CLEAN_LD_PRELOAD}:}${_PRELOAD_ENTRY}"
+        fi
+    done
+    IFS="$_OLD_IFS"
 
-    # Keep the hook scoped to the WebRTC process and make the target explicit.
-    # If a specific driver/GStreamer pair still rejects the hook, disable it
-    # here rather than passing hook state via Docker.
-
+    if [ -n "$_CLEAN_LD_PRELOAD" ]; then
+        export LD_PRELOAD="$_CLEAN_LD_PRELOAD"
+    else
+        unset LD_PRELOAD
+    fi
+    unset _CLEAN_LD_PRELOAD _OLD_IFS _PRELOAD_ENTRY
 fi
+unset NVENC_HOOK
 
 # Apply NVFBC GeForce unlock patch (requires root for binary patching)
 # The libnvidia-fbc.so is injected via nvidia-container-toolkit at runtime,

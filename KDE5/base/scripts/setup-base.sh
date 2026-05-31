@@ -50,7 +50,7 @@ else
     useradd -ms /bin/bash beagle -u 1000 -g 1000 || echo 'Failed to add beagle user'
 fi
 # 将beagle用户添加到各种系统组
-usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,plugdev,render,ssl-cert,sudo,tape,tty,video,voice beagle
+usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,games,input,lp,netdev,plugdev,render,ssl-cert,sudo,tape,tty,video,voice beagle
 # 配置sudo权限，允许beagle用户无密码执行所有命令
 echo "beagle ALL=(ALL:ALL) NOPASSWD: ALL" >>/etc/sudoers
 # 设置beagle用户密码

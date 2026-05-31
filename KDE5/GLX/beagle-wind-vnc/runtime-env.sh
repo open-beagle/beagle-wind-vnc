@@ -40,4 +40,33 @@ export BDWIND_GLX_SPLIT_CAPTURE="${BDWIND_GLX_SPLIT_CAPTURE:-true}"
 # Split capture transport:
 # - tcp: stable phase-1 raw NV12 baseline.
 # - cudaipc: phase-2 CUDA IPC path, enabled explicitly while validation is ongoing.
+# - cudaring: BDW latest-frame CUDA IPC ring transport.
 export BDWIND_GLX_CAPTURE_TRANSPORT="${BDWIND_GLX_CAPTURE_TRANSPORT:-tcp}"
+if [ "${BDWIND_GLX_CAPTURE_TRANSPORT}" = "cudaipc" ] || [ "${BDWIND_GLX_CAPTURE_TRANSPORT}" = "cudaring" ]; then
+    export BDWIND_GLX_NVFBC_CAPTURE_MODE="${BDWIND_GLX_NVFBC_CAPTURE_MODE:-cuda}"
+fi
+# CUDA IPC defaults are intentionally latest-frame oriented. When cudaipc is
+# enabled, copy mode exercises the BDWIND low-latency nvcodec patch that skips
+# the extra READ_DONE round trip after the frame has been copied locally.
+export BDWIND_GLX_CUDAIPC_BUFFER_SIZE="${BDWIND_GLX_CUDAIPC_BUFFER_SIZE:-1}"
+export BDWIND_GLX_CUDAIPC_QUEUE_SIZE="${BDWIND_GLX_CUDAIPC_QUEUE_SIZE:-1}"
+export BDWIND_GLX_CUDAIPC_IO_MODE="${BDWIND_GLX_CUDAIPC_IO_MODE:-copy}"
+
+export BDWIND_GLX_CUDARING_SLOT_COUNT="${BDWIND_GLX_CUDARING_SLOT_COUNT:-4}"
+export BDWIND_GLX_CUDARING_WAIT_TIMEOUT_MS="${BDWIND_GLX_CUDARING_WAIT_TIMEOUT_MS:-2000}"
+export BDWIND_GLX_CUDARING_STATS_INTERVAL_MS="${BDWIND_GLX_CUDARING_STATS_INTERVAL_MS:-1000}"
+export BDWIND_GLX_CUDARING_SYNC_BEFORE_PUBLISH="${BDWIND_GLX_CUDARING_SYNC_BEFORE_PUBLISH:-true}"
+if [ "${BDWIND_GLX_CAPTURE_TRANSPORT}" = "cudaring" ]; then
+    export GST_DEBUG="${GST_DEBUG:-*:2},bdwcudaringsink:4,bdwcudaringsrc:4"
+    export BDWIND_KEYFRAME_DISTANCE="${BDWIND_KEYFRAME_DISTANCE:-30}"
+    export BDWIND_RTP_MTU="${BDWIND_RTP_MTU:-1400}"
+    export BDWIND_NVENC_RC_MODE="${BDWIND_NVENC_RC_MODE:-cbr}"
+    export BDWIND_NVENC_STRICT_GOP="${BDWIND_NVENC_STRICT_GOP:-true}"
+    export BDWIND_NVENC_VBV_MULTIPLIER="${BDWIND_NVENC_VBV_MULTIPLIER:-0.75}"
+    export BDWIND_POST_ENC_QUEUE_LEAKY="${BDWIND_POST_ENC_QUEUE_LEAKY:-false}"
+    export BDWIND_RTP_QUEUE_LEAKY="${BDWIND_RTP_QUEUE_LEAKY:-false}"
+fi
+
+# Match the production game profile's explicit ICE interface pinning. This
+# avoids libnice advertising docker/cilium interfaces before NAT rewriting.
+export NICE_NETWORK_INTERFACES="${NICE_NETWORK_INTERFACES:-bond0}"

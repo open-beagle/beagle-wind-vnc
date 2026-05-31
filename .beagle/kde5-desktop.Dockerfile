@@ -50,7 +50,11 @@ RUN apt update && \
   curl -o /tmp/google-chrome-stable.deb -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" && \
   apt install -y /tmp/google-chrome-stable.deb && \
   rm -f /tmp/google-chrome-stable.deb && \
-  sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/google-chrome.desktop && \
+  CHROME_ENV="/usr/bin/env LIBVA_DRIVER_NAME=nvidia NVD_BACKEND=direct" && \
+  CHROME_FLAGS="--password-store=basic --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --enable-features=VaapiVideoDecoder --use-gl=desktop --use-angle=gl --disable-gpu-vsync" && \
+  sed -i "s|^Exec=/usr/bin/google-chrome-stable|Exec=${CHROME_ENV} /usr/bin/google-chrome-stable|" /usr/share/applications/google-chrome.desktop && \
+  sed -i "/^Exec=/ s|$| ${CHROME_FLAGS}|" /usr/share/applications/google-chrome.desktop && \
+  cp -f /usr/share/applications/google-chrome.desktop /usr/share/applications/com.google.Chrome.desktop && \
   # Install Steam
   curl -o /tmp/steam_latest.deb -fL https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
   apt install -y /tmp/steam_latest.deb && rm -f /tmp/steam_latest.deb && \

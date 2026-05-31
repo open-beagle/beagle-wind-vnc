@@ -130,6 +130,12 @@ esac
 # Render engine identity — drives pipeline builder selection in Python
 export BDWIND_RENDER_ENGINE="glx"
 
+if [ "${BDWIND_GLX_CAPTURE_TRANSPORT}" = "cudaring" ]; then
+  export BDWIND_NVENC_RC_MODE="${BDWIND_NVENC_RC_MODE:-cbr}"
+  export BDWIND_NVENC_STRICT_GOP="${BDWIND_NVENC_STRICT_GOP:-true}"
+  export BDWIND_NVENC_VBV_MULTIPLIER="${BDWIND_NVENC_VBV_MULTIPLIER:-0.75}"
+fi
+
 # NvFBC talks to the NVIDIA X/GLX driver interface. This is a direct Xorg
 # profile, not a PRIME render-offload profile; enabling PRIME offload can break
 # the GLX client/server contract and make NvFBCCreateHandle fail. Do not force
@@ -225,7 +231,33 @@ server {
         proxy_pass http://unix:${BDWIND_API_SOCKET}:;
     }
 
+    location = /glx/turn {
+        rewrite ^ /turn break;
+        proxy_http_version      1.1;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_connect_timeout   3600s;
+        proxy_buffering         off;
+
+        client_max_body_size    10M;
+
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
+    }
+
     location /settings {
+        proxy_http_version      1.1;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_connect_timeout   3600s;
+        proxy_buffering         off;
+
+        client_max_body_size    10M;
+
+        proxy_pass http://unix:${BDWIND_API_SOCKET}:;
+    }
+
+    location = /glx/settings {
+        rewrite ^ /settings break;
         proxy_http_version      1.1;
         proxy_read_timeout      3600s;
         proxy_send_timeout      3600s;
@@ -258,6 +290,28 @@ server {
     }
 
     location /webrtc/signalling {
+        proxy_set_header        Upgrade \$http_upgrade;
+        proxy_set_header        Connection \"upgrade\";
+
+        proxy_set_header        Host \$host;
+        proxy_set_header        X-Real-IP \$remote_addr;
+        proxy_set_header        X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto \$scheme;
+
+        proxy_http_version      1.1;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_connect_timeout   3600s;
+        proxy_buffering         off;
+
+        client_max_body_size    10M;
+
+        proxy_pass http://unix:${BDWIND_SIGNALLING_SOCKET}:;
+    }
+
+    location /glx/webrtc/signalling {
+        rewrite ^/glx/webrtc/signalling/?(.*)$ /webrtc/signalling/\$1 break;
+
         proxy_set_header        Upgrade \$http_upgrade;
         proxy_set_header        Connection \"upgrade\";
 
@@ -360,12 +414,25 @@ if [ -f "/opt/gstreamer/hooks/libgstnvfbcsrc.so" ]; then
     echo "Hot-loading custom libgstnvfbcsrc.so plugin..."
     sudo cp /opt/gstreamer/hooks/libgstnvfbcsrc.so /opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0/
 fi
+if [ -f "/opt/gstreamer/hooks/libgstbdwcudaring.so" ]; then
+    echo "Hot-loading custom libgstbdwcudaring.so plugin..."
+    sudo cp /opt/gstreamer/hooks/libgstbdwcudaring.so /opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0/
+fi
+if [ -f "/opt/gstreamer/hooks/libgstnvcodec.so" ]; then
+    echo "Hot-loading custom patched libgstnvcodec.so plugin..."
+    sudo cp /opt/gstreamer/hooks/libgstnvcodec.so /opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0/
+fi
 
 # Inject Libnice NAT 1-to-1 Mapping if BDWIND_ICE_IP is specified
 if [ -n "${BDWIND_ICE_IP}" ]; then
-    LOCAL_IP=$(hostname -I | awk '{print $1}')
-    export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
-    echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+    if echo "${BDWIND_ICE_IP}" | grep -q ':'; then
+        export NICE_NAT_1TO1="${BDWIND_ICE_IP}"
+        echo "BDWIND_ICE_IP explicit mapping. Force ICE Candidates to: ${NICE_NAT_1TO1}"
+    else
+        LOCAL_IP=$(hostname -I | awk '{print $1}')
+        export NICE_NAT_1TO1="${LOCAL_IP}:${BDWIND_ICE_IP}"
+        echo "BDWIND_ICE_IP detected. Force mapping ICE Candidates to: ${NICE_NAT_1TO1}"
+    fi
 fi
 
 # Start the BDWIND-GStreamer WebRTC HTML5 remote desktop application

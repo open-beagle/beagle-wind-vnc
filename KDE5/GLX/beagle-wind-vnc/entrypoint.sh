@@ -68,6 +68,8 @@ if [ ! -e /dev/dri/card0 ]; then
 		sudo ln -snf "$REAL_CARD" /dev/dri/card0 || echo "Failed to symlink $REAL_CARD to /dev/dri/card0"
 	fi
 fi
+sudo chgrp render /dev/dri/renderD* 2>/dev/null || true
+sudo chmod g+rw /dev/dri/renderD* 2>/dev/null || true
 # Change time zone from environment variable
 ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" | tee /etc/timezone >/dev/null || echo 'Failed to set timezone'
 # Add Lutris directories to path

@@ -4,10 +4,8 @@ set -e
 # =============================================================================
 # BDWIND 操作系统库安装脚本
 #
-# 基于 os-libraries-install.sh，唯一区别：
-# 不安装 NVIDIA VAAPI Driver（及其依赖的系统 GStreamer 包）。
-# NVIDIA VAAPI Driver 改由 bdwind-nvidia-vaapi-driver-install.sh 单独安装，
-# 使用自编译 GStreamer 1.24.6 编译，避免系统 GStreamer 1.24.2 版本冲突。
+# 基于 os-libraries-install.sh，补齐 KDE/GLX 云桌面运行所需的
+# PipeWire、X11、VAAPI/VDPAU、Vulkan 和常用系统依赖。
 # =============================================================================
 
 # 安装基础操作系统包
@@ -164,6 +162,7 @@ if [ "$(dpkg --print-architecture)" = "amd64" ]; then
   apt-get install --no-install-recommends -y \
     intel-gpu-tools \
     nvtop \
+    nvidia-vaapi-driver \
     va-driver-all \
     i965-va-driver-shaders \
     intel-media-va-driver-non-free \
@@ -235,4 +234,3 @@ fi
 # 系统清理和配置
 # =============================================================================
 apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
-

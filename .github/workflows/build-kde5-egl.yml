@@ -37,9 +37,9 @@ jobs:
           file: ./.beagle/kde5-app.Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:1.0.15
+            ghcr.io/${{ github.repository }}:1.0.16
             ghcr.io/${{ github.repository }}:latest
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.15
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.0.16
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest
           platforms: linux/amd64
           build-args: |
@@ -47,4 +47,4 @@ jobs:
             RENDER_ENGINE=EGL
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.15"
+        run: echo "Docker image pushed successfully to ghcr.io/${{ github.repository }}:1.0.16"

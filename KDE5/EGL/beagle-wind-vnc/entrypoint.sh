@@ -160,10 +160,21 @@ echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do 
 echo "Setting initial Xrandr viewport to ${TARGET_W}x${TARGET_H}..."
 MODELINE=$(cvt "$TARGET_W" "$TARGET_H" 60 | grep Modeline | cut -d' ' -f3-)
 MODENAME="${TARGET_W}x${TARGET_H}_60.00"
-xrandr -d "${DISPLAY}" --newmode "$MODENAME" $MODELINE
-xrandr -d "${DISPLAY}" --addmode screen "$MODENAME"
-xrandr -d "${DISPLAY}" --output screen --mode "$MODENAME"
-echo "Viewport scaled successfully."
+if xrandr -d "${DISPLAY}" --newmode "$MODENAME" $MODELINE; then
+    echo "Created Xrandr mode ${MODENAME}."
+else
+    echo "Xrandr mode ${MODENAME} already exists or cannot be created; continuing startup."
+fi
+if xrandr -d "${DISPLAY}" --addmode screen "$MODENAME"; then
+    echo "Attached Xrandr mode ${MODENAME} to screen."
+else
+    echo "Xrandr mode ${MODENAME} already attached or cannot be added; continuing startup."
+fi
+if xrandr -d "${DISPLAY}" --output screen --mode "$MODENAME"; then
+    echo "Viewport scaled successfully."
+else
+    echo "WARNING: Failed to apply initial Xrandr viewport ${TARGET_W}x${TARGET_H}; continuing startup."
+fi
 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache

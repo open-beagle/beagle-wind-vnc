@@ -12,8 +12,10 @@ fi
 
 # Support unified BDWIND_PASSWORD with legacy PASSWD fallback
 export PASSWD="${BDWIND_PASSWORD:-${PASSWD}}"
+export DISPLAY="${DISPLAY:-:20}"
 
-XVFB_PID=""
+XSERVER_PID=""
+XSERVER_KIND=""
 PLASMA_PID=""
 APP_PID=""
 
@@ -25,8 +27,8 @@ cleanup() {
     if [ -n "${PLASMA_PID}" ]; then
         kill "${PLASMA_PID}" 2>/dev/null || true
     fi
-    if [ -n "${XVFB_PID}" ]; then
-        kill "${XVFB_PID}" 2>/dev/null || true
+    if [ -n "${XSERVER_PID}" ]; then
+        kill "${XSERVER_PID}" 2>/dev/null || true
     fi
 }
 
@@ -53,6 +55,8 @@ pkill -u "$(id -u)" -x kded5 2>/dev/null || true
 pkill -u "$(id -u)" -x kdeinit5 2>/dev/null || true
 pkill -u "$(id -u)" -x klauncher 2>/dev/null || true
 pkill -u "$(id -u)" -x xsettingsd 2>/dev/null || true
+pkill -u "$(id -u)" -f "Xvfb ${DISPLAY}" 2>/dev/null || true
+sudo pkill -x Xorg 2>/dev/null || true
 
 # Make user directory owned by the default user
 if [ "$(stat -c '%u:%g' ~)" != "$(id -u):$(id -g)" ]; then
@@ -147,34 +151,59 @@ fi
 TARGET_W="${DISPLAY_SIZEW:-1920}"
 TARGET_H="${DISPLAY_SIZEH:-1080}"
 
-# Run Xvfb server with a massive 8K virtual canvas (7680x4320).
-# This allocates ~126MB RAM and sets the maximum RandR bounds to 8K,
-# allowing us to dynamically scale up to 4K/8K without restarting Xvfb.
-/usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "GLX" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +iglx +render -nolisten "tcp" -ac -noreset -shmem &
-XVFB_PID="$!"
+wait_for_x_socket() {
+    echo "Waiting for X Socket on ${DISPLAY}"
+    local waited=0
+    while [ ! -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do
+        if [ -n "${XSERVER_PID}" ] && ! kill -0 "${XSERVER_PID}" 2>/dev/null; then
+            return 1
+        fi
+        waited=$((waited + 1))
+        if [ "${waited}" -gt 80 ]; then
+            return 1
+        fi
+        sleep 0.5
+    done
+    echo "X Server is ready (${XSERVER_KIND})"
+    return 0
+}
 
-# Wait for X server to start
-echo 'Waiting for X Socket' && until [ -S "/tmp/.X11-unix/X${DISPLAY#*:}" ]; do sleep 0.5; done && echo 'X Server is ready'
+start_xvfb_server() {
+    echo "Starting Xvfb ${DISPLAY}"
+    /usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" -extension "GLX" -nolisten "tcp" -ac -noreset -shmem &
+    XSERVER_PID="$!"
+    XSERVER_KIND="xvfb"
+}
 
-# Dynamically set the initial viewport using Xrandr
-echo "Setting initial Xrandr viewport to ${TARGET_W}x${TARGET_H}..."
-MODELINE=$(cvt "$TARGET_W" "$TARGET_H" 60 | grep Modeline | cut -d' ' -f3-)
-MODENAME="${TARGET_W}x${TARGET_H}_60.00"
-if xrandr -d "${DISPLAY}" --newmode "$MODENAME" $MODELINE; then
-    echo "Created Xrandr mode ${MODENAME}."
-else
-    echo "Xrandr mode ${MODENAME} already exists or cannot be created; continuing startup."
-fi
-if xrandr -d "${DISPLAY}" --addmode screen "$MODENAME"; then
-    echo "Attached Xrandr mode ${MODENAME} to screen."
-else
-    echo "Xrandr mode ${MODENAME} already attached or cannot be added; continuing startup."
-fi
-if xrandr -d "${DISPLAY}" --output screen --mode "$MODENAME"; then
-    echo "Viewport scaled successfully."
-else
-    echo "WARNING: Failed to apply initial Xrandr viewport ${TARGET_W}x${TARGET_H}; continuing startup."
-fi
+apply_initial_xrandr_viewport() {
+    local output_name mode_line mode_name
+    output_name="$(xrandr -d "${DISPLAY}" -q 2>/dev/null | awk '/ connected/{print $1; exit}')"
+    output_name="${output_name:-screen}"
+    echo "Setting initial Xrandr viewport to ${TARGET_W}x${TARGET_H} on ${output_name}..."
+    mode_line="$(cvt "$TARGET_W" "$TARGET_H" "${DISPLAY_REFRESH:-60}" | grep Modeline | cut -d' ' -f3-)"
+    mode_name="${TARGET_W}x${TARGET_H}_${DISPLAY_REFRESH:-60}.00"
+    if xrandr -d "${DISPLAY}" --newmode "$mode_name" $mode_line; then
+        echo "Created Xrandr mode ${mode_name}."
+    else
+        echo "Xrandr mode ${mode_name} already exists or cannot be created; continuing startup."
+    fi
+    if xrandr -d "${DISPLAY}" --addmode "${output_name}" "$mode_name"; then
+        echo "Attached Xrandr mode ${mode_name} to ${output_name}."
+    else
+        echo "Xrandr mode ${mode_name} already attached or cannot be added; continuing startup."
+    fi
+    if xrandr -d "${DISPLAY}" --output "${output_name}" --mode "$mode_name"; then
+        echo "Viewport scaled successfully."
+    else
+        echo "WARNING: Failed to apply initial Xrandr viewport ${TARGET_W}x${TARGET_H}; continuing startup."
+    fi
+}
+
+start_xvfb_server
+wait_for_x_socket || exit 1
+export BDWIND_DISPLAY_SERVER="xvfb"
+
+apply_initial_xrandr_viewport
 
 # Ensure user config directories exist with correct permissions
 mkdir -p ~/.config ~/.local/share ~/.cache
@@ -203,15 +232,13 @@ PY
     echo "Detected compute-only GPU or No GPU. Falling back to software encoding (x264enc)."
 fi
 
-# Use VirtualGL to run the KDE desktop environment with OpenGL if the GPU is available, otherwise use OpenGL with llvmpipe
+# Use Xvfb for the EGL desktop capture path. GPU work happens later in the
+# GStreamer CUDA/NVENC pipeline, so the X server itself does not need GLX.
 export XDG_SESSION_ID="${DISPLAY#*:}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-*.debug=false;qt.qpa.*=false}"
-# Plasma's panel and desktop icons are Qt Quick surfaces. In the EGL/Xvfb
-# capture path, the default scene graph backend can create valid X windows
-# without painting them into the Xvfb framebuffer. Use software Qt Quick for
-# the desktop shell; accelerated rendering remains available to launched apps.
 export QT_QUICK_BACKEND="${BDWIND_PLASMA_QT_QUICK_BACKEND:-software}"
 export QSG_RENDER_LOOP="${BDWIND_PLASMA_QSG_RENDER_LOOP:-basic}"
+export KWIN_COMPOSE="${KWIN_COMPOSE:-N}"
 
 KDE_DISPLAY_TOKEN="${DISPLAY//[:.]/_}"
 if ! pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 \
@@ -308,9 +335,9 @@ fi
 
 echo "Session Running. Press [Return] to exit."
 while true; do
-    if ! kill -0 "${XVFB_PID}" 2>/dev/null; then
-        echo "Xvfb exited; restarting desktop through supervisor."
-        wait "${XVFB_PID}" 2>/dev/null || true
+    if ! kill -0 "${XSERVER_PID}" 2>/dev/null; then
+        echo "${XSERVER_KIND} exited; restarting desktop through supervisor."
+        wait "${XSERVER_PID}" 2>/dev/null || true
         exit 1
     fi
 

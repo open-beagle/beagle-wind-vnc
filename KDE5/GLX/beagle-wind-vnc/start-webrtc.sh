@@ -101,7 +101,7 @@ def value_to_env(value):
     return str(value)
 
 for key, value in sorted(data.items()):
-    if key.startswith("BDWIND_") and value is not None:
+    if key.startswith("BDWIND_") and value not in (None, ""):
         print("export {}={}".format(key, shlex.quote(value_to_env(value))))
 
 phys = data.get("BDWIND_PHYSICAL_RESOLUTION")

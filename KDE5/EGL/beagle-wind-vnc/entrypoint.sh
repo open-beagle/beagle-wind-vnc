@@ -170,7 +170,9 @@ wait_for_x_socket() {
 
 start_xvfb_server() {
     echo "Starting Xvfb ${DISPLAY}"
-    /usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" -extension "GLX" -nolisten "tcp" -ac -noreset -shmem &
+    # Keep GLX exposed on the 2D Xvfb display. VirtualGL's EGL backend handles
+    # GPU rendering, but GLX-based GUI apps still query DISPLAY for visuals.
+    /usr/bin/Xvfb "${DISPLAY}" -screen 0 7680x4320x"${DISPLAY_CDEPTH}" -dpi "${DISPLAY_DPI}" +extension "COMPOSITE" +extension "DAMAGE" +extension "RANDR" +extension "RENDER" +extension "MIT-SHM" +extension "XFIXES" +extension "XTEST" +extension "GLX" -nolisten "tcp" -ac -noreset -shmem &
     XSERVER_PID="$!"
     XSERVER_KIND="xvfb"
 }

@@ -117,13 +117,26 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       gstreamer1.0-plugins-bad \
       gir1.2-gstreamer-1.0 \
       gir1.2-gst-plugins-base-1.0 && \
-    apt-get install --no-install-recommends -y libnvidia-egl-wayland1 libnvidia-egl-gbm1 || true && \
+    (apt-get install --no-install-recommends -y libnvidia-egl-wayland1 libnvidia-egl-gbm1 || true) && \
     locale-gen en_US.UTF-8 zh_CN.UTF-8 zh_CN.GBK && \
     update-locale LANG=zh_CN.UTF-8 && \
     ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
     echo "${TZ}" >/etc/timezone && \
-    groupadd -g 1000 beagle 2>/dev/null || true && \
-    useradd -ms /bin/bash -u 1000 -g 1000 beagle 2>/dev/null || true && \
+    if getent group 1000 >/dev/null; then \
+      group_name="$(getent group 1000 | cut -d: -f1)"; \
+      if [ "${group_name}" != "beagle" ]; then groupmod -n beagle "${group_name}"; fi; \
+    else \
+      groupadd -g 1000 beagle; \
+    fi && \
+    if id -u beagle >/dev/null 2>&1; then \
+      usermod -u 1000 -g 1000 -d /home/beagle -m -s /bin/bash beagle; \
+    elif getent passwd 1000 >/dev/null; then \
+      user_name="$(getent passwd 1000 | cut -d: -f1)"; \
+      usermod -l beagle -d /home/beagle -m -s /bin/bash "${user_name}"; \
+      usermod -g 1000 beagle; \
+    else \
+      useradd -ms /bin/bash -u 1000 -g 1000 beagle; \
+    fi && \
     for group in adm audio cdrom dialout dip games input netdev plugdev render sudo tty video; do \
       getent group "${group}" >/dev/null || groupadd -r "${group}" 2>/dev/null || true; \
     done && \

@@ -20,7 +20,9 @@ ARG GSTREAMER_VERSION=1.28.2
 ENV DEBIAN_FRONTEND=noninteractive
 
 # --- Step 1+2+3: System + GStreamer Build Deps + Codecs ---
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
+    sed -i 's/security.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
+    apt-get update && apt-get install --no-install-recommends -y \
     apt-utils build-essential ca-certificates curl git gzip \
     pkg-config tar xz-utils \
     autopoint autoconf automake autotools-dev binutils bison flex gettext \

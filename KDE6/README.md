@@ -1,6 +1,6 @@
-# KDE6 Wayland Image
+# KDE6 Image
 
-This directory contains the KDE Plasma 6 Wayland image for the next KDE6 retest round.
+This directory contains the KDE Plasma 6 image for the next KDE6 retest round.
 
 The goal is not to replace the current production X11 image yet. This image exists to validate:
 
@@ -13,7 +13,7 @@ The goal is not to replace the current production X11 image yet. This image exis
 
 ```bash
 cd vnc
-docker build -f .beagle/kde6-wayland.Dockerfile -t beagle-wind-vnc:1.2.0 .
+docker build -f .beagle/kde6.Dockerfile -t beagle-wind-vnc:1.2.0 .
 ```
 
 The Dockerfile defaults to `ubuntu:26.04` because Ubuntu 24.04 does not provide KDE Plasma 6 as the normal desktop stack.
@@ -24,7 +24,7 @@ If the tarball is missing or the version is not 1.28.4, the image build must fai
 To override the artifact URL:
 
 ```bash
-docker build -f .beagle/kde6-wayland.Dockerfile \
+docker build -f .beagle/kde6.Dockerfile \
   --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz \
   -t beagle-wind-vnc:1.2.0 .
 ```
@@ -35,7 +35,7 @@ Minimal local run:
 
 ```bash
 docker run --rm -it \
-  --name kde6-wayland \
+  --name kde6 \
   --security-opt seccomp=unconfined \
   --security-opt apparmor=unconfined \
   --shm-size=4g \
@@ -53,7 +53,7 @@ GStreamer 1.28.4 is baked into the image. Enable WebRTC after Portal has returne
 
 ```bash
 docker run --rm -it \
-  --name kde6-wayland \
+  --name kde6 \
   --security-opt seccomp=unconfined \
   --security-opt apparmor=unconfined \
   --shm-size=4g \

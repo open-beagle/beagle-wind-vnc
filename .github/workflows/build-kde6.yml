@@ -1,9 +1,9 @@
-name: Build KDE6 Wayland Image
+name: Build KDE6 Image
 
 on:
   push:
     branches:
-      - kde6-wayland
+      - kde6
 
 jobs:
   build:
@@ -30,22 +30,21 @@ jobs:
           username: ${{ secrets.REGISTRY_USER_ALIYUN }}
           password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
 
-      - name: Build and push Docker image - kde6-wayland
+      - name: Build and push Docker image - kde6
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/kde6-wayland.Dockerfile
+          file: ./.beagle/kde6.Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:1.2.0
-            ghcr.io/${{ github.repository }}:latest-kde6-wayland
+            ghcr.io/${{ github.repository }}:latest-kde6
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:1.2.0
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest-kde6-wayland
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:latest-kde6
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:26.04
             GSTREAMER_VERSION=1.28.4
-            GSTREAMER_OS_SUFFIX=ubuntu2604
             GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz
           no-cache: true
 

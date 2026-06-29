@@ -15,7 +15,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
 
 ENV TZ="${TZ}"
-ENV PASSWD=mypasswd
 ENV LANG=zh_CN.UTF-8
 ENV LANGUAGE=zh_CN:zh
 ENV LC_ALL=zh_CN.UTF-8
@@ -125,10 +124,12 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
     echo "${TZ}" >/etc/timezone && \
     groupadd -g 1000 beagle 2>/dev/null || true && \
     useradd -ms /bin/bash -u 1000 -g 1000 beagle 2>/dev/null || true && \
-    usermod -a -G adm,audio,cdrom,dialout,dip,games,input,netdev,plugdev,render,sudo,tty,video beagle || true && \
+    for group in adm audio cdrom dialout dip games input netdev plugdev render sudo tty video; do \
+      getent group "${group}" >/dev/null || groupadd -r "${group}" 2>/dev/null || true; \
+    done && \
+    usermod -a -G adm,audio,cdrom,dialout,dip,games,input,netdev,plugdev,render,sudo,tty,video beagle && \
     echo "beagle ALL=(ALL:ALL) NOPASSWD: ALL" >/etc/sudoers.d/99-beagle && \
     chmod 0440 /etc/sudoers.d/99-beagle && \
-    echo "beagle:${PASSWD}" | chpasswd && \
     mkdir -p /run/user/1000 /home/beagle/.config /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
     chown -R beagle:beagle /run/user/1000 /home/beagle /var/lib/nginx && \
     sed -i -e 's#/var/log/nginx/access.log#/dev/stdout#g' -e 's#/var/log/nginx/error.log#/dev/stderr#g' -e 's#/run/nginx.pid#/tmp/nginx.pid#g' /etc/nginx/nginx.conf && \

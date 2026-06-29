@@ -1,0 +1,40 @@
+name: Build GStreamer 1.28.4 Ubuntu 26.04 Image
+
+on:
+  push:
+    branches:
+      - kde6-gstreamer-ubuntu2604
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-qingdao.aliyuncs.com
+          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
+          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
+
+      - name: Build and push Docker image - kde6-gstreamer-ubuntu2604
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./.beagle/kde5-gstreamer-ubuntu2404.Dockerfile
+          push: true
+          tags: |
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.4-ubuntu2604
+          platforms: linux/amd64
+          build-args: |
+            BASE=ubuntu:26.04
+            GSTREAMER_VERSION=1.28.4
+
+      - name: Image push success
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.4-ubuntu2604"

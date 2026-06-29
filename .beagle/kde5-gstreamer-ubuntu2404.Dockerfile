@@ -12,7 +12,10 @@
 #     bash scripts/build.sh
 # ==============================================================================
 
-FROM ubuntu:24.04
+ARG BASE=ubuntu:24.04
+FROM ${BASE}
+
+ARG GSTREAMER_VERSION=1.28.2
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -47,7 +50,6 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     cargo install cargo-c
 
 # --- Step 6 (partial): Pre-clone GStreamer source to save bandwidth ---
-ENV GSTREAMER_VERSION="1.28.2"
 RUN git clone --single-branch --depth 1 --branch "${GSTREAMER_VERSION}" \
         "https://github.com/GStreamer/gstreamer.git" /opt/gst-src && \
     cd /opt/gst-src && \

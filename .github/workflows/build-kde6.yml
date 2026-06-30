@@ -46,6 +46,7 @@ jobs:
             BASE=ubuntu:26.04
             GSTREAMER_VERSION=1.28.4
             GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz
+            WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz
           no-cache: true
 
       - name: Image push success

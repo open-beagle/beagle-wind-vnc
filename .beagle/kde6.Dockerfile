@@ -3,6 +3,7 @@ FROM ${BASE}
 
 ARG GSTREAMER_VERSION=1.28.4
 ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz
+ARG WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2.tar.gz
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
@@ -10,6 +11,7 @@ LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image for Porta
 LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.tarball="${GSTREAMER_TARBALL_URL}"
+LABEL com.beagle.webrtc.tarball="${WEBRTC_TARBALL_URL}"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
@@ -38,6 +40,7 @@ ENV BDWIND_KDE6_MODE=kwin-virtual
 ENV BDWIND_PORTAL_VIRTUAL_PROBE=true
 ENV BDWIND_ENABLE_WEBRTC=false
 ENV BDWIND_GSTREAMER_REQUIRED_VERSION="${GSTREAMER_VERSION}"
+ENV BDWIND_WEB_ROOT=/opt/bdwind/webrtc
 ENV GSTREAMER_PATH=/opt/gstreamer
 ENV PATH="/opt/gstreamer/hooks:/opt/gstreamer/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/gstreamer/lib/x86_64-linux-gnu"
@@ -72,6 +75,7 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       python3 \
       python3-dbus \
       python3-gi \
+      python3-pil \
       python3-pip \
       python3-setuptools \
       python3-wheel \
@@ -153,12 +157,19 @@ RUN mkdir -p /opt && \
     echo "Downloading bdwind-gstreamer ${GSTREAMER_VERSION} from ${GSTREAMER_TARBALL_URL}" && \
     curl -fsSL "${GSTREAMER_TARBALL_URL}" | tar -xzf - -C /opt && \
     test -x /opt/gstreamer/gst-env && \
+    sed -i 's/import json, urllib\.parse, os/import urllib.parse/g' /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer/signaling/signaling_server.py && \
     . /opt/gstreamer/gst-env && \
     gst-launch-1.0 --version | tee /tmp/bdwind-gstreamer-version.txt && \
     grep -Eq "(GStreamer|version) ${GSTREAMER_VERSION}" /tmp/bdwind-gstreamer-version.txt && \
     gst-inspect-1.0 pipewiresrc | tee /tmp/bdwind-pipewiresrc.txt && \
     grep -q "Filename" /tmp/bdwind-pipewiresrc.txt && \
     rm -f /tmp/bdwind-gstreamer-version.txt /tmp/bdwind-pipewiresrc.txt
+
+RUN mkdir -p /opt/bdwind/webrtc && \
+    echo "Downloading bdwind WebRTC frontend from ${WEBRTC_TARBALL_URL}" && \
+    curl -fsSL "${WEBRTC_TARBALL_URL}" | tar -xzf - -C /opt/bdwind/webrtc && \
+    test -f /opt/bdwind/webrtc/index.html && \
+    test -d /opt/bdwind/webrtc/assets
 
 COPY KDE6/beagle-wind-vnc/ /etc/beagle-wind-vnc/
 

@@ -11,6 +11,9 @@ mode="${BDWIND_KDE6_MODE:-kwin-virtual}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland}"
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:-kwin_wayland_drm=true;kwin_core=true;kpipewire=true}"
 
+/etc/beagle-wind-vnc/disable-kde-screen-locker.sh
+/etc/beagle-wind-vnc/ensure-kde-portal-desktop.sh
+
 case "${mode}" in
     plasma-wayland)
         echo "[kde6] starting full Plasma Wayland session"

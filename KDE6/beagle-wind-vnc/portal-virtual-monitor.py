@@ -4,6 +4,7 @@ import re
 import signal
 import socket
 import shlex
+import subprocess
 import sys
 import threading
 import time
@@ -85,6 +86,29 @@ def float_env(name, default):
         return float(os.environ.get(name, str(default)))
     except ValueError:
         return default
+
+
+def select_cursor_mode(available_modes):
+    requested = os.environ.get("BDWIND_PORTAL_CURSOR_MODE", "hidden").strip().lower()
+    aliases = {
+        "hidden": 1,
+        "hide": 1,
+        "off": 1,
+        "metadata": 4,
+        "embedded": 2,
+        "embed": 2,
+        "video": 2,
+    }
+    preferred = aliases.get(requested)
+    if preferred and (available_modes & preferred):
+        return preferred
+    if available_modes & 1:
+        return 1
+    if available_modes & 4:
+        return 4
+    if available_modes & 2:
+        return 2
+    return 0
 
 
 def install_signal_handlers():
@@ -253,6 +277,36 @@ def keep_session_alive(values, owned_fds, screencast, session):
     serve_fd_broker(values, screencast, session, owned_fds[0])
     set_status(values, "stopping")
     print("[portal-probe] keepalive stopping", flush=True)
+
+
+def ensure_captured_panel_after_portal_start():
+    if not bool_env("BDWIND_KDE6_CAPTURED_PANEL_AFTER_PORTAL", True):
+        return
+    script = os.environ.get(
+        "BDWIND_KDE6_CAPTURED_PANEL_SCRIPT",
+        "/etc/beagle-wind-vnc/ensure-plasma-captured-panel.sh",
+    )
+    if not Path(script).is_file():
+        print(f"[portal-probe] captured panel ensure script missing: {script}", flush=True)
+        return
+    timeout = int_env("BDWIND_KDE6_CAPTURED_PANEL_AFTER_PORTAL_TIMEOUT", 120)
+    try:
+        result = subprocess.run(
+            [script],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        output = (result.stdout or "") + (result.stderr or "")
+        for line in output.splitlines():
+            print(f"[portal-probe] panel-ensure: {line}", flush=True)
+        if result.returncode != 0:
+            print(f"[portal-probe] panel-ensure exited with {result.returncode}", flush=True)
+    except subprocess.TimeoutExpired:
+        print(f"[portal-probe] panel-ensure timed out after {timeout}s", flush=True)
+    except Exception as exc:
+        print(f"[portal-probe] panel-ensure failed: {exc}", flush=True)
 
 
 def pad4(length):
@@ -601,10 +655,11 @@ def main():
         "types": dbus.UInt32(4),
         "multiple": dbus.Boolean(False),
     }
-    if cursor_modes & 2:
-        select_opts["cursor_mode"] = dbus.UInt32(2)
-    elif cursor_modes & 1:
-        select_opts["cursor_mode"] = dbus.UInt32(1)
+    cursor_mode = select_cursor_mode(cursor_modes)
+    if cursor_mode:
+        select_opts["cursor_mode"] = dbus.UInt32(cursor_mode)
+        values["BDWIND_PORTAL_CURSOR_MODE"] = str(cursor_mode)
+        print(f"[portal-probe] cursor_mode={cursor_mode}", flush=True)
 
     call_request(bus, screencast, "SelectSources", session, select_opts, timeout=60)
     print("[portal-probe] SelectSources ok", flush=True)
@@ -640,6 +695,8 @@ def main():
     except Exception as exc:
         print(f"[portal-probe] OpenPipeWireRemote failed: {exc}", flush=True)
         values["BDWIND_PORTAL_ERROR"] = f"OpenPipeWireRemote failed: {exc}"
+
+    ensure_captured_panel_after_portal_start()
 
     if owned_fds and bool_env("BDWIND_PORTAL_KEEPALIVE", False):
         keep_session_alive(values, owned_fds, screencast, session)

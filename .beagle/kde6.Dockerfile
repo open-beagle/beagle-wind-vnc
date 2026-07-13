@@ -26,6 +26,8 @@ ENV DISPLAY_REFRESH=60
 ENV XDG_SESSION_TYPE=wayland
 ENV XDG_CURRENT_DESKTOP=KDE
 ENV XDG_SESSION_DESKTOP=KDE
+ENV XDG_CONFIG_DIRS=/etc/xdg
+ENV XDG_MENU_PREFIX=plasma-
 ENV DESKTOP_SESSION=plasma
 ENV KDE_FULL_SESSION=true
 ENV KDE_SESSION_VERSION=6
@@ -104,6 +106,7 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       xdg-utils \
       xclip \
       wl-clipboard \
+      wev \
       mesa-utils \
       vulkan-tools \
       libdrm2 \

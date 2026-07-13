@@ -5,7 +5,7 @@ set -e
 
 if [ "${BDWIND_ENABLE_WEBRTC}" != "true" ]; then
     echo "[kde6] BDWIND_ENABLE_WEBRTC=false; skipping WebRTC runtime"
-    exit 0
+    exec sleep infinity
 fi
 
 if [ ! -x /opt/gstreamer/gst-env ]; then

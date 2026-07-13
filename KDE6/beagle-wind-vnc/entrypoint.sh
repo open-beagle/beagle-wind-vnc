@@ -23,6 +23,12 @@ sudo mkdir -p /run/dbus /tmp/.X11-unix /tmp/.ICE-unix "${PULSE_RUNTIME_PATH}" ||
 sudo chmod 1777 /tmp/.X11-unix /tmp/.ICE-unix || true
 sudo chown -R "$(id -u):$(id -g)" "${XDG_RUNTIME_DIR}" "${PULSE_RUNTIME_PATH}" || true
 
+if [ ! -e /etc/xdg/menus/applications.menu ] \
+    && [ -n "${XDG_MENU_PREFIX:-}" ] \
+    && [ -f "/etc/xdg/menus/${XDG_MENU_PREFIX}applications.menu" ]; then
+    sudo ln -snf "${XDG_MENU_PREFIX}applications.menu" /etc/xdg/menus/applications.menu || true
+fi
+
 sudo rm -f "${XDG_RUNTIME_DIR}"/wayland-* "${XDG_RUNTIME_DIR}"/kwin* "${XDG_RUNTIME_DIR}"/pipewire-* "${XDG_RUNTIME_DIR}"/bus 2>/dev/null || true
 
 if [ ! -e /dev/dri/renderD128 ]; then

@@ -1,5 +1,5 @@
 # ==============================================================================
-# GStreamer 1.28.2 Build Base Image
+# GStreamer Build Base Image
 #
 # This image pre-installs ALL build dependencies (apt, pip, rust, cargo-c)
 # and pre-clones GStreamer source so that scripts/build.sh only patches and compiles.
@@ -8,8 +8,8 @@
 #   docker run --rm -it \
 #     -v $(pwd)/gstreamer:/workspace \
 #     -w /workspace \
-#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.2 \
-#     bash scripts/build.sh
+#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-${GSTREAMER_VERSION} \
+#     bash KDE6/build.sh
 # ==============================================================================
 
 ARG BASE=ubuntu:24.04
@@ -20,8 +20,8 @@ ARG GSTREAMER_VERSION=1.28.2
 ENV DEBIAN_FRONTEND=noninteractive
 
 # --- Step 1+2+3: System + GStreamer Build Deps + Codecs ---
-RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
-    sed -i 's/security.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
+RUN sed -i 's#http://archive.ubuntu.com#http://azure.archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
+    sed -i 's#http://security.ubuntu.com#http://azure.archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true && \
     apt-get update && apt-get install --no-install-recommends -y \
     apt-utils build-essential ca-certificates curl git gzip \
     pkg-config tar xz-utils \
@@ -33,11 +33,12 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
     libssl-dev libva-dev libvpx-dev libx264-dev libx265-dev \
     libdrm-dev libegl-dev libgl-dev libopengl-dev libgles-dev \
     libglvnd-dev libglx-dev wayland-protocols libwayland-dev \
+    libinput-dev libxkbcommon-dev libgbm-dev libudev-dev libclang-dev \
     libwayland-egl-backend-dev libx11-xcb-dev libxcb-dri3-dev libxcb-sync-dev \
     libxdamage-dev libxfixes-dev libxv-dev libxtst-dev libxext-dev \
     libpipewire-0.3-dev libspa-0.2-dev \
     libopenh264-dev svt-av1 libsvtav1enc-dev aom-tools libaom-dev \
-    python3-pip python3-dev python-gi-dev python3-pil && \
+    python3-pip python3-dev python-gi-dev python3-pil python3-setuptools && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Step 4: Meson / Ninja / Python tools ---

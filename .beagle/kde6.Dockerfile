@@ -224,6 +224,13 @@ RUN apt-get update && \
     test -x /usr/bin/code && \
     test -f /usr/share/applications/google-chrome.desktop && \
     test -f /usr/share/applications/code.desktop && \
+    test -f /usr/share/applications/baidunetdisk.desktop && \
+    ln -sf /usr/bin/qtpaths6 /usr/local/bin/qtpaths && \
+    sed -i \
+      's#^Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox#Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox --disable-gpu --disable-gpu-compositing#' \
+      /usr/share/applications/baidunetdisk.desktop && \
+    grep -q -- '--disable-gpu --disable-gpu-compositing' \
+      /usr/share/applications/baidunetdisk.desktop && \
     google-chrome-stable --version && \
     dpkg-query -W -f='${Package}=${Version}\n' \
       ark baidunetdisk code google-chrome-stable gwenview libreoffice-core okular vlc && \

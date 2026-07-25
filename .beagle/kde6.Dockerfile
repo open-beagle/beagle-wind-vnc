@@ -102,6 +102,7 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       qdbus-qt6 \
       kscreen \
       konsole \
+      kate \
       dolphin \
       xdg-utils \
       xclip \

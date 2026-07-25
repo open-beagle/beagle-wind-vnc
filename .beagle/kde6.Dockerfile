@@ -229,8 +229,14 @@ RUN apt-get update && \
     sed -i \
       's#^Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox#Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox --disable-gpu --disable-gpu-compositing#' \
       /usr/share/applications/baidunetdisk.desktop && \
+    sed -i \
+      's#^Exec=/usr/bin/google-chrome-stable#Exec=/usr/bin/google-chrome-stable --password-store=basic#' \
+      /usr/share/applications/google-chrome.desktop && \
     grep -q -- '--disable-gpu --disable-gpu-compositing' \
       /usr/share/applications/baidunetdisk.desktop && \
+    grep -q -- '--password-store=basic' \
+      /usr/share/applications/google-chrome.desktop && \
+    printf '[Wallet]\nEnabled=false\nFirst Use=false\n' >/etc/xdg/kwalletrc && \
     google-chrome-stable --version && \
     dpkg-query -W -f='${Package}=${Version}\n' \
       ark baidunetdisk code google-chrome-stable gwenview libreoffice-core okular vlc && \

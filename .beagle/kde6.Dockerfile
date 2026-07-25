@@ -2,7 +2,7 @@ ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
 ARG GSTREAMER_VERSION=1.28.4
-ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-893bbcb.tar.gz
+ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-c8556f7.tar.gz
 ARG WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-5fa72ba.tar.gz
 
 LABEL maintainer="https://github.com/open-beagle"

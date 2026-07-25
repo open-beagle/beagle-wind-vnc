@@ -38,8 +38,8 @@ ENV GBM_BACKEND=nvidia-drm
 ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
 ENV KWIN_OPENGL_INTERFACE=egl
 ENV KWIN_DRM_NO_DIRECT_SCANOUT=1
-ENV BDWIND_KDE6_MODE=kwin-virtual
-ENV BDWIND_PORTAL_VIRTUAL_PROBE=true
+ENV BDWIND_KDE6_MODE=nested-smithay
+ENV BDWIND_PORTAL_VIRTUAL_PROBE=false
 ENV BDWIND_ENABLE_WEBRTC=false
 ENV BDWIND_GSTREAMER_REQUIRED_VERSION="${GSTREAMER_VERSION}"
 ENV BDWIND_WEB_ROOT=/opt/bdwind/webrtc
@@ -65,6 +65,7 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       dbus-user-session \
       dbus-x11 \
       dnsutils \
+      fonts-noto-cjk \
       locales \
       sudo \
       supervisor \
@@ -127,6 +128,7 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
     (apt-get install --no-install-recommends -y libnvidia-egl-wayland1 libnvidia-egl-gbm1 || true) && \
     locale-gen en_US.UTF-8 zh_CN.UTF-8 zh_CN.GBK && \
     update-locale LANG=zh_CN.UTF-8 && \
+    fc-match -f '%{family}\n' 'sans-serif:lang=zh-cn' | grep -q 'Noto Sans CJK SC' && \
     ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
     echo "${TZ}" >/etc/timezone && \
     if getent group 1000 >/dev/null; then \

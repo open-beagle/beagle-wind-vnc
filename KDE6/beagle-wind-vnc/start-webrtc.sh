@@ -22,18 +22,16 @@ if ! printf '%s\n' "${gst_version}" | grep -Eq "(GStreamer|version) ${BDWIND_GST
     exit 67
 fi
 
-if [ -f /tmp/kde6-portal-virtual.env ]; then
-    . /tmp/kde6-portal-virtual.env
-fi
-
 export BDWIND_RENDER_ENGINE="wayland"
-export BDWIND_CAPTURE_SOURCE="pipewiresrc"
+export BDWIND_CAPTURE_SOURCE="smithay-rtp"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 export BDWIND_PORT_GSTREAMER="${BDWIND_PORT_GSTREAMER:-${BDWIND_PORT_NGINX:-8080}}"
 export BDWIND_STUN_UDP_MIN="${BDWIND_STUN_UDP_MIN:-${BDWIND_UDP_PORT_MIN:-0}}"
 export BDWIND_STUN_UDP_MAX="${BDWIND_STUN_UDP_MAX:-${BDWIND_UDP_PORT_MAX:-0}}"
 
-until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] || ls "${XDG_RUNTIME_DIR}"/wayland-* >/dev/null 2>&1; do
+until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] \
+    && [ -S "${BDWIND_SMITHAY_CONTROL_SOCKET}" ] \
+    && [ -r "${BDWIND_SMITHAY_STATUS_FILE}" ]; do
     sleep 0.5
 done
 

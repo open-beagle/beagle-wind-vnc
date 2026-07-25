@@ -1,37 +1,78 @@
-# KDE6 Image
+# KDE6 Smithay Runtime
 
-This directory contains the KDE Plasma 6 image for the next KDE6 retest round.
+This image runs KDE Plasma 6 as a nested Wayland desktop on top of
+`gst-wayland-display`.
 
-The goal is not to replace the current production X11 image yet. This image exists to validate:
+The video path is:
 
-1. XDG Desktop Portal ScreenCast `VIRTUAL` source type.
-2. KWin virtual output behavior and future resize support.
-3. NVIDIA Allocator / GBM behavior under `kwin_wayland --virtual`.
-4. GStreamer 1.28.4 PipeWire / DMABuf / GL / CUDA bridge routes.
+```text
+Plasma / applications
+  -> nested KWin
+  -> waylanddisplaysrc (embedded Smithay compositor)
+  -> BGRA CUDAMemory
+  -> NVIDIA H.264 NVENC
+  -> localhost RTP
+  -> existing BDWind GStreamer/WebRTC service
+  -> browser
+```
+
+Portal/PipeWire is not the video capture backend and is not a runtime fallback.
+PipeWire remains available for audio, while desktop portals may still be used
+for non-video desktop services such as file selection.
+
+## Invariants
+
+1. `smithay-display` owns the outer Wayland display and survives browser peer
+   disconnects.
+2. KWin connects to that outer display and exposes the fixed inner socket
+   `bdwind-kde6` to Plasma and applications.
+3. Raw frames stay in `memory:CUDAMemory` until NVENC.
+4. Only pre-encoded H.264/RTP crosses the display/WebRTC process boundary.
+5. Raw and encoded queues retain at most one complete frame/access unit and
+   drop old data under pressure.
+6. Input is injected into the Smithay seat through source upstream/navigation
+   events, not Portal RemoteDesktop or `/dev/uinput`.
+7. No capture backend switch is offered. A failure is repaired on the Smithay
+   path rather than switching back to Portal video.
+
+## Pinned dependencies
+
+- GStreamer: `1.28.4`
+- `gst-wayland-display` stable commit:
+  `b15285a2f1bb4dae5725b049915a4971664fafc6`
+- Current NVIDIA validation target: RTX 4090 / driver `595.58.03`
+
+The image build must fail when the required GStreamer artifact or
+`waylanddisplaysrc` CUDA support is unavailable. It must not silently use a
+distribution GStreamer build or a system-memory framebuffer.
 
 ## Build
 
+From the `vnc` repository:
+
 ```bash
-cd vnc
-docker build -f .beagle/kde6.Dockerfile -t beagle-wind-vnc:1.2.0 .
+docker build \
+  -f .beagle/kde6.Dockerfile \
+  -t beagle-wind-vnc:1.2.0 \
+  .
 ```
 
-The Dockerfile defaults to `ubuntu:26.04` because Ubuntu 24.04 does not provide KDE Plasma 6 as the normal desktop stack.
-It downloads `bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz` into `/opt/gstreamer` during build and verifies `gst-launch-1.0 --version`.
-If the tarball is missing or the version is not 1.28.4, the image build must fail instead of falling back to the distribution GStreamer packages.
-`pipewiresrc` is also checked during build. Review its `Filename` line in the build log because that plugin is provided by PipeWire packaging rather than the GStreamer monorepo tarball.
+The image uses Ubuntu 26.04 because it provides the KDE Plasma 6 stack used by
+this runtime. GStreamer is installed under `/opt/gstreamer`.
 
-To override the artifact URL:
+To override the GStreamer artifact:
 
 ```bash
-docker build -f .beagle/kde6.Dockerfile \
+docker build \
+  -f .beagle/kde6.Dockerfile \
   --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz \
-  -t beagle-wind-vnc:1.2.0 .
+  -t beagle-wind-vnc:1.2.0 \
+  .
 ```
 
 ## Run
 
-Minimal local run:
+Minimal NVIDIA run:
 
 ```bash
 docker run --rm -it \
@@ -44,98 +85,176 @@ docker run --rm -it \
   -e BDWIND_PASSWORD=mypasswd \
   -e DISPLAY_SIZEW=1920 \
   -e DISPLAY_SIZEH=1080 \
-  -e BDWIND_PORTAL_VIRTUAL_PROBE=true \
-  -e BDWIND_ENABLE_WEBRTC=false \
-  beagle-wind-vnc:1.2.0
-```
-
-GStreamer 1.28.4 is baked into the image. Enable WebRTC after Portal has returned a PipeWire node:
-
-```bash
-docker run --rm -it \
-  --name kde6 \
-  --security-opt seccomp=unconfined \
-  --security-opt apparmor=unconfined \
-  --shm-size=4g \
-  --gpus all \
-  --device /dev/dri \
+  -e DISPLAY_REFRESH=60 \
   -e BDWIND_ENABLE_WEBRTC=true \
-  -e BDWIND_PIPEWIRE_ALWAYS_COPY=0 \
   -p 48080:8080 \
   beagle-wind-vnc:1.2.0
 ```
 
-## Modes
-
-`BDWIND_KDE6_MODE=kwin-virtual` starts KWin directly:
+Important runtime settings:
 
 ```text
-kwin_wayland --virtual --width $DISPLAY_SIZEW --height $DISPLAY_SIZEH --xwayland
+BDWIND_CAPTURE_SOURCE=smithay-rtp
+BDWIND_WAYLAND_INPUT_BACKEND=smithay-events
+BDWIND_SMITHAY_RTP_PORT=51000
+BDWIND_SMITHAY_VIDEO_BITRATE=12000
+BDWIND_SMITHAY_RENDER_NODE=/dev/dri/renderD128
+BDWIND_SMITHAY_CUDA_DEVICE_ID=0
+BDWIND_ENABLE_RESIZE=false
 ```
 
-`BDWIND_KDE6_MODE=plasma-wayland` starts the regular Plasma Wayland session:
+`BDWIND_CAPTURE_SOURCE` and `BDWIND_WAYLAND_INPUT_BACKEND` are fixed by the
+KDE6 runtime scripts. They are not compatibility toggles.
+
+## Process topology
+
+Supervisor starts the relevant components in this order:
 
 ```text
-startplasma-wayland
+dbus / PipeWire audio services
+  -> smithay-display
+  -> kwin-wayland
+  -> plasmashell
+  -> start-webrtc
 ```
 
-Use `kwin-virtual` for Portal virtual monitor and PipeWire ScreenCast tests first. Use `plasma-wayland` only when validating the full session.
+### `smithay-display`
 
-## Portal Virtual Probe
-
-When `BDWIND_PORTAL_VIRTUAL_PROBE=true`, supervisor runs:
+`/etc/beagle-wind-vnc/smithay-display.py` owns:
 
 ```text
-/etc/beagle-wind-vnc/portal-virtual-monitor.py
+waylanddisplaysrc
+  ! video/x-raw(memory:CUDAMemory),format=BGRA,
+      width=1920,height=1080,framerate=60/1
+  ! queue max-size-buffers=1 leaky=downstream
+  ! nvh264enc
+  ! h264parse
+  ! rtph264pay
+  ! udpsink 127.0.0.1:51000
 ```
 
-The probe checks `org.freedesktop.portal.ScreenCast.AvailableSourceTypes` and attempts:
+It publishes:
 
 ```text
-CreateSession
-  -> SelectSources(types=4)
-  -> Start
-  -> OpenPipeWireRemote
+/run/user/1000/bdwind-smithay-display.env
+/run/user/1000/bdwind-smithay-display.json
+/run/user/1000/bdwind-smithay-control.sock
 ```
 
-Results are written to:
+The JSON status contains source/encoded frame counts, average source FPS,
+framebuffer, memory type, encoder, last-frame age, input count and key-unit
+requests.
+
+### `kwin-wayland`
+
+KWin starts only after the outer display is ready:
+
+```bash
+kwin_wayland \
+  --wayland-display "${BDWIND_SMITHAY_WAYLAND_DISPLAY}" \
+  --socket bdwind-kde6 \
+  --xwayland \
+  --fullscreen true \
+  --width "${DISPLAY_SIZEW}" \
+  --height "${DISPLAY_SIZEH}" \
+  --output-count 1 \
+  --no-lockscreen
+```
+
+Plasma and applications use `WAYLAND_DISPLAY=bdwind-kde6`; they never connect
+directly to the outer Smithay socket.
+
+### `start-webrtc`
+
+The WebRTC process subscribes to the persistent encoded stream:
 
 ```text
-/tmp/kde6-portal-virtual.env
+udpsrc 127.0.0.1:51000
+  ! rtph264depay
+  ! h264parse
+  ! queue max-size-buffers=1 max-size-time=30ms leaky=downstream
+  ! rtph264pay
+  ! webrtcbin
 ```
 
-Expected useful values:
+There is no second H.264 encode. A browser refresh rebuilds only the WebRTC
+peer pipeline; `smithay-display`, KWin and Plasma remain alive.
+
+## Input
+
+The browser sends keyboard/pointer/touch messages over the input DataChannel.
+The WebRTC service forwards normalized events to
+`bdwind-smithay-control.sock`. The display daemon converts them into
+GStreamer upstream/navigation events for `waylanddisplaysrc`.
+
+Supported event families:
+
+- keyboard down/up/repeat and release-all;
+- absolute and relative pointer motion;
+- pointer buttons;
+- wheel;
+- touch;
+- force-key-unit requests.
+
+The GStreamer bus is used for state such as the `wayland.src` message. It is
+not the input transport.
+
+## Health checks
+
+Inside the container:
+
+```bash
+cat /run/user/1000/bdwind-smithay-display.json
+
+supervisorctl -s unix:///tmp/supervisor.sock status \
+  smithay-display kwin-wayland plasmashell start-webrtc
+```
+
+Expected source status:
+
+```json
+{
+  "ready": true,
+  "framebuffer": "1920x1080",
+  "refreshHz": 60,
+  "memory": "CUDAMemory",
+  "encoder": "nvh264enc",
+  "rtpPort": 51000
+}
+```
+
+Relevant logs:
 
 ```text
-BDWIND_PORTAL_VIRTUAL_AVAILABLE=1
-BDWIND_PORTAL_KDE_HAS_SCREENCAST_INTERFACE=1
-BDWIND_PORTAL_PROBE_PHASE=done
-BDWIND_PW_NODE_ID=<node-id>
-BDWIND_PW_FD_PRESENT=1
+/tmp/smithay-display.log
+/tmp/kwin-wayland.log
+/tmp/plasmashell.log
+/tmp/start-webrtc.log
 ```
 
-If the probe still fails, inspect these fields first:
+## Current limitations
 
-```text
-BDWIND_WAYLAND_SOCKET_PRESENT=1
-BDWIND_PORTAL_AVAILABLE_SOURCE_TYPES=7
-BDWIND_PORTAL_KDE_DESKTOP_FILE=<desktop-file>
-BDWIND_PORTAL_KDE_WAYLAND_INTERFACES=zkde_screencast_unstable_v1
-BDWIND_PORTAL_RESPONSE=<response-code>
-BDWIND_PORTAL_ERROR=<error>
-```
+- `waylanddisplaysrc` stable emits buffers at the negotiated fixed refresh
+  cadence even when there is no damage.
+- `OutputDamageTracker` data is not yet exported as `BDWindDamageMeta`.
+- NVENC therefore currently runs at the fixed 60 FPS release baseline.
+- Dynamic resolution is disabled.
+- KWin 6.6.4 with NVIDIA 595.58.03 may log
+  `GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT` or `GL_OUT_OF_MEMORY`; this is tracked
+  as a long-soak risk and must not trigger a Portal video fallback.
+- Relative pointer, wheel, touch, Chinese IME, audio and clipboard remain in
+  the explicit human acceptance matrix.
 
-## Retest Matrix
+## Acceptance
 
-After Portal can provide a PipeWire node, retest the GStreamer routes documented in `docs/debugs/KDE6.Wayland.md`:
+Before publishing an image, verify:
 
-```text
-pipewiresrc always-copy=true  -> videorate -> NVENC
-pipewiresrc always-copy=false -> videorate -> NVENC
-pipewiresrc -> glupload -> gldownload -> videorate -> NVENC
-pipewiresrc -> cudaupload -> cudaconvert -> videorate -> NVENC
-```
-
-## Current Risk
-
-KWin virtual output resize is still the main open risk. Creating a virtual monitor through Portal is standard API, but running resize depends on KWin support for resizing virtual outputs.
+1. 1080p60 and 4K60 negotiate `memory:CUDAMemory` at the NVENC sink.
+2. Browser video remains playing while Space and shortcuts are sent remotely.
+3. Repeated browser reloads do not change the Smithay/KWin/Plasma PIDs.
+4. Konsole typing, Dolphin scrolling, window drag/resize and idle/wakeup do
+   not produce a persistent 0 FPS state.
+5. The active path reports H.264 hardware encoding and no sustained packet
+   loss.
+6. No CPU framebuffer copy or Portal ScreenCast owner appears in the video
+   path.

@@ -58,7 +58,10 @@ export BDWIND_SMITHAY_VIDEO_BITRATE="${BDWIND_SMITHAY_VIDEO_BITRATE:-12000}"
 export BDWIND_SMITHAY_CURSOR_MODE="${BDWIND_SMITHAY_CURSOR_MODE:-hidden}"
 export BDWIND_WAYLAND_INPUT_BACKEND="smithay-events"
 export BDWIND_VIDEO_FORCE_KEYUNIT_ON_CONNECT="${BDWIND_VIDEO_FORCE_KEYUNIT_ON_CONNECT:-true}"
-export BDWIND_EXIT_AFTER_PIPELINE_STOP="${BDWIND_KDE6_EXIT_AFTER_PIPELINE_STOP:-false}"
+# webrtcbin/libnice can retain sockets and eventfds after repeated in-process
+# pipeline rebuilds. The KDE desktop is owned by the persistent Smithay/KWin
+# processes, so recycle only the WebRTC worker after each peer disconnect.
+export BDWIND_EXIT_AFTER_PIPELINE_STOP="${BDWIND_KDE6_EXIT_AFTER_PIPELINE_STOP:-true}"
 export BDWIND_PIPELINE_STOP_TIMEOUT_SEC="${BDWIND_PIPELINE_STOP_TIMEOUT_SEC:-8}"
 export BDWIND_KDE6_CAPTURED_PANEL="${BDWIND_KDE6_CAPTURED_PANEL:-true}"
 export BDWIND_KDE6_CAPTURED_PANEL_SCREEN="0"

@@ -21,6 +21,9 @@ export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-plasma-}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland}"
+export GTK_IM_MODULE="${GTK_IM_MODULE:-fcitx}"
+export QT_IM_MODULE="${QT_IM_MODULE:-fcitx}"
+export XMODIFIERS="${XMODIFIERS:-@im=fcitx}"
 export BDWIND_KWIN_NO_PERMISSION_CHECKS="${BDWIND_KWIN_NO_PERMISSION_CHECKS:-true}"
 if [ "${BDWIND_KWIN_NO_PERMISSION_CHECKS}" = "true" ]; then
     export KWIN_WAYLAND_NO_PERMISSION_CHECKS=1

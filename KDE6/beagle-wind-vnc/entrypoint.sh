@@ -10,6 +10,10 @@ export PASSWD="${BDWIND_PASSWORD:-${PASSWD:-mypasswd}}"
 mkdir -p "${XDG_RUNTIME_DIR}" "${HOME}/.config" "${HOME}/.local/share" "${HOME}/.cache"
 chmod 700 "${XDG_RUNTIME_DIR}" "${HOME}/.config" "${HOME}/.local" "${HOME}/.cache" 2>/dev/null || true
 
+if [ ! -f "${HOME}/.config/fcitx5/profile" ]; then
+    install -Dm600 /etc/beagle-wind-vnc/fcitx5-profile "${HOME}/.config/fcitx5/profile"
+fi
+
 if [ "$(stat -c '%u:%g' "${HOME}")" != "$(id -u):$(id -g)" ]; then
     sudo chown -R "$(id -u):$(id -g)" "${HOME}" || true
 fi

@@ -65,6 +65,10 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
       dbus-x11 \
       dnsutils \
       fonts-noto-cjk \
+      fcitx5 \
+      fcitx5-chinese-addons \
+      fcitx5-config-qt \
+      fcitx5-frontend-all \
       locales \
       sudo \
       supervisor \

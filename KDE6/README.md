@@ -65,7 +65,7 @@ To override the GStreamer artifact:
 ```bash
 docker build \
   -f .beagle/kde6.Dockerfile \
-  --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604.tar.gz \
+  --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-893bbcb.tar.gz \
   -t beagle-wind-vnc:1.2.0 \
   .
 ```

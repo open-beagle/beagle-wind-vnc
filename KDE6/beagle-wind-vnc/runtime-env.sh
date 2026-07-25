@@ -2,6 +2,7 @@
 
 export USER="${USER:-beagle}"
 export HOME="${HOME:-/home/beagle}"
+export SHELL="${SHELL:-/bin/bash}"
 export XDG_RUNTIME_DIR="${BDWIND_XDG_RUNTIME_DIR:-/run/user/1000}"
 export DBUS_SESSION_BUS_ADDRESS="${BDWIND_DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
 export DBUS_SYSTEM_BUS_ADDRESS="${BDWIND_DBUS_SYSTEM_BUS_ADDRESS:-unix:path=/run/dbus/system_bus_socket}"

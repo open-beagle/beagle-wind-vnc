@@ -84,6 +84,7 @@ Minimal NVIDIA run:
 ```bash
 docker run --rm -it \
   --name kde6 \
+  --hostname kde6 \
   --security-opt seccomp=unconfined \
   --security-opt apparmor=unconfined \
   --shm-size=4g \

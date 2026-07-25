@@ -119,7 +119,7 @@ RUN pip3 install \
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
       sh -s -- -y --default-toolchain "${RUST_VERSION}" && \
-    cargo install cargo-c
+    cargo install cargo-c --version 0.10.16 --locked
 
 RUN git clone \
       --single-branch \

@@ -1,4 +1,4 @@
-name: Build GStreamer 1.28.5 Ubuntu 26.04 Image
+name: Build KDE6 GStreamer Image
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./.beagle/kde5-gstreamer-ubuntu2404.Dockerfile
+          file: ./.beagle/kde6-gstreamer-ubuntu2604.Dockerfile
           push: true
           tags: |
             registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.5-ubuntu2604
@@ -35,6 +35,7 @@ jobs:
           build-args: |
             BASE=ubuntu:26.04
             GSTREAMER_VERSION=1.28.5
+            RUST_VERSION=1.88.0
 
       - name: Image push success
         run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.5-ubuntu2604"

@@ -2,16 +2,14 @@ ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
 ARG GSTREAMER_VERSION=1.28.5
-ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.5-ubuntu2604-eaabbfd.tar.gz
-ARG WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-5fa72ba.tar.gz
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
 LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image with Smithay capture and GStreamer 1.28.5"
 LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
-LABEL com.beagle.gstreamer.tarball="${GSTREAMER_TARBALL_URL}"
-LABEL com.beagle.webrtc.tarball="${WEBRTC_TARBALL_URL}"
+LABEL com.beagle.gstreamer.lock="/etc/beagle-wind-vnc/kde6-gstreamer.lock"
+LABEL com.beagle.webrtc.lock="/etc/beagle-wind-vnc/kde6-webrtc.lock"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
@@ -158,9 +156,18 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 
-RUN mkdir -p /opt && \
-    echo "Downloading bdwind-gstreamer ${GSTREAMER_VERSION} from ${GSTREAMER_TARBALL_URL}" && \
-    curl -fsSL "${GSTREAMER_TARBALL_URL}" | tar -xzf - -C /opt && \
+COPY .beagle/kde6-gstreamer.lock /etc/beagle-wind-vnc/kde6-gstreamer.lock
+
+RUN set -a && \
+    . /etc/beagle-wind-vnc/kde6-gstreamer.lock && \
+    set +a && \
+    test "${GSTREAMER_VERSION}" = "${GSTREAMER_VERSION_LOCKED}" && \
+    mkdir -p /opt && \
+    echo "Downloading bdwind-gstreamer ${GSTREAMER_VERSION} (${GSTREAMER_COMMIT}) from ${GSTREAMER_TARBALL_URL}" && \
+    curl -fsSL "${GSTREAMER_TARBALL_URL}" -o /tmp/bdwind-gstreamer.tar.gz && \
+    echo "${GSTREAMER_TARBALL_SHA256}  /tmp/bdwind-gstreamer.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/bdwind-gstreamer.tar.gz -C /opt && \
+    rm -f /tmp/bdwind-gstreamer.tar.gz && \
     test -x /opt/gstreamer/gst-env && \
     sed -i 's/import json, urllib\.parse, os/import urllib.parse/g' /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer/signaling/signaling_server.py && \
     . /opt/gstreamer/gst-env && \
@@ -170,9 +177,17 @@ RUN mkdir -p /opt && \
     grep -q "Filename" /tmp/bdwind-pipewiresrc.txt && \
     rm -f /tmp/bdwind-gstreamer-version.txt /tmp/bdwind-pipewiresrc.txt
 
-RUN mkdir -p /opt/bdwind/webrtc && \
-    echo "Downloading bdwind WebRTC frontend from ${WEBRTC_TARBALL_URL}" && \
-    curl -fsSL "${WEBRTC_TARBALL_URL}" | tar -xzf - -C /opt/bdwind/webrtc && \
+COPY .beagle/kde6-webrtc.lock /etc/beagle-wind-vnc/kde6-webrtc.lock
+
+RUN set -a && \
+    . /etc/beagle-wind-vnc/kde6-webrtc.lock && \
+    set +a && \
+    mkdir -p /opt/bdwind/webrtc && \
+    echo "Downloading bdwind WebRTC ${WEBRTC_VERSION_LOCKED} (${WEBRTC_COMMIT}) from ${WEBRTC_TARBALL_URL}" && \
+    curl -fsSL "${WEBRTC_TARBALL_URL}" -o /tmp/bdwind-webrtc.tar.gz && \
+    echo "${WEBRTC_TARBALL_SHA256}  /tmp/bdwind-webrtc.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/bdwind-webrtc.tar.gz -C /opt/bdwind/webrtc && \
+    rm -f /tmp/bdwind-webrtc.tar.gz && \
     test -f /opt/bdwind/webrtc/index.html && \
     test -d /opt/bdwind/webrtc/assets
 

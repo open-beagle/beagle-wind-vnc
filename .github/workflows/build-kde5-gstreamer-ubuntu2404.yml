@@ -1,4 +1,4 @@
-name: Build GStreamer Ubuntu 24.04 Image
+name: Build KDE5 GStreamer Image
 
 on:
   push:

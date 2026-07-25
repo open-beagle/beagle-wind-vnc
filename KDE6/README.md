@@ -60,14 +60,21 @@ docker build \
 The image uses Ubuntu 26.04 because it provides the KDE Plasma 6 stack used by
 this runtime. GStreamer is installed under `/opt/gstreamer`.
 
-To override the GStreamer artifact:
+The immutable GStreamer artifact URL, seven-character source commit, and
+SHA-256 checksum are pinned once in `.beagle/kde6-gstreamer.lock`. From the
+parent workspace, publish a completed build and update that lock with:
 
 ```bash
-docker build \
-  -f .beagle/kde6.Dockerfile \
-  --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.5-ubuntu2604-eaabbfd.tar.gz \
-  -t beagle-wind-vnc:1.2.0 \
-  .
+./scripts/publish-kde6-gstreamer.sh
+```
+
+Commit the resulting lock-file change before building the KDE6 image.
+
+The WebRTC frontend follows the same release process and is pinned in
+`.beagle/kde6-webrtc.lock`:
+
+```bash
+./scripts/publish-kde6-webrtc.sh
 ```
 
 ## Run

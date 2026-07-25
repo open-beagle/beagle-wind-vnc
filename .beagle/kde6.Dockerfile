@@ -10,6 +10,7 @@ LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.lock="/etc/beagle-wind-vnc/kde6-gstreamer.lock"
 LABEL com.beagle.webrtc.lock="/etc/beagle-wind-vnc/kde6-webrtc.lock"
+LABEL com.beagle.desktop.apps="chrome,code,libreoffice,vlc,okular,gwenview,ark"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
@@ -159,6 +160,65 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
     mkdir -p /run/user/1000 /home/beagle/.config /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi && \
     chown -R beagle:beagle /run/user/1000 /home/beagle /var/lib/nginx && \
     sed -i -e 's#/var/log/nginx/access.log#/dev/stdout#g' -e 's#/var/log/nginx/error.log#/dev/stderr#g' -e 's#/run/nginx.pid#/tmp/nginx.pid#g' /etc/nginx/nginx.conf && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
+
+# Baseline desktop application layer. Chrome and VS Code are downloaded from
+# their official Debian endpoints and baked into the image; their package
+# repositories are removed afterwards so a running desktop cannot drift.
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+      ark \
+      dolphin-plugins \
+      ffmpeg \
+      file \
+      filelight \
+      git \
+      gwenview \
+      htop \
+      kde-spectacle \
+      kdegraphics-thumbnailers \
+      kimageformat-plugins \
+      kio-extras \
+      kcalc \
+      libreoffice-calc \
+      libreoffice-impress \
+      libreoffice-kf6 \
+      libreoffice-l10n-zh-cn \
+      libreoffice-style-breeze \
+      libreoffice-writer \
+      nano \
+      okular \
+      pavucontrol \
+      transmission-qt \
+      unzip \
+      vim \
+      vlc \
+      xdg-user-dirs \
+      xz-utils \
+      zip && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+      "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
+      -o /tmp/google-chrome-stable.deb && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+      "https://update.code.visualstudio.com/latest/linux-deb-x64/stable" \
+      -o /tmp/vscode.deb && \
+    echo "code code/add-microsoft-repo boolean false" | debconf-set-selections && \
+    apt-get install --no-install-recommends -y \
+      /tmp/google-chrome-stable.deb \
+      /tmp/vscode.deb && \
+    rm -f \
+      /etc/apt/sources.list.d/google-chrome.list \
+      /etc/apt/sources.list.d/vscode.list \
+      /tmp/google-chrome-stable.deb \
+      /tmp/vscode.deb && \
+    test -x /usr/bin/google-chrome-stable && \
+    test -x /usr/bin/code && \
+    test -f /usr/share/applications/google-chrome.desktop && \
+    test -f /usr/share/applications/code.desktop && \
+    google-chrome-stable --version && \
+    dpkg-query -W -f='${Package}=${Version}\n' \
+      code google-chrome-stable libreoffice-core vlc okular gwenview ark && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 

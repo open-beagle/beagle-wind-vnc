@@ -2,6 +2,8 @@ ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
 ARG GSTREAMER_VERSION=1.28.5
+ARG BAIDUNETDISK_VERSION=4.17.7
+ARG BAIDUNETDISK_SHA256=50ec18f05626a13f57ef034630416d481682bc1018539f33397d5c71bc653b3d
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
@@ -10,7 +12,7 @@ LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.lock="/etc/beagle-wind-vnc/kde6-gstreamer.lock"
 LABEL com.beagle.webrtc.lock="/etc/beagle-wind-vnc/kde6-webrtc.lock"
-LABEL com.beagle.desktop.apps="chrome,code,libreoffice,vlc,okular,gwenview,ark"
+LABEL com.beagle.desktop.apps="chrome,code,baidunetdisk,libreoffice,vlc,okular,gwenview,ark"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
@@ -203,13 +205,19 @@ RUN apt-get update && \
     curl --retry 3 --retry-delay 2 -fsSL \
       "https://update.code.visualstudio.com/latest/linux-deb-x64/stable" \
       -o /tmp/vscode.deb && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+      "https://issuecdn.baidupcs.com/issue/netdisk/LinuxGuanjia/${BAIDUNETDISK_VERSION}/baidunetdisk_${BAIDUNETDISK_VERSION}_amd64.deb" \
+      -o /tmp/baidunetdisk.deb && \
+    echo "${BAIDUNETDISK_SHA256}  /tmp/baidunetdisk.deb" | sha256sum -c - && \
     echo "code code/add-microsoft-repo boolean false" | debconf-set-selections && \
     apt-get install --no-install-recommends -y \
+      /tmp/baidunetdisk.deb \
       /tmp/google-chrome-stable.deb \
       /tmp/vscode.deb && \
     rm -f \
       /etc/apt/sources.list.d/google-chrome.list \
       /etc/apt/sources.list.d/vscode.list \
+      /tmp/baidunetdisk.deb \
       /tmp/google-chrome-stable.deb \
       /tmp/vscode.deb && \
     test -x /usr/bin/google-chrome-stable && \
@@ -218,7 +226,7 @@ RUN apt-get update && \
     test -f /usr/share/applications/code.desktop && \
     google-chrome-stable --version && \
     dpkg-query -W -f='${Package}=${Version}\n' \
-      code google-chrome-stable libreoffice-core vlc okular gwenview ark && \
+      ark baidunetdisk code google-chrome-stable gwenview libreoffice-core okular vlc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 

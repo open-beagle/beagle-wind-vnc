@@ -1,13 +1,13 @@
 ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
-ARG GSTREAMER_VERSION=1.28.4
-ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-c8556f7.tar.gz
+ARG GSTREAMER_VERSION=1.28.5
+ARG GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.5-ubuntu2604-eaabbfd.tar.gz
 ARG WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-5fa72ba.tar.gz
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
-LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image for Portal VIRTUAL, KWin virtual output, and GStreamer 1.28.4 retesting"
+LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image with Smithay capture and GStreamer 1.28.5"
 LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.tarball="${GSTREAMER_TARBALL_URL}"

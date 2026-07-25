@@ -37,7 +37,7 @@ for non-video desktop services such as file selection.
 
 ## Pinned dependencies
 
-- GStreamer: `1.28.4`
+- GStreamer: `1.28.5`
 - `gst-wayland-display` stable commit:
   `b15285a2f1bb4dae5725b049915a4971664fafc6`
 - Current NVIDIA validation target: RTX 4090 / driver `595.58.03`
@@ -65,7 +65,7 @@ To override the GStreamer artifact:
 ```bash
 docker build \
   -f .beagle/kde6.Dockerfile \
-  --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-c8556f7.tar.gz \
+  --build-arg GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.5-ubuntu2604-eaabbfd.tar.gz \
   -t beagle-wind-vnc:1.2.0 \
   .
 ```

@@ -44,8 +44,8 @@ jobs:
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:26.04
-            GSTREAMER_VERSION=1.28.4
-            GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.4-ubuntu2604-c8556f7.tar.gz
+            GSTREAMER_VERSION=1.28.5
+            GSTREAMER_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-gstreamer-1.28.5-ubuntu2604-eaabbfd.tar.gz
             WEBRTC_TARBALL_URL=https://cache.ali.wodcloud.com/vscode/bdwind/bdwind-webrtc-1.28.2-5fa72ba.tar.gz
           no-cache: true
 

@@ -13,13 +13,15 @@ import signal
 import socket
 import threading
 import time
+from collections import deque
 
 import gi
 
 gi.require_version("GLib", "2.0")
 gi.require_version("Gst", "1.0")
+gi.require_version("GstCuda", "1.0")
 gi.require_version("GstVideo", "1.0")
-from gi.repository import GLib, GObject, Gst, GstVideo
+from gi.repository import GLib, GObject, Gst, GstCuda, GstVideo
 
 
 logging.basicConfig(
@@ -71,10 +73,25 @@ class SmithayDisplay:
         self.framerate = env_int("DISPLAY_REFRESH", 60, 1, 240)
         self.bitrate = env_int("BDWIND_SMITHAY_VIDEO_BITRATE", 12000, 100, 100000)
         self.rtp_port = env_int("BDWIND_SMITHAY_RTP_PORT", 51000, 1024, 65535)
+        self.gap_warn_ns = (
+            env_int("BDWIND_SMITHAY_GAP_WARN_MS", 25, 1, 10000) * 1_000_000
+        )
         self.render_node = os.environ.get(
             "BDWIND_SMITHAY_RENDER_NODE", "/dev/dri/renderD128"
         )
         self.cuda_device_id = env_int("BDWIND_SMITHAY_CUDA_DEVICE_ID", 0, 0, 31)
+        self.capture_memory = os.environ.get(
+            "BDWIND_SMITHAY_CAPTURE_MEMORY", "cuda"
+        ).strip().lower()
+        if self.capture_memory not in ("cuda", "system"):
+            raise ValueError(
+                "BDWIND_SMITHAY_CAPTURE_MEMORY must be cuda or system"
+            )
+        self.extern_cuda_pool_enabled = os.environ.get(
+            "BDWIND_SMITHAY_EXTERN_CUDA_POOL", "false"
+        ).strip().lower() in ("1", "true", "yes", "on")
+        self.external_cuda_context = None
+        self.external_cuda_pool = None
         self.cursor_mode = os.environ.get(
             "BDWIND_SMITHAY_CURSOR_MODE", "hidden"
         ).strip().lower()
@@ -86,11 +103,26 @@ class SmithayDisplay:
         self.mainloop = GLib.MainLoop()
         self.started_mono_ns = time.monotonic_ns()
         self.frame_count = 0
+        self.encoder_input_count = 0
         self.encoded_count = 0
+        self.frame_stats_count = 0
         self.input_count = 0
         self.keyunit_count = 0
         self.last_frame_mono_ns = 0
+        self.last_encoder_input_mono_ns = 0
+        self.last_encoded_mono_ns = 0
         self.last_input_mono_ns = 0
+        self.source_gap_count = 0
+        self.encoder_input_gap_count = 0
+        self.encoded_gap_count = 0
+        self.source_gap_max_ms = 0.0
+        self.encoder_input_gap_max_ms = 0.0
+        self.encoded_gap_max_ms = 0.0
+        self.encoder_latency_count = 0
+        self.encoder_latency_warn_count = 0
+        self.encoder_latency_max_ms = 0.0
+        self._encoder_input_times = deque()
+        self._encoder_timing_lock = threading.Lock()
         self.wayland_display = ""
         self._control_stop = threading.Event()
         self._control_thread = None
@@ -106,7 +138,7 @@ class SmithayDisplay:
 
     def _build_pipeline(self):
         self.source = self._make("waylanddisplaysrc", "smithay-display-source")
-        capsfilter = self._make("capsfilter", "smithay-display-cuda-caps")
+        capsfilter = self._make("capsfilter", "smithay-display-capture-caps")
         queue = self._make("queue", "smithay-display-encode-queue")
         self.encoder = self._make("nvh264enc", "smithay-display-nvenc")
         encoder_caps = self._make("capsfilter", "smithay-display-h264-caps")
@@ -117,14 +149,49 @@ class SmithayDisplay:
         self.source.set_property("render-node", self.render_node)
         set_if_present(self.source, "cuda-device-id", self.cuda_device_id)
         self.source.set_property("cursor-mode", self.cursor_mode)
-        capsfilter.set_property(
-            "caps",
-            Gst.Caps.from_string(
+        if self.capture_memory == "cuda":
+            capture_caps = (
                 "video/x-raw(memory:CUDAMemory),format=BGRA,"
                 "width=%d,height=%d,framerate=%d/1"
                 % (self.width, self.height, self.framerate)
-            ),
-        )
+            )
+        else:
+            # System memory forces the compositor to finish/read back each frame
+            # before NVENC consumes it.  It is intentionally available as a
+            # diagnostic fallback for hosts without DRM syncobj eventfd support.
+            capture_caps = (
+                "video/x-raw,format=RGBx,"
+                "width=%d,height=%d,framerate=%d/1"
+                % (self.width, self.height, self.framerate)
+            )
+        capsfilter.set_property("caps", Gst.Caps.from_string(capture_caps))
+        if self.capture_memory == "cuda" and self.extern_cuda_pool_enabled:
+            if not GstCuda.cuda_load_library():
+                raise RuntimeError("failed to load CUDA library for external pool")
+            self.external_cuda_context = GstCuda.CudaContext.new(
+                self.cuda_device_id
+            )
+            if self.external_cuda_context is None:
+                raise RuntimeError("failed to create external CUDA context")
+            self.external_cuda_pool = GstCuda.CudaBufferPool.new(
+                self.external_cuda_context
+            )
+            pool_config = self.external_cuda_pool.get_config()
+            video_info = GstVideo.VideoInfo.new_from_caps(
+                Gst.Caps.from_string(capture_caps)
+            )
+            Gst.BufferPool.config_set_params(
+                pool_config, Gst.Caps.from_string(capture_caps), video_info.size, 8, 8
+            )
+            GstCuda.buffer_pool_config_set_cuda_stream_ordered_alloc(
+                pool_config, False
+            )
+            if not self.external_cuda_pool.set_config(pool_config):
+                raise RuntimeError("failed to configure external CUDA buffer pool")
+            if not set_if_present(
+                self.encoder, "extern-cuda-bufferpool", self.external_cuda_pool
+            ):
+                raise RuntimeError("nvh264enc lacks extern-cuda-bufferpool")
 
         queue.set_property("max-size-buffers", 1)
         queue.set_property("max-size-bytes", 0)
@@ -135,7 +202,10 @@ class SmithayDisplay:
         set_if_present(self.encoder, "max-bitrate", self.bitrate)
         set_if_present(self.encoder, "rate-control", "vbr")
         set_if_present(self.encoder, "rc-mode", "vbr")
-        set_if_present(self.encoder, "gop-size", self.framerate * 2)
+        # Periodic IDRs caused a visible full-desktop corruption pulse in the
+        # pre-encoded RTP/WebRTC path.  New peers request an upstream key unit
+        # on connect, so an automatic periodic GOP is unnecessary here.
+        set_if_present(self.encoder, "gop-size", -1)
         set_if_present(self.encoder, "strict-gop", False)
         set_if_present(self.encoder, "b-adapt", False)
         set_if_present(self.encoder, "bframes", 0)
@@ -149,6 +219,8 @@ class SmithayDisplay:
         set_if_present(self.encoder, "preset", "p1")
         set_if_present(self.encoder, "tune", "ultra-low-latency")
         set_if_present(self.encoder, "multi-pass", "disabled")
+        if set_if_present(self.encoder, "emit-frame-stats", True):
+            self.encoder.connect("frame-stats", self._on_encoder_frame_stats)
         vbv = max(1, int((self.bitrate + self.framerate - 1) / self.framerate * 1.5))
         set_if_present(self.encoder, "vbv-buffer-size", vbv)
 
@@ -187,22 +259,121 @@ class SmithayDisplay:
                 )
 
         source_pad = self.source.get_static_pad("src")
-        encoder_pad = self.encoder.get_static_pad("src")
+        encoder_sink_pad = self.encoder.get_static_pad("sink")
+        encoder_src_pad = self.encoder.get_static_pad("src")
         source_pad.add_probe(Gst.PadProbeType.BUFFER, self._on_source_buffer)
-        encoder_pad.add_probe(Gst.PadProbeType.BUFFER, self._on_encoded_buffer)
+        encoder_sink_pad.add_probe(
+            Gst.PadProbeType.BUFFER, self._on_encoder_input_buffer
+        )
+        encoder_src_pad.add_probe(Gst.PadProbeType.BUFFER, self._on_encoded_buffer)
 
         bus = self.pipeline.get_bus()
         bus.add_signal_watch()
         bus.connect("message", self._on_bus_message)
 
-    def _on_source_buffer(self, _pad, _info):
+    def _on_source_buffer(self, _pad, info):
+        now_ns = time.monotonic_ns()
+        if self.last_frame_mono_ns:
+            gap_ns = now_ns - self.last_frame_mono_ns
+            if gap_ns > self.gap_warn_ns:
+                gap_ms = gap_ns / 1_000_000
+                self.source_gap_count += 1
+                self.source_gap_max_ms = max(self.source_gap_max_ms, gap_ms)
+                buffer = info.get_buffer()
+                pts_ns = (
+                    int(buffer.pts)
+                    if buffer is not None and buffer.pts != Gst.CLOCK_TIME_NONE
+                    else None
+                )
+                LOG.warning(
+                    "source-gap gap_ms=%.3f count=%d frame=%d pts_ns=%s",
+                    gap_ms,
+                    self.source_gap_count,
+                    self.frame_count + 1,
+                    pts_ns,
+                )
         self.frame_count += 1
-        self.last_frame_mono_ns = time.monotonic_ns()
+        self.last_frame_mono_ns = now_ns
         return Gst.PadProbeReturn.OK
 
-    def _on_encoded_buffer(self, _pad, _info):
-        self.encoded_count += 1
+    @staticmethod
+    def _buffer_pts(buffer):
+        if buffer is not None and buffer.pts != Gst.CLOCK_TIME_NONE:
+            return int(buffer.pts)
+        return None
+
+    def _on_encoder_input_buffer(self, _pad, info):
+        now_ns = time.monotonic_ns()
+        buffer = info.get_buffer()
+        pts_ns = self._buffer_pts(buffer)
+        if self.last_encoder_input_mono_ns:
+            gap_ns = now_ns - self.last_encoder_input_mono_ns
+            if gap_ns > self.gap_warn_ns:
+                gap_ms = gap_ns / 1_000_000
+                self.encoder_input_gap_count += 1
+                self.encoder_input_gap_max_ms = max(
+                    self.encoder_input_gap_max_ms, gap_ms
+                )
+                LOG.warning(
+                    "encoder-input-gap gap_ms=%.3f count=%d frame=%d pts_ns=%s",
+                    gap_ms,
+                    self.encoder_input_gap_count,
+                    self.encoder_input_count + 1,
+                    pts_ns,
+                )
+        with self._encoder_timing_lock:
+            self._encoder_input_times.append((pts_ns, now_ns))
+            while len(self._encoder_input_times) > 1024:
+                self._encoder_input_times.popleft()
+        self.encoder_input_count += 1
+        self.last_encoder_input_mono_ns = now_ns
         return Gst.PadProbeReturn.OK
+
+    def _on_encoded_buffer(self, _pad, info):
+        now_ns = time.monotonic_ns()
+        buffer = info.get_buffer()
+        pts_ns = self._buffer_pts(buffer)
+        if self.last_encoded_mono_ns:
+            gap_ns = now_ns - self.last_encoded_mono_ns
+            if gap_ns > self.gap_warn_ns:
+                gap_ms = gap_ns / 1_000_000
+                self.encoded_gap_count += 1
+                self.encoded_gap_max_ms = max(self.encoded_gap_max_ms, gap_ms)
+                LOG.warning(
+                    "encoded-gap gap_ms=%.3f count=%d frame=%d pts_ns=%s",
+                    gap_ms,
+                    self.encoded_gap_count,
+                    self.encoded_count + 1,
+                    pts_ns,
+                )
+        input_ns = None
+        input_pts_ns = None
+        with self._encoder_timing_lock:
+            if self._encoder_input_times:
+                input_pts_ns, input_ns = self._encoder_input_times.popleft()
+        if input_ns is not None:
+            latency_ms = (now_ns - input_ns) / 1_000_000
+            self.encoder_latency_count += 1
+            self.encoder_latency_max_ms = max(self.encoder_latency_max_ms, latency_ms)
+            if latency_ms * 1_000_000 > self.gap_warn_ns:
+                self.encoder_latency_warn_count += 1
+                LOG.warning(
+                    "encoder-latency latency_ms=%.3f count=%d frame=%d "
+                    "input_pts_ns=%s output_pts_ns=%s",
+                    latency_ms,
+                    self.encoder_latency_warn_count,
+                    self.encoded_count + 1,
+                    input_pts_ns,
+                    pts_ns,
+                )
+        self.encoded_count += 1
+        self.last_encoded_mono_ns = now_ns
+        return Gst.PadProbeReturn.OK
+
+    def _on_encoder_frame_stats(self, _encoder, structure):
+        self.frame_stats_count += 1
+        if self.frame_stats_count == 1:
+            LOG.info("encoder-frame-stats first=%s", structure.to_string())
 
     def _write_atomic(self, path, content):
         temporary = path + ".tmp"
@@ -235,11 +406,12 @@ class SmithayDisplay:
         self._write_atomic(READY_FILE, "\n".join(lines) + "\n")
         LOG.info(
             "ready outer_display=%s framebuffer=%dx%d@%d "
-            "memory=CUDAMemory encoder=nvh264enc rtp=127.0.0.1:%d",
+            "memory=%s encoder=nvh264enc rtp=127.0.0.1:%d",
             display,
             self.width,
             self.height,
             self.framerate,
+            self.capture_memory,
             self.rtp_port,
         )
 
@@ -400,14 +572,26 @@ class SmithayDisplay:
             "outerWaylandDisplay": self.wayland_display,
             "framebuffer": "%dx%d" % (self.width, self.height),
             "refreshHz": self.framerate,
-            "memory": "CUDAMemory",
+            "memory": self.capture_memory,
             "encoder": "nvh264enc",
+            "externalCudaPool": self.extern_cuda_pool_enabled,
             "cursorMode": self.cursor_mode,
             "bitrateKbps": self.bitrate,
             "rtpPort": self.rtp_port,
             "frames": self.frame_count,
+            "encoderInputFrames": self.encoder_input_count,
             "encodedFrames": self.encoded_count,
+            "frameStatsCount": self.frame_stats_count,
             "averageSourceFps": round(self.frame_count / elapsed, 3),
+            "sourceGapCount": self.source_gap_count,
+            "sourceGapMaxMs": round(self.source_gap_max_ms, 3),
+            "encoderInputGapCount": self.encoder_input_gap_count,
+            "encoderInputGapMaxMs": round(self.encoder_input_gap_max_ms, 3),
+            "encodedGapCount": self.encoded_gap_count,
+            "encodedGapMaxMs": round(self.encoded_gap_max_ms, 3),
+            "encoderLatencyCount": self.encoder_latency_count,
+            "encoderLatencyWarnCount": self.encoder_latency_warn_count,
+            "encoderLatencyMaxMs": round(self.encoder_latency_max_ms, 3),
             "inputs": self.input_count,
             "keyunitRequests": self.keyunit_count,
             "lastFrameAgeMs": (

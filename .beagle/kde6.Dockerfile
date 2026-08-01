@@ -257,6 +257,10 @@ RUN set -a && \
     rm -f /tmp/bdwind-gstreamer.tar.gz && \
     test -x /opt/gstreamer/gst-env && \
     sed -i 's/import json, urllib\.parse, os/import urllib.parse/g' /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer/signaling/signaling_server.py && \
+    sed -i \
+      's/enabled=args\.encoder\.startswith("nv")/enabled=args.encoder.startswith("nv") and os.environ.get("BDWIND_DISABLE_GPU_MONITOR") != "true"/' \
+      /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer/__main__.py && \
+    grep -q 'BDWIND_DISABLE_GPU_MONITOR' /opt/gstreamer/lib/python3/dist-packages/bdwind_gstreamer/__main__.py && \
     . /opt/gstreamer/gst-env && \
     gst-launch-1.0 --version | tee /tmp/bdwind-gstreamer-version.txt && \
     grep -Eq "(GStreamer|version) ${GSTREAMER_VERSION}" /tmp/bdwind-gstreamer-version.txt && \

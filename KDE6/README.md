@@ -34,6 +34,9 @@ for non-video desktop services such as file selection.
    events, not Portal RemoteDesktop or `/dev/uinput`.
 7. No capture backend switch is offered. A failure is repaired on the Smithay
    path rather than switching back to Portal video.
+8. The Smithay encoder automatically loads the bundled CDI/NVENC ioctl hook
+   when `nvh264enc` is selected. The preload is scoped to that process and is
+   not inherited by KWin, PipeWire, DBus, or monitoring tools.
 
 ## Pinned dependencies
 
@@ -109,10 +112,19 @@ BDWIND_SMITHAY_VIDEO_BITRATE=12000
 BDWIND_SMITHAY_RENDER_NODE=/dev/dri/renderD128
 BDWIND_SMITHAY_CUDA_DEVICE_ID=0
 BDWIND_ENABLE_RESIZE=false
+BDWIND_NVENC_HOOK=auto
 ```
 
 `BDWIND_CAPTURE_SOURCE` and `BDWIND_WAYLAND_INPUT_BACKEND` are fixed by the
 KDE6 runtime scripts. They are not compatibility toggles.
+
+`BDWIND_NVENC_HOOK=auto` enables the bundled
+`/opt/gstreamer/hooks/nvenc_ioctl_hook.so` when it is present and the encoder
+is `nvh264enc`. Set it to `required` to fail startup when the hook is missing,
+or `off` for a controlled native-driver comparison. The runtime defaults the
+hook to the `wayland-nvenc` profile with open-path rewriting, RM GPU-list
+filtering, and CUDA single-device mapping enabled. Each low-level
+`NVENC_HOOK_*` setting remains independently overridable.
 
 ## Process topology
 

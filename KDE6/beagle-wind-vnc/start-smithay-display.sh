@@ -9,6 +9,9 @@ if [ ! -x /opt/gstreamer/gst-env ]; then
 fi
 . /opt/gstreamer/gst-env
 
+. /etc/beagle-wind-vnc/configure-nvenc-hook.sh
+bdwind_configure_nvenc_hook
+
 if ! gst-inspect-1.0 waylanddisplaysrc >/dev/null 2>&1; then
     echo "[kde6] waylanddisplaysrc is unavailable; KDE6 has no capture fallback" >&2
     exit 68

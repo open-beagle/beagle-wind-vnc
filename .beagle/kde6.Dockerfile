@@ -279,6 +279,8 @@ RUN set -a && \
     echo "${WEBRTC_TARBALL_SHA256}  /tmp/bdwind-webrtc.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/bdwind-webrtc.tar.gz -C /opt/bdwind/webrtc && \
     rm -f /tmp/bdwind-webrtc.tar.gz && \
+    test "$(cat /opt/bdwind/webrtc/.bdwind/bdwind-webrtc.commit)" = "${WEBRTC_COMMIT}" && \
+    rm -rf /opt/bdwind/webrtc/.bdwind && \
     test -f /opt/bdwind/webrtc/index.html && \
     test -d /opt/bdwind/webrtc/assets
 

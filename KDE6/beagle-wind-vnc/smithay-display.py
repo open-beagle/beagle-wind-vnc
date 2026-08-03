@@ -71,7 +71,7 @@ class SmithayDisplay:
         self.width = env_int("DISPLAY_SIZEW", 1920, 320, 7680)
         self.height = env_int("DISPLAY_SIZEH", 1080, 240, 4320)
         self.framerate = env_int("DISPLAY_REFRESH", 60, 1, 240)
-        self.bitrate = env_int("BDWIND_SMITHAY_VIDEO_BITRATE", 12000, 100, 100000)
+        self.bitrate = env_int("BDWIND_SMITHAY_VIDEO_BITRATE", 12000, 100, 50000)
         self.rtp_port = env_int("BDWIND_SMITHAY_RTP_PORT", 51000, 1024, 65535)
         self.gap_warn_ns = (
             env_int("BDWIND_SMITHAY_GAP_WARN_MS", 25, 1, 10000) * 1_000_000
@@ -517,7 +517,7 @@ class SmithayDisplay:
         return accepted
 
     def _set_bitrate(self, bitrate):
-        bitrate = max(100, min(100000, int(bitrate)))
+        bitrate = max(100, min(50000, int(bitrate)))
         self.encoder.set_property("bitrate", bitrate)
         set_if_present(self.encoder, "max-bitrate", bitrate)
         vbv = max(1, int((bitrate + self.framerate - 1) / self.framerate * 1.5))

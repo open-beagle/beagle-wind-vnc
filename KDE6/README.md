@@ -28,8 +28,9 @@ for non-video desktop services such as file selection.
    `bdwind-kde6` to Plasma and applications.
 3. Raw frames stay in `memory:CUDAMemory` until NVENC.
 4. Only pre-encoded H.264/RTP crosses the display/WebRTC process boundary.
-5. Raw and encoded queues retain at most one complete frame/access unit and
-   drop old data under pressure.
+5. The raw pre-encode queue is latest-frame-only and may drop stale raw frames.
+   The encoded H.264 queue is bounded and non-leaky so it never corrupts the
+   reference chain by dropping an encoded access unit.
 6. Input is injected into the Smithay seat through source upstream/navigation
    events, not Portal RemoteDesktop or `/dev/uinput`.
 7. No capture backend switch is offered. A failure is repaired on the Smithay
@@ -64,10 +65,14 @@ The image uses Ubuntu 26.04 because it provides the KDE Plasma 6 stack used by
 this runtime. GStreamer is installed under `/opt/gstreamer`.
 
 The immutable GStreamer artifact URL, seven-character source commit, and
-SHA-256 checksum are pinned once in `.beagle/kde6-gstreamer.lock`. From the
-parent workspace, publish a completed build and update that lock with:
+SHA-256 checksum are pinned once in `.beagle/kde6-gstreamer.lock`. A release
+artifact must come from a clean checkout and contain the full source commit at
+`gstreamer/share/bdwind/bdwind-gstreamer.commit` plus the immutable builder
+digest at `gstreamer/share/bdwind/bdwind-gstreamer.builder`. From the parent
+workspace, build, verify, publish and update that lock with:
 
 ```bash
+./scripts/build-kde6-gstreamer.sh
 ./scripts/publish-kde6-gstreamer.sh
 ```
 
@@ -114,6 +119,9 @@ BDWIND_SMITHAY_CUDA_DEVICE_ID=0
 BDWIND_ENABLE_RESIZE=false
 BDWIND_NVENC_HOOK=auto
 ```
+
+The live Smithay bitrate bridge accepts `100..50000` kbps. The control panel
+filters higher legacy presets for this backend.
 
 `BDWIND_CAPTURE_SOURCE` and `BDWIND_WAYLAND_INPUT_BACKEND` are fixed by the
 KDE6 runtime scripts. They are not compatibility toggles.
@@ -192,7 +200,7 @@ The WebRTC process subscribes to the persistent encoded stream:
 udpsrc 127.0.0.1:51000
   ! rtph264depay
   ! h264parse
-  ! queue max-size-buffers=1 max-size-time=30ms leaky=downstream
+  ! queue max-size-buffers=0 max-size-time=120ms leaky=no
   ! rtph264pay
   ! webrtcbin
 ```

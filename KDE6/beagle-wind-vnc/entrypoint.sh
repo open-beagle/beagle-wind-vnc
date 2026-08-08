@@ -65,6 +65,15 @@ fi
 sudo chgrp render /dev/dri/renderD* /dev/dri/card* 2>/dev/null || true
 sudo chmod g+rw /dev/dri/renderD* /dev/dri/card* 2>/dev/null || true
 
+# NVIDIA's runfile installs matching 32-bit compatibility libraries in
+# /usr/lib32, but CDI's NVML discovery currently injects only the 64-bit
+# libraries.  Deployments may bind that host directory read-only here so
+# Steam/Proton can use the same driver version as the kernel module.
+if find /opt/nvidia/lib32 -maxdepth 1 -type f -name 'libGLX_nvidia.so.*' \
+    -print -quit 2>/dev/null | grep -q .; then
+    sudo ldconfig /opt/nvidia/lib32
+fi
+
 if [ -e /usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1 ]; then
     sudo mkdir -p /usr/lib/x86_64-linux-gnu/gbm
     sudo ln -sf /usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1 /usr/lib/x86_64-linux-gnu/gbm/nvidia-drm_gbm.so || true

@@ -4,6 +4,8 @@ FROM ${BASE}
 ARG GSTREAMER_VERSION=1.28.6
 ARG BAIDUNETDISK_VERSION=4.17.7
 ARG BAIDUNETDISK_SHA256=50ec18f05626a13f57ef034630416d481682bc1018539f33397d5c71bc653b3d
+ARG STEAM_VERSION=1.0.0.87
+ARG STEAM_SHA256=765aba9a0ed339a50226ceb614fcc9879a991ba184098bc8de920efb12c714a4
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
@@ -12,7 +14,7 @@ LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.lock="/etc/beagle-wind-vnc/kde6-gstreamer.lock"
 LABEL com.beagle.webrtc.lock="/etc/beagle-wind-vnc/kde6-webrtc.lock"
-LABEL com.beagle.desktop.apps="chrome,code,baidunetdisk,libreoffice,vlc,okular,gwenview,ark"
+LABEL com.beagle.desktop.apps="chrome,code,baidunetdisk,steam,libreoffice,vlc,okular,gwenview,ark"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Asia/Shanghai
@@ -168,7 +170,8 @@ RUN sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/g' /etc/apt/sources.li
 # Baseline desktop application layer. Chrome and VS Code are downloaded from
 # their official Debian endpoints and baked into the image; their package
 # repositories are removed afterwards so a running desktop cannot drift.
-RUN apt-get update && \
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
     apt-get install --no-install-recommends -y \
       ark \
       dolphin-plugins \
@@ -200,6 +203,24 @@ RUN apt-get update && \
       xz-utils \
       zip && \
     curl --retry 3 --retry-delay 2 -fsSL \
+      "https://repo.steampowered.com/steam/archive/stable/steam-launcher_${STEAM_VERSION}_amd64.deb" \
+      -o /tmp/steam-launcher.deb && \
+    echo "${STEAM_SHA256}  /tmp/steam-launcher.deb" | sha256sum -c - && \
+    apt-get install --no-install-recommends -y \
+      /tmp/steam-launcher.deb \
+      gamemode \
+      libc6:i386 \
+      libegl1:i386 \
+      libgamemodeauto0:i386 \
+      libgbm1:i386 \
+      libgl1:i386 \
+      libgl1-mesa-dri:i386 \
+      libvulkan1:i386 \
+      mesa-vulkan-drivers:i386 \
+      steam-libs-amd64 \
+      steam-libs-i386 \
+      xterm && \
+    curl --retry 3 --retry-delay 2 -fsSL \
       "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
       -o /tmp/google-chrome-stable.deb && \
     curl --retry 3 --retry-delay 2 -fsSL \
@@ -216,15 +237,22 @@ RUN apt-get update && \
       /tmp/vscode.deb && \
     rm -f \
       /etc/apt/sources.list.d/google-chrome.list \
+      /etc/apt/sources.list.d/steam-beta.list \
+      /etc/apt/sources.list.d/steam-stable.list \
       /etc/apt/sources.list.d/vscode.list \
       /tmp/baidunetdisk.deb \
       /tmp/google-chrome-stable.deb \
+      /tmp/steam-launcher.deb \
       /tmp/vscode.deb && \
     test -x /usr/bin/google-chrome-stable && \
     test -x /usr/bin/code && \
     test -f /usr/share/applications/google-chrome.desktop && \
     test -f /usr/share/applications/code.desktop && \
     test -f /usr/share/applications/baidunetdisk.desktop && \
+    test -x /usr/bin/steam && \
+    test -f /usr/share/applications/steam.desktop && \
+    test "$(dpkg-query -W -f='${Version}' steam-launcher)" = "1:${STEAM_VERSION}" && \
+    dpkg --print-foreign-architectures | grep -qx i386 && \
     ln -sf /usr/bin/qtpaths6 /usr/local/bin/qtpaths && \
     sed -i \
       's#^Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox#Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox --disable-gpu --disable-gpu-compositing#' \
@@ -239,7 +267,7 @@ RUN apt-get update && \
     printf '[Wallet]\nEnabled=false\nFirst Use=false\n' >/etc/xdg/kwalletrc && \
     google-chrome-stable --version && \
     dpkg-query -W -f='${Package}=${Version}\n' \
-      ark baidunetdisk code google-chrome-stable gwenview libreoffice-core okular vlc && \
+      ark baidunetdisk code google-chrome-stable gwenview libreoffice-core okular steam-launcher steam-libs-i386 vlc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/*
 

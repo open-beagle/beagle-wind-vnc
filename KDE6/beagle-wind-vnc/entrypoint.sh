@@ -18,6 +18,14 @@ if [ "$(stat -c '%u:%g' "${HOME}")" != "$(id -u):$(id -g)" ]; then
     sudo chown -R "$(id -u):$(id -g)" "${HOME}" || true
 fi
 
+# Keep the Steam launcher as a real file in the persistent home volume.  The
+# executable bit also marks the desktop entry as launchable in Plasma's folder
+# view.  Existing user customizations are never overwritten.
+if [ -f /usr/share/applications/steam.desktop ] \
+    && [ ! -e "${HOME}/Desktop/steam.desktop" ]; then
+    install -Dm755 /usr/share/applications/steam.desktop "${HOME}/Desktop/steam.desktop"
+fi
+
 (
     echo "${PASSWD}"
     echo "${PASSWD}"

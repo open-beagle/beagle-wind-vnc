@@ -253,6 +253,11 @@ RUN dpkg --add-architecture i386 && \
     test -f /usr/share/applications/steam.desktop && \
     test "$(dpkg-query -W -f='${Version}' steam-launcher)" = "1:${STEAM_VERSION}" && \
     dpkg --print-foreign-architectures | grep -qx i386 && \
+    sed -i \
+      's#Exec=/usr/bin/steam#Exec=/etc/beagle-wind-vnc/launch-steam.sh#g' \
+      /usr/share/applications/steam.desktop && \
+    grep -q '^Exec=/etc/beagle-wind-vnc/launch-steam.sh %U$' \
+      /usr/share/applications/steam.desktop && \
     ln -sf /usr/bin/qtpaths6 /usr/local/bin/qtpaths && \
     sed -i \
       's#^Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox#Exec=/opt/baidunetdisk/baidunetdisk --no-sandbox --disable-gpu --disable-gpu-compositing#' \

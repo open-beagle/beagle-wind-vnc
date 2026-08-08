@@ -25,6 +25,11 @@ if [ -f /usr/share/applications/steam.desktop ] \
     && [ ! -e "${HOME}/Desktop/steam.desktop" ]; then
     install -Dm755 /usr/share/applications/steam.desktop "${HOME}/Desktop/steam.desktop"
 fi
+if [ -f "${HOME}/Desktop/steam.desktop" ]; then
+    sed -i \
+        's#Exec=/usr/bin/steam#Exec=/etc/beagle-wind-vnc/launch-steam.sh#g' \
+        "${HOME}/Desktop/steam.desktop"
+fi
 
 (
     echo "${PASSWD}"

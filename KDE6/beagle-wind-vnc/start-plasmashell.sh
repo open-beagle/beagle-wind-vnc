@@ -17,6 +17,25 @@ until [ -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] || ls "${XDG_RUNTIME_DIR}"/
     sleep 0.5
 done
 
+# KWin creates XWayland on the first free display (currently :1), so do not
+# pass runtime-env.sh's placeholder DISPLAY to Plasma-launched X11 clients.
+for _ in $(seq 1 100); do
+    x_socket="$(find /tmp/.X11-unix -maxdepth 1 -type s -name 'X*' -printf '%f\n' 2>/dev/null \
+        | sort -V | head -n 1)"
+    if [ -n "${x_socket}" ]; then
+        export DISPLAY=":${x_socket#X}"
+        break
+    fi
+    sleep 0.2
+done
+if [ -z "${x_socket:-}" ]; then
+    echo "[kde6] KWin XWayland display did not become ready" >&2
+    exit 69
+fi
+dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR \
+    XDG_CURRENT_DESKTOP XDG_SESSION_TYPE 2>/dev/null || true
+echo "[kde6] Plasma application environment uses DISPLAY=${DISPLAY}"
+
 for _ in $(seq 1 100); do
     if busctl --user --address="${DBUS_SESSION_BUS_ADDRESS}" --no-pager list 2>/dev/null \
         | awk '$1 == "org.kde.ActivityManager" && $2 != "-" { found = 1 } END { exit !found }'; then

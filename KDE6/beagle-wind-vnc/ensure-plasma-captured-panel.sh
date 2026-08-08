@@ -311,7 +311,16 @@ panel.height = Math.max(panel.height || 0, 48);
 function hasWidget(panel, plugin) {
     var widgets = panel.widgets();
     for (var i = 0; i < widgets.length; i++) {
-        if (widgets[i].type == plugin) {
+        var widgetType = widgets[i].type;
+        if (widgetType == plugin) {
+            return true;
+        }
+        // Plasma's default panel can still expose the icon-only task manager
+        // while the config migration above is waiting for the next shell
+        // restart. Treat it as equivalent so this runtime ensure does not add
+        // a second task manager during first-boot layout creation.
+        if (plugin == "org.kde.plasma.taskmanager" &&
+            widgetType == "org.kde.plasma.icontasks") {
             return true;
         }
     }

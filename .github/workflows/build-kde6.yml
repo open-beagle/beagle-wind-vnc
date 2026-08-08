@@ -44,7 +44,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:26.04
-            GSTREAMER_VERSION=1.28.5
+            GSTREAMER_VERSION=1.28.6
           no-cache: true
 
       - name: Image push success

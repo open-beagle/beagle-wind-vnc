@@ -1,13 +1,13 @@
 ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
-ARG GSTREAMER_VERSION=1.28.5
+ARG GSTREAMER_VERSION=1.28.6
 ARG BAIDUNETDISK_VERSION=4.17.7
 ARG BAIDUNETDISK_SHA256=50ec18f05626a13f57ef034630416d481682bc1018539f33397d5c71bc653b3d
 
 LABEL maintainer="https://github.com/open-beagle"
 LABEL org.opencontainers.image.title="beagle-wind-vnc KDE6"
-LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image with Smithay capture and GStreamer 1.28.5"
+LABEL org.opencontainers.image.description="KDE Plasma 6 Wayland image with Smithay capture and GStreamer 1.28.6"
 LABEL org.opencontainers.image.version="1.2.0"
 LABEL com.beagle.gstreamer.version="${GSTREAMER_VERSION}"
 LABEL com.beagle.gstreamer.lock="/etc/beagle-wind-vnc/kde6-gstreamer.lock"

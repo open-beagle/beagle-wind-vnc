@@ -30,12 +30,12 @@ jobs:
           file: ./.beagle/kde6-gstreamer-ubuntu2604.Dockerfile
           push: true
           tags: |
-            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.5-ubuntu2604
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.6-ubuntu2604
           platforms: linux/amd64
           build-args: |
             BASE=ubuntu:26.04
-            GSTREAMER_VERSION=1.28.5
+            GSTREAMER_VERSION=1.28.6
             RUST_VERSION=1.88.0
 
       - name: Image push success
-        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.5-ubuntu2604"
+        run: echo "Docker image pushed successfully to registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.6-ubuntu2604"

@@ -8,14 +8,14 @@
 #   docker run --rm -it \
 #     -v "${PWD}/gstreamer:/workspace" \
 #     -w /workspace \
-#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.5-ubuntu2604 \
+#     registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:build-1.28.6-ubuntu2604 \
 #     bash KDE6/build.sh
 # ==============================================================================
 
 ARG BASE=ubuntu:26.04
 FROM ${BASE}
 
-ARG GSTREAMER_VERSION=1.28.5
+ARG GSTREAMER_VERSION=1.28.6
 ARG RUST_VERSION=1.88.0
 
 LABEL maintainer="https://github.com/open-beagle"

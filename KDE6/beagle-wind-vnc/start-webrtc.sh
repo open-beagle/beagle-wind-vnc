@@ -24,9 +24,9 @@ fi
 
 export BDWIND_RENDER_ENGINE="wayland"
 export BDWIND_CAPTURE_SOURCE="smithay-rtp"
-# Smithay owns NVENC in this mode. The WebRTC process does not need to launch
-# nvidia-smi twice per second merely to report GPU statistics to the client.
-export BDWIND_DISABLE_GPU_MONITOR="${BDWIND_DISABLE_GPU_MONITOR:-true}"
+# The monitor uses in-process NVML. Keep the escape hatch, but report real GPU
+# statistics by default without spawning nvidia-smi in the media process.
+export BDWIND_DISABLE_GPU_MONITOR="${BDWIND_DISABLE_GPU_MONITOR:-false}"
 export BDWIND_ENABLE_RESIZE="${BDWIND_ENABLE_RESIZE:-false}"
 export BDWIND_PORT_GSTREAMER="${BDWIND_PORT_GSTREAMER:-${BDWIND_PORT_NGINX:-8080}}"
 export BDWIND_STUN_UDP_MIN="${BDWIND_STUN_UDP_MIN:-${BDWIND_UDP_PORT_MIN:-0}}"

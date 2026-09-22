@@ -1,0 +1,56 @@
+name: Build KDE6 Blender MCP image
+
+on:
+  pull_request:
+    paths:
+      - "KDE6/BlenderMCP/**"
+      - ".beagle/kde6-blender-mcp.*"
+      - ".github/workflows/build-kde6-blender-mcp.yml"
+  push:
+    branches:
+      - kde6-blender-mcp
+    paths:
+      - "KDE6/BlenderMCP/**"
+      - ".beagle/kde6-blender-mcp.*"
+      - ".github/workflows/build-kde6-blender-mcp.yml"
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run bridge and workspace tests
+        run: python3 -m unittest discover -s KDE6/BlenderMCP/tests -v
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Container Registry
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-qingdao.aliyuncs.com
+          username: ${{ secrets.REGISTRY_USER_ALIYUN }}
+          password: ${{ secrets.REGISTRY_PASSWORD_ALIYUN }}
+
+      - name: Build Blender MCP image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./.beagle/kde6-blender-mcp.Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          tags: |
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:blender-0.1.0
+            registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:blender-${{ github.sha }}
+          build-args: |
+            KDE6_BASE_IMAGE=registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc
+            KDE6_BASE_DIGEST=sha256:407b8da960cb236c98369dde05ee1e67a3dd86d21445eea9991f2e1b8316b0b3
+            BLENDER_VERSION=4.5.14
+            BLENDER_URL=https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz
+            BLENDER_SHA256=9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3
+            BLENDER_MCP_VERSION=0.1.0
+          load: ${{ github.event_name == 'pull_request' }}

@@ -15,6 +15,11 @@ set -euo pipefail
 mkdir -p "${XDG_RUNTIME_DIR}" "${WORKSPACE_ROOT}"/{project,inbox,exports,checkpoints,cache}
 chmod 700 "${XDG_RUNTIME_DIR}" "${WORKSPACE_ROOT}"/{project,inbox,exports,checkpoints,cache}
 
+# A container restart can leave the adapter socket pathname behind while
+# Blender is still starting.  Remove it so /readyz cannot report a stale
+# pathname as ready.
+rm -f -- "${BLENDER_MCP_ADAPTER_SOCKET}"
+
 if [ ! -s "${BLENDER_MCP_TOKEN_FILE}" ]; then
     if [ "${BLENDER_MCP_DEV_GENERATE_TOKEN:-false}" != "true" ]; then
         echo "[blender-mcp] token file is missing; inject a Secret or set BLENDER_MCP_DEV_GENERATE_TOKEN=true for local smoke tests" >&2
